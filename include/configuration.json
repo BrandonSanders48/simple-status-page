@@ -1,0 +1,92 @@
+{
+  "gateway": "192.168.1.1",
+  "public_dns": "8.8.8.8",
+  "domain": "domain.local",
+  "refresh_rate": "3000",
+  "alert_sound": "false",
+  "internal_hosts": [
+    {
+      "host": "google.com",
+      "port": 443,
+      "type": "HTTPS",
+      "name": "Test"
+    },
+    {
+      "host": "google.com",
+      "port": 443,
+      "type": "HTTPS",
+      "name": "Test 2"
+    },
+	{
+      "host": "google.com",
+      "port": 443,
+      "type": "HTTPS",
+      "name": "Site 2"
+    },
+    {
+      "host": "google.com",
+      "port": 443,
+      "type": "HTTPS",
+      "name": "Test 3"
+    },
+    {
+      "host": "google.com",
+      "port": 443,
+      "type": "HTTPS",
+      "name": "Test 4"
+    },
+    {
+      "host": "google.com",
+      "port": 443,
+      "type": "HTTPS",
+      "name": "server3"
+    }, 
+    {
+      "host": "10.0.4.5",
+      "port": null,
+      "type": "Ping",
+      "name": "DR Site"
+    }
+  ],
+  "RSS": [
+    {
+      "host": "https://status.athenahealth.com/rss",
+      "name": "Athena Health",
+      "tag": "item"
+    },
+    {
+      "host": "https://status.goto.com/history.rss",
+      "name": "GoTo Connect",
+      "tag": "item"
+    },
+    {
+      "host": "https://azure.status.microsoft/en-us/status/feed",
+      "name": "Microsoft Azure",
+      "tag": "item"
+    },
+    {
+      "host": "https://status.meraki.net/history.rss",
+      "name": "Cisco Meraki",
+      "tag": "item"
+    },
+    {
+      "host": "https://status.recruitingbypaycor.com/history.rss",
+      "name": "Paycor",
+      "tag": "item"
+    },
+    {
+      "host": "https://www.google.com/appsstatus/dashboard/en/feed.atom",
+      "name": "Google",
+      "tag": "entry"
+    }
+  ],
+  "providers": [
+    {
+      "COX": "1.1.1.1",
+      "AT&T": "8.8.8.8"
+    }
+  ],
+  "business_name": "Sample",
+  "business_logo": "images/logo.png",
+  "footer_message": "For IT Department Use Only"
+}
