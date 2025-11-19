@@ -1,7 +1,5 @@
 <?php 
 
-if (!isset($_GET['access']) || $_GET['access'] !== 'true') exit("Not authorized");
-
 $json = file_get_contents('include/configuration.json'); 
 
 if ($json === false) {
