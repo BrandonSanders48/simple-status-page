@@ -469,6 +469,44 @@ if (
   </div>
 </div>
 
+<!-- Remove Incident Confirmation Modal -->
+<div class="modal fade" id="removeIncidentModal" tabindex="-1" aria-labelledby="removeIncidentModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+	<div class="modal-content" style="border-radius: 12px;">
+		<div class="modal-header">
+		<h5 class="modal-title" id="removeIncidentModalLabel">
+			<i class="fa fa-trash text-danger"></i> Remove Incident
+		</h5>
+		<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+		</div>
+		<div class="modal-body">
+		Are you sure you want to remove this incident?
+		</div>
+		<div class="modal-footer">
+		<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+		<button type="button" id="confirmRemoveIncident" class="btn btn-danger">Remove</button>
+		</div>
+	</div>
+	</div>
+</div>
+
+<!-- RSS Feed Modal -->
+<div class="modal fade" id="rssFeedModal" tabindex="-1" aria-labelledby="rssFeedModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" style="border-radius: 12px;">
+      <div class="modal-header">
+        <h5 class="modal-title" id="rssFeedModalLabel">
+          <i class="fa-solid fa-rss text-primary"></i> <span id="rssFeedModalTitle"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= $t['close'] ?>"></button>
+      </div>
+      <div class="modal-body" id="rssFeedModalBody" style="max-height:60vh;overflow-y:auto;">
+        <!-- RSS feed content will be loaded here -->
+      </div>
+    </div>
+  </div>
+</div>
+
     <footer>
         <hr>
         <div class="text-center"><?= htmlspecialchars($footer_message) ?></div>
@@ -482,342 +520,359 @@ if (
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.webticker/3.0.0/jquery.webticker.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
-const csrfToken = '<?= htmlspecialchars($_SESSION['csrf_token']) ?>';
-const isAdmin = <?= (isset($_SESSION['authenticated']) && $_SESSION['authenticated']) ? 'true' : 'false' ?>;
+		const csrfToken = '<?= htmlspecialchars($_SESSION['csrf_token']) ?>';
+		const isAdmin = <?= (isset($_SESSION['authenticated']) && $_SESSION['authenticated']) ? 'true' : 'false' ?>;
 
-// --- Dynamic: Incidents ---
-function loadIncidents() {
-    $.getJSON('include/incidents.json', function(data) {
-        if (!data || !data.length) {
-            $('#incidents_area').html('<div class="alert alert-success"><?= $t['all_systems_operational'] ?></div>');
-        } else {
-            let html = '';
-            data.forEach(function(incident, idx) {
-                html += `
-                <div class="alert alert-warning shadow-sm mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <div class="d-flex align-items-center">
-                            <i class="fa-solid fa-circle-exclamation text-warning me-2"></i>
-                            <b>${incident.title}</b>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="text-end text-muted me-2" style="font-size:12px; min-width: 120px;">
-                                <small>${incident.time}</small>
-                            </div>
-                            ${isAdmin ? `
-                                <button class="btn btn-sm btn-danger remove-incident-btn" data-idx="${idx}" title="Remove Incident">
-                                    <i class="fa fa-trash"></i>
-                                </button>
-                            ` : ''}
-                        </div>
-                    </div>
-                    <div>${incident.description}</div>
-                </div>`;
-            });
-            $('#incidents_area').html(html);
-        }
-    }).fail(function() {
-        $('#incidents_area').html('');
-    });
-}
+		// --- Dynamic: Incidents ---
+		function loadIncidents() {
+			$.getJSON('include/incidents.json', function(data) {
+				if (!data || !data.length) {
+					$('#incidents_area').html('<div class="alert alert-success"><?= $t['all_systems_operational'] ?></div>');
+				} else {
+					let html = '';
+					data.forEach(function(incident, idx) {
+						html += `
+						<div class="alert alert-warning shadow-sm mb-3">
+							<div class="d-flex justify-content-between align-items-center mb-1">
+								<div class="d-flex align-items-center">
+									<i class="fa-solid fa-circle-exclamation text-warning me-2"></i>
+									<b>${incident.title}</b>
+								</div>
+								<div class="d-flex align-items-center">
+									<div class="text-end text-muted me-2" style="font-size:12px; min-width: 120px;">
+										<small>${incident.time}</small>
+									</div>
+									${isAdmin ? `
+										<button class="btn btn-sm btn-danger remove-incident-btn" data-idx="${idx}" title="Remove Incident">
+											<i class="fa fa-trash"></i>
+										</button>
+									` : ''}
+								</div>
+							</div>
+							<div>${incident.description}</div>
+						</div>`;
+					});
+					$('#incidents_area').html(html);
+				}
+			}).fail(function() {
+				$('#incidents_area').html('');
+			});
+		}
 
-// --- Dynamic: Network Status and Services ---
-function loadStatus() {
-    $.getJSON('include/status_ajax.php', function(data) {
-        $('#network_status_placeholder').html(
-            `<h6><?= $t['local_area'] ?><span style="color:${data.local_color};float:right">${data.local_text}</span></h6>
-            <hr>
-            <h6><?= $t['wide_area'] ?><span style="color:${data.wide_color};float:right">${data.wide_text}</span></h6>`
-        );
-        let html = '';
-        data.services.forEach(function(service) {
-            html += `<div class="col-md-3 col-lg-3 col-sm-6 col-xl-3">
-                <div style="padding:10px" class="statusContainer">
-                    <div class="statusHeader">
-                        <div style="display:inline">${service.status_icon}</div> &nbsp;&nbsp;
-                        <h5 style="display:inline" class="statusTitle">${service.title}&nbsp;</h5>
-                    </div>
-                    <div class="statusSubtitle">
-                        <div class="sectionUrl"><span>${service.type} Service</span></div>
-                        ${service.desc ? `<div class="sectionUrl" style="font-size:12px;color:#888">${service.desc}</div>` : ''}
-                    </div>
-                </div>
-            </div>`;
-        });
-        $('#services_placeholder').html(html);
-        if (data.errors === 0) {
-            $('#all_status').removeClass('alert-danger').addClass('alert-success');
-            $('#webTicker').html('<b><?= $t['all_systems_operational'] ?></b>');
-        } else {
-            $('#all_status').removeClass('alert-success').addClass('alert-danger');
-            $('#webTicker').html('<b><?= $t['issues_detected'] ?></b>');
-        }
-    });
-}
+		// --- Dynamic: Network Status and Services ---
+		function loadStatus() {
+			$.getJSON('include/status_ajax.php', function(data) {
+				$('#network_status_placeholder').html(
+					`<h6><?= $t['local_area'] ?><span style="color:${data.local_color};float:right">${data.local_text}</span></h6>
+					<hr>
+					<h6><?= $t['wide_area'] ?><span style="color:${data.wide_color};float:right">${data.wide_text}</span></h6>`
+				);
+				let html = '';
+				data.services.forEach(function(service) {
+					html += `<div class="col-md-3 col-lg-3 col-sm-6 col-xl-3">
+						<div style="padding:10px" class="statusContainer">
+							<div class="statusHeader">
+								<div style="display:inline">${service.status_icon}</div> &nbsp;&nbsp;
+								<h5 style="display:inline" class="statusTitle">${service.title}&nbsp;</h5>
+							</div>
+							<div class="statusSubtitle">
+								<div class="sectionUrl"><span>${service.type} Service</span></div>
+								${service.desc ? `<div class="sectionUrl" style="font-size:12px;color:#888">${service.desc}</div>` : ''}
+							</div>
+						</div>
+					</div>`;
+				});
+				$('#services_placeholder').html(html);
+				if (data.errors === 0) {
+					$('#all_status').removeClass('alert-danger').addClass('alert-success');
+					$('#webTicker').html('<b><?= $t['all_systems_operational'] ?></b>');
+				} else {
+					$('#all_status').removeClass('alert-success').addClass('alert-danger');
+					$('#webTicker').html('<b><?= $t['issues_detected'] ?></b>');
+				}
+			});
+		}
 
-// --- Dynamic: RSS Notices ---
-function loadRSS() {
-    $.getJSON('include/rss_ajax.php', function(data) {
-        let html = '';
-        data.forEach(function(feed) {
-            let bg2 = "background:#e2e3e5;color:#41464b;border-radius:10px;";
-            const low = [
-    "maintenance", "scheduled", "planned", "notice", "update", "info", "informational"
-];
-const medium = [
-    "unavailable", "inaccessible", "difficulty", "difficulties", "slow", "slowness", "trouble", "degraded", "delay", "delays", "partial", "unstable", "intermittent"
-];
-const high = [
-    "error", "errors", "problem", "problems", "issue", "issues", "outage", "outages", "critical", "fault", "down", "failure", "failures", "disruption", "disruptions", "major"
-];
-            let item_short = feed.item.length > 75 ? feed.item.substring(0, 72) + "..." : feed.item;
-            medium.forEach(word => { if (item_short.toLowerCase().includes(word)) bg2 = "background:#fff3cd;color:#856404;border-radius:10px;"; });
-            high.forEach(word => { if (item_short.toLowerCase().includes(word)) bg2 = "background:#fddddd;color:maroon;border-radius:10px;"; });
-            html += `
-                <div style="height:100%;overflow:hidden;text-align:center" class="col-md-4 col-lg-4 col-sm-6 col-xl-4">
-                    <div style="margin:5px;height:110px;padding:10px;text-align:center;${bg2}">
-                        <div><h5>${feed.name}&nbsp;</h5></div>
-                        <div title="${feed.item}">${item_short}</div>
-                        ${feed.desc ? `<div style="font-size:12px;color:#888">${feed.desc}</div>` : ''}
-                    </div>
-                </div>
-            `;
-        });
-        $('#rss_area').html(html);
-    }).fail(function() {
-        $('#rss_area').html('<div class="text-center text-danger">Failed to load notices.</div>');
-    });
-}
+		// --- Dynamic: RSS Notices ---
+		function loadRSS() {
+			$.getJSON('include/rss_ajax.php', function(data) {
+				let html = '';
+				data.forEach(function(feed, idx) {
+					let bg2 = "background:#e2e3e5;color:#41464b;border-radius:10px;";
+					const low = [
+						"maintenance", "scheduled", "planned", "notice", "update", "info", "informational"
+					];
+					const medium = [
+						"unavailable", "inaccessible", "difficulty", "difficulties", "slow", "slowness", "trouble", "degraded", "delay", "delays", "partial", "unstable", "intermittent"
+					];
+					const high = [
+						"error", "errors", "problem", "problems", "issue", "issues", "outage", "outages", "critical", "fault", "down", "failure", "failures", "disruption", "disruptions", "major"
+					];
+					let item_short = feed.item.length > 75 ? feed.item.substring(0, 72) + "..." : feed.item;
+					medium.forEach(word => { if (item_short.toLowerCase().includes(word)) bg2 = "background:#fff3cd;color:#856404;border-radius:10px;"; });
+					high.forEach(word => { if (item_short.toLowerCase().includes(word)) bg2 = "background:#fddddd;color:maroon;border-radius:10px;"; });
+					html += `
+						<div class="col-md-4 col-lg-4 col-sm-6 col-xl-4">
+							<div class="rss-feed-box" data-feed-idx="${idx}" style="margin:5px;height:110px;padding:10px;text-align:center;cursor:pointer;${bg2}">
+								<div><h5>${feed.name}&nbsp;</h5></div>
+								<div title="${feed.item}">${item_short}</div>
+								${feed.desc ? `<div style="font-size:12px;color:#888">${feed.desc}</div>` : ''}
+							</div>
+						</div>
+					`;
+				});
+				$('#rss_area').html(html);
 
-// --- Remove Incident Modal ---
-let removeIncidentIdx = null;
+				// Attach click handler after rendering
+				$('.rss-feed-box').off('click').on('click', function() {
+					const idx = $(this).data('feed-idx');
+					showRssFeedModal(idx);
+				});
 
-// Show modal and store index
-$(document).on('click', '.remove-incident-btn', function() {
-    removeIncidentIdx = $(this).data('idx');
-    $('#removeIncidentModal').modal('show');
-});
+				// Store feeds globally for modal access
+				window._allRssFeeds = data;
+			}).fail(function() {
+				$('#rss_area').html('<div class="text-center text-danger">Failed to load notices.</div>');
+			});
+		}
 
-// Confirm removal with fade out
-$(document).on('click', '#confirmRemoveIncident', function() {
-    if (removeIncidentIdx === null) return;
-    // Find the incident alert div to fade out
-    const $incidentDiv = $('.remove-incident-btn[data-idx="' + removeIncidentIdx + '"]').closest('.alert');
-    $.ajax({
-        url: '', // same page
-        type: 'POST',
-        data: {
-            remove_incident: removeIncidentIdx,
-            csrf_token: csrfToken
-        },
-        success: function() {
-            $('#removeIncidentModal').modal('hide');
-            $incidentDiv.fadeOut(400, function() {
-                $(this).remove();
-                // If no more incidents, reload to show "All Systems Operational"
-                if ($('#incidents_area').children('.alert').length === 0) {
-                    loadIncidents();
-                }
-            });
-            removeIncidentIdx = null;
-        },
-        error: function(xhr) {
-            alert(xhr.responseText || 'Failed to remove incident.');
-        }
-    });
-});
+		// 3. Add the showRssFeedModal function after loadRSS():
+		function showRssFeedModal(idx) {
+			const feeds = window._allRssFeeds || [];
+			const feed = feeds[idx];
+			if (!feed) return;
+			$('#rssFeedModalTitle').text(feed.name);
 
-// --- Dark Mode Toggle ---
-document.getElementById('toggle-dark').onclick = function() {
-    document.body.classList.toggle('dark-mode');
-    document.cookie = 'dark_mode=' + (document.body.classList.contains('dark-mode') ? 'on' : 'off') + ';path=/;max-age=31536000';
-    this.textContent = document.body.classList.contains('dark-mode') ? '<?= $t['light_mode'] ?>' : '<?= $t['dark_mode'] ?>';
-};
+			// Show all available fields in a readable way
+			let html = '';
+			html += `<div><strong>Latest Item:</strong><br>${feed.item}</div>`;
+			if (feed.desc) html += `<div class="mt-2"><strong>Description:</strong><br>${feed.desc}</div>`;
+			if (feed.link) html += `<div class="mt-2"><a href="${feed.link}" target="_blank" rel="noopener">View Source</a></div>`;
 
-// --- Create Incident ---
-$('#createIncidentForm').on('submit', function(e) {
-    e.preventDefault();
-    $.post('include/create_incident.php', $(this).serialize() + '&csrf_token=' + encodeURIComponent(csrfToken), function(data) {
-        $('#createIncidentMsg').html('<div class="alert alert-success">Incident created!</div>');
-        $('#createIncidentForm')[0].reset();
-        setTimeout(function() {
-            $('#createIncidentModal').modal('hide');
-            $('#createIncidentMsg').html('');
-            loadIncidents();
-        }, 1000);
-    }).fail(function(xhr) {
-        $('#createIncidentMsg').html('<div class="alert alert-danger">'+(xhr.responseText || 'Failed to create incident.')+'</div>');
-    });
-});
+			// Optionally, show all items if available (array of items)
+			if (Array.isArray(feed.items) && feed.items.length) {
+				html += `<hr><div><strong>All Items:</strong><ul>`;
+				feed.items.forEach(function(itm) {
+					html += `<li>${itm}</li>`;
+				});
+				html += `</ul></div>`;
+			}
 
-// --- Subscribe Form Submission ---
-$('#subscribeForm').on('submit', function(e) {
-    e.preventDefault();
-    var form = $(this);
-    var formData = form.serializeArray();
-    // Manually collect all selected services
-    var services = $('#subscribeService').val() || [];
-    // Remove any existing 'service' fields
-    formData = formData.filter(f => f.name !== 'service[]');
-    // Add each selected service
-    services.forEach(function(s) {
-        formData.push({name: 'service[]', value: s});
-    });
-    formData.push({name: 'csrf_token', value: csrfToken});
-    $.post('include/subscribe.php', $.param(formData), function(response) {
-        $('#subscribeMsg').html('<div class="alert alert-success">' + response.message + '</div>');
-        $('#subscribeForm')[0].reset();
-    }, 'json').fail(function(xhr) {
-        let msg = 'Failed to subscribe.';
-        if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
-        $('#subscribeMsg').html('<div class="alert alert-danger">' + msg + '</div>');
-    });
-});
+			$('#rssFeedModalBody').html(html);
+			var modal = new bootstrap.Modal(document.getElementById('rssFeedModal'));
+			modal.show();
+		}
 
-// --- Manage Subscription Form Submission ---
-$('#manageSubForm').on('submit', function(e) {
-    e.preventDefault();
-    var data = $(this).serialize() + '&csrf_token=' + encodeURIComponent(csrfToken);
-    $('#manageSubMsg').html('');
-    $('#manageSubResults').html('');
-    $.post('include/manage_subscribe.php', data, function(response) {
-        // Hide or show buttons based on action
-        const action = $('#manageAction').val();
-        if (action === 'view') {
-            $('#manageSubForm button[type="submit"]').hide();
-            $('#manageSubForm button[data-bs-target="#subscribeModal"]').hide();
-        } else {
-            $('#manageSubForm button[type="submit"]').show();
-            $('#manageSubForm button[data-bs-target="#subscribeModal"]').show();
-        }
+		// --- Remove Incident Modal ---
+		let removeIncidentIdx = null;
 
-        if (response.status === 'success' && response.subscriptions) {
-            let html = '<ul class="list-unstyled">';
-            response.subscriptions.forEach(function(sub) {
-                html += `
-                <li class="d-flex align-items-center justify-content-between" style="background:#e2e3e5;border: 1px solid #888;border-radius:5px;padding-left:7px;margin-bottom:2px;margin-bottom:5px;">
-                    <span>${sub}</span>
-                    <button class="btn btn-sm btn-danger unsubscribe-service-btn" data-service="${encodeURIComponent(sub)}">Unsubscribe</button>
-                </li>`;
-            });
-            html += '</ul>';
-            $('#manageSubResults').html(html);
-        }
-        $('#manageSubMsg').html('<div class="alert alert-' + (response.status === 'success' ? 'success' : 'danger') + '">' + response.message + '</div>');
-        if (response.status === 'success' && response.action === 'unsubscribe') {
-            $('#manageSubResults').html('');
-        }
-    }, 'json').fail(function(xhr) {
-        let msg = 'Failed to process request.';
-        if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
-        $('#manageSubMsg').html('<div class="alert alert-danger">' + msg + '</div>');
-    });
-});
+		// Show modal and store index
+		$(document).on('click', '.remove-incident-btn', function() {
+			removeIncidentIdx = $(this).data('idx');
+			$('#removeIncidentModal').modal('show');
+		});
 
-//Language selection change
-$('#langSelect').on('change', function() {
-    // Set cookie for language (so it persists)
-    document.cookie = 'lang=' + this.value + ';path=/;max-age=31536000';
-    // Reload page with lang param (preserve other params)
-    const params = new URLSearchParams(window.location.search);
-    params.set('lang', this.value);
-    window.location.search = '?' + params.toString();
-});
+		// Confirm removal with fade out
+		$(document).on('click', '#confirmRemoveIncident', function() {
+			if (removeIncidentIdx === null) return;
+			// Find the incident alert div to fade out
+			const $incidentDiv = $('.remove-incident-btn[data-idx="' + removeIncidentIdx + '"]').closest('.alert');
+			$.ajax({
+				url: '', // same page
+				type: 'POST',
+				data: {
+					remove_incident: removeIncidentIdx,
+					csrf_token: csrfToken
+				},
+				success: function() {
+					$('#removeIncidentModal').modal('hide');
+					$incidentDiv.fadeOut(400, function() {
+						$(this).remove();
+						// If no more incidents, reload to show "All Systems Operational"
+						if ($('#incidents_area').children('.alert').length === 0) {
+							loadIncidents();
+						}
+					});
+					removeIncidentIdx = null;
+				},
+				error: function(xhr) {
+					alert(xhr.responseText || 'Failed to remove incident.');
+				}
+			});
+		});
 
-// Show/hide buttons when action changes
-$('#manageAction').on('change', function() {
-    if ($(this).val() === 'view') {
-        $('#manageSubForm button[type="submit"]').hide();
-        $('#manageSubForm button[data-bs-target="#subscribeModal"]').hide();
-    } else {
-        $('#manageSubForm button[type="submit"]').show();
-        $('#manageSubForm button[data-bs-target="#subscribeModal"]').show();
-    }
-});
+		// --- Dark Mode Toggle ---
+		document.getElementById('toggle-dark').onclick = function() {
+			document.body.classList.toggle('dark-mode');
+			document.cookie = 'dark_mode=' + (document.body.classList.contains('dark-mode') ? 'on' : 'off') + ';path=/;max-age=31536000';
+			this.textContent = document.body.classList.contains('dark-mode') ? '<?= $t['light_mode'] ?>' : '<?= $t['dark_mode'] ?>';
+		};
 
-// On modal open, reset buttons to visible
-$('#manageSubModal').on('show.bs.modal', function() {
-    $('#manageSubForm button[type="submit"]').show();
-    $('#manageSubForm button[data-bs-target="#subscribeModal"]').show();
-});
+		// --- Create Incident ---
+		$('#createIncidentForm').on('submit', function(e) {
+			e.preventDefault();
+			$.post('include/create_incident.php', $(this).serialize() + '&csrf_token=' + encodeURIComponent(csrfToken), function(data) {
+				$('#createIncidentMsg').html('<div class="alert alert-success">Incident created!</div>');
+				$('#createIncidentForm')[0].reset();
+				setTimeout(function() {
+					$('#createIncidentModal').modal('hide');
+					$('#createIncidentMsg').html('');
+					loadIncidents();
+				}, 1000);
+			}).fail(function(xhr) {
+				$('#createIncidentMsg').html('<div class="alert alert-danger">'+(xhr.responseText || 'Failed to create incident.')+'</div>');
+			});
+		});
 
-// --- Auto-Refresh Logic ---
-let refreshInterval = parseInt($('#refreshInterval').val(), 10) || 60000;
-let incidentsTimer, statusTimer, rssTimer;
+		// --- Subscribe Form Submission ---
+		$('#subscribeForm').on('submit', function(e) {
+			e.preventDefault();
+			var form = $(this);
+			var formData = form.serializeArray();
+			// Manually collect all selected services
+			var services = $('#subscribeService').val() || [];
+			// Remove any existing 'service' fields
+			formData = formData.filter(f => f.name !== 'service[]');
+			// Add each selected service
+			services.forEach(function(s) {
+				formData.push({name: 'service[]', value: s});
+			});
+			formData.push({name: 'csrf_token', value: csrfToken});
+			$.post('include/subscribe.php', $.param(formData), function(response) {
+				$('#subscribeMsg').html('<div class="alert alert-success">' + response.message + '</div>');
+				$('#subscribeForm')[0].reset();
+			}, 'json').fail(function(xhr) {
+				let msg = 'Failed to subscribe.';
+				if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+				$('#subscribeMsg').html('<div class="alert alert-danger">' + msg + '</div>');
+			});
+		});
 
-// Save refresh interval to localStorage when changed
-function saveRefreshInterval(val) {
-    localStorage.setItem('refreshInterval', val);
-}
+		// --- Manage Subscription Form Submission ---
+		$('#manageSubForm').on('submit', function(e) {
+			e.preventDefault();
+			var data = $(this).serialize() + '&csrf_token=' + encodeURIComponent(csrfToken);
+			$('#manageSubMsg').html('');
+			$('#manageSubResults').html('');
+			$.post('include/manage_subscribe.php', data, function(response) {
+				// Hide or show buttons based on action
+				const action = $('#manageAction').val();
+				if (action === 'view') {
+					$('#manageSubForm button[type="submit"]').hide();
+					$('#manageSubForm button[data-bs-target="#subscribeModal"]').hide();
+				} else {
+					$('#manageSubForm button[type="submit"]').show();
+					$('#manageSubForm button[data-bs-target="#subscribeModal"]').show();
+				}
 
-// Load refresh interval from localStorage if available
-function loadRefreshInterval() {
-    const saved = localStorage.getItem('refreshInterval');
-    if (saved && !isNaN(saved)) {
-        $('#refreshInterval').val(saved);
-        refreshInterval = parseInt(saved, 10);
-    }
-}
+				if (response.status === 'success' && response.subscriptions) {
+					let html = '<ul class="list-unstyled">';
+					response.subscriptions.forEach(function(sub) {
+						html += `
+						<li class="d-flex align-items-center justify-content-between" style="background:#e2e3e5;border: 1px solid #888;border-radius:5px;padding-left:7px;margin-bottom:2px;margin-bottom:5px;">
+							<span>${sub}</span>
+							<button class="btn btn-sm btn-danger unsubscribe-service-btn" data-service="${encodeURIComponent(sub)}">Unsubscribe</button>
+						</li>`;
+					});
+					html += '</ul>';
+					$('#manageSubResults').html(html);
+				}
+				$('#manageSubMsg').html('<div class="alert alert-' + (response.status === 'success' ? 'success' : 'danger') + '">' + response.message + '</div>');
+				if (response.status === 'success' && response.action === 'unsubscribe') {
+					$('#manageSubResults').html('');
+				}
+			}, 'json').fail(function(xhr) {
+				let msg = 'Failed to process request.';
+				if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+				$('#manageSubMsg').html('<div class="alert alert-danger">' + msg + '</div>');
+			});
+		});
 
-function startAutoRefresh() {
-    clearInterval(incidentsTimer);
-    clearInterval(statusTimer);
-    clearInterval(rssTimer);
-    if ($('#refreshToggle').is(':checked')) {
-        incidentsTimer = setInterval(loadIncidents, refreshInterval);
-        statusTimer = setInterval(loadStatus, refreshInterval);
-        rssTimer = setInterval(loadRSS, refreshInterval);
-    }
-}
+		//Language selection change
+		$('#langSelect').on('change', function() {
+			// Set cookie for language (so it persists)
+			document.cookie = 'lang=' + this.value + ';path=/;max-age=31536000';
+			// Reload page with lang param (preserve other params)
+			const params = new URLSearchParams(window.location.search);
+			params.set('lang', this.value);
+			window.location.search = '?' + params.toString();
+		});
 
-// Update and save interval on change or Enter
-$('#refreshInterval').on('change keyup', function(e) {
-    if (e.type === 'change' || e.key === 'Enter') {
-        refreshInterval = parseInt($(this).val(), 10) || 60000;
-        saveRefreshInterval(refreshInterval);
-        startAutoRefresh();
-    }
-});
-$('#refreshToggle').on('change', function() {
-    startAutoRefresh();
-});
+		// Show/hide buttons when action changes
+		$('#manageAction').on('change', function() {
+			if ($(this).val() === 'view') {
+				$('#manageSubForm button[type="submit"]').hide();
+				$('#manageSubForm button[data-bs-target="#subscribeModal"]').hide();
+			} else {
+				$('#manageSubForm button[type="submit"]').show();
+				$('#manageSubForm button[data-bs-target="#subscribeModal"]').show();
+			}
+		});
 
-$(document).ready(function() {
-    loadRefreshInterval();
-    loadIncidents();
-    loadStatus();
-    loadRSS();
-    startAutoRefresh();
-<?php if (!empty($show_login_modal)): ?>
-    $('#loginModal').modal('show');
-<?php endif; ?>
-});
-    </script>
-    <!-- Remove Incident Confirmation Modal -->
-    <div class="modal fade" id="removeIncidentModal" tabindex="-1" aria-labelledby="removeIncidentModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 12px;">
-          <div class="modal-header">
-            <h5 class="modal-title" id="removeIncidentModalLabel">
-              <i class="fa fa-trash text-danger"></i> Remove Incident
-            </h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            Are you sure you want to remove this incident?
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" id="confirmRemoveIncident" class="btn btn-danger">Remove</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <?php if (!empty($show_login_modal)): ?>
-    <script>
-    $(function() {
-        $('#loginModal').modal('show');
-    });
+		// On modal open, reset buttons to visible
+		$('#manageSubModal').on('show.bs.modal', function() {
+			$('#manageSubForm button[type="submit"]').show();
+			$('#manageSubForm button[data-bs-target="#subscribeModal"]').show();
+		});
+
+		// --- Auto-Refresh Logic ---
+		let refreshInterval = parseInt($('#refreshInterval').val(), 10) || 60000;
+		let incidentsTimer, statusTimer, rssTimer;
+
+		// Save refresh interval to localStorage when changed
+		function saveRefreshInterval(val) {
+			localStorage.setItem('refreshInterval', val);
+		}
+
+		// Load refresh interval from localStorage if available
+		function loadRefreshInterval() {
+			const saved = localStorage.getItem('refreshInterval');
+			if (saved && !isNaN(saved)) {
+				$('#refreshInterval').val(saved);
+				refreshInterval = parseInt(saved, 10);
+			}
+		}
+
+		function startAutoRefresh() {
+			clearInterval(incidentsTimer);
+			clearInterval(statusTimer);
+			clearInterval(rssTimer);
+			if ($('#refreshToggle').is(':checked')) {
+				incidentsTimer = setInterval(loadIncidents, refreshInterval);
+				statusTimer = setInterval(loadStatus, refreshInterval);
+				rssTimer = setInterval(loadRSS, refreshInterval);
+			}
+		}
+
+		// Update and save interval on change or Enter
+		$('#refreshInterval').on('change keyup', function(e) {
+			if (e.type === 'change' || e.key === 'Enter') {
+				refreshInterval = parseInt($(this).val(), 10) || 60000;
+				saveRefreshInterval(refreshInterval);
+				startAutoRefresh();
+			}
+		});
+		$('#refreshToggle').on('change', function() {
+			startAutoRefresh();
+		});
+
+		$(document).ready(function() {
+			loadRefreshInterval();
+			loadIncidents();
+			loadStatus();
+			loadRSS();
+			startAutoRefresh();
+		<?php if (!empty($show_login_modal)): ?>
+			$('#loginModal').modal('show');
+		<?php endif; ?>
+		});
+			</script>
+
+			<?php if (!empty($show_login_modal)): ?>
+			<script>
+			$(function() {
+				$('#loginModal').modal('show');
+			});
     </script>
     <?php endif; ?>
 </body>
