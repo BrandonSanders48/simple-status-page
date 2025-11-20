@@ -1,89 +1,123 @@
 {
-  "gateway": "192.168.1.1",
-  "public_dns": "8.8.8.8",
-  "domain": "domain.local",
-  "refresh_rate": "3000",
-  "alert_sound": "false",
+  "meta": {
+    "version": "1.1",
+    "description": "Configuration for Sample IT Status Page. Edit with care.",
+    "author": "Your Name or Team"
+  },
+  "auth": {
+    "username": "admin",
+    "password": "changeme"
+  },
+  "email": {
+    "from": "status@yourdomain.com",
+    "reply_to": "helpdesk@yourdomain.com",
+    "smtp": {
+      "host": "smtp.yourdomain.com",
+      "port": 587,
+      "username": "smtp-user@yourdomain.com",
+      "password": "your-smtp-password",
+      "secure": "tls"
+    }
+  },
+  "network": {
+    "gateway": "192.168.1.1",
+    "public_dns": "8.8.8.8",
+    "domain": "domain.local",
+    "description": "Network settings for local and public connectivity checks.",
+    "isp_map": {
+      "203.0.113.1": "Your ISP Name",
+      "203.0.113.2": "Your Secondary ISP Name"
+    }
+  },
+  "refresh_rate": 3000,
+  "alert_sound": false,
   "internal_hosts": [
     {
       "host": "google.com",
       "port": 443,
       "type": "HTTPS",
-      "name": "Test"
+      "name": "Test",
+      "description": "Checks HTTPS connectivity to Google."
     },
     {
       "host": "google.com",
       "port": 443,
       "type": "HTTPS",
-      "name": "Test 2"
-    },
-	{
-      "host": "google.com",
-      "port": 443,
-      "type": "HTTPS",
-      "name": "Site 2"
+      "name": "Test 2",
+      "description": "Another test for Google HTTPS."
     },
     {
       "host": "google.com",
       "port": 443,
       "type": "HTTPS",
-      "name": "Test 3"
+      "name": "Site 2",
+      "description": "Site 2 HTTPS check."
     },
     {
       "host": "google.com",
       "port": 443,
       "type": "HTTPS",
-      "name": "Test 4"
+      "name": "Test 3",
+      "description": "Test 3 HTTPS check."
     },
     {
       "host": "google.com",
       "port": 443,
       "type": "HTTPS",
-      "name": "server3"
-    }, 
+      "name": "Test 4",
+      "description": "Test 4 HTTPS check."
+    },
+    {
+      "host": "google.com",
+      "port": 443,
+      "type": "HTTPS",
+      "name": "server3",
+      "description": "Server 3 HTTPS check."
+    },
     {
       "host": "10.0.4.5",
       "port": null,
       "type": "Ping",
-      "name": "DR Site"
+      "name": "DR Site",
+      "description": "Disaster Recovery Site ping test."
     }
   ],
   "RSS": [
     {
       "host": "https://status.athenahealth.com/rss",
       "name": "Athena Health",
-      "tag": "item"
+      "tag": "item",
+      "description": "Athena Health status feed."
     },
     {
       "host": "https://status.goto.com/history.rss",
       "name": "GoTo Connect",
-      "tag": "item"
+      "tag": "item",
+      "description": "GoTo Connect status feed."
     },
     {
       "host": "https://azure.status.microsoft/en-us/status/feed",
       "name": "Microsoft Azure",
-      "tag": "item"
+      "tag": "item",
+      "description": "Microsoft Azure status feed."
     },
     {
       "host": "https://status.meraki.net/history.rss",
       "name": "Cisco Meraki",
-      "tag": "item"
+      "tag": "item",
+      "description": "Cisco Meraki status feed."
     },
     {
       "host": "https://status.recruitingbypaycor.com/history.rss",
       "name": "Paycor",
-      "tag": "item"
+      "tag": "item",
+      "description": "Paycor status feed."
     },
     {
       "host": "https://www.google.com/appsstatus/dashboard/en/feed.atom",
       "name": "Google",
-      "tag": "entry"
-    }
-  ],
-  "providers": [
-    {
-      "COX": "1.1.1.1",
-      "AT&T": "8.8.8.8"
+      "tag": "entry",
+      "description": "Google Apps status feed."
     }
   ],
   "business_name": "Sample",
