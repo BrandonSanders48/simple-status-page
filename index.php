@@ -714,6 +714,16 @@ $('#manageSubForm').on('submit', function(e) {
     });
 });
 
+//Language selection change
+$('#langSelect').on('change', function() {
+    // Set cookie for language (so it persists)
+    document.cookie = 'lang=' + this.value + ';path=/;max-age=31536000';
+    // Reload page with lang param (preserve other params)
+    const params = new URLSearchParams(window.location.search);
+    params.set('lang', this.value);
+    window.location.search = '?' + params.toString();
+});
+
 // Show/hide buttons when action changes
 $('#manageAction').on('change', function() {
     if ($(this).val() === 'view') {
