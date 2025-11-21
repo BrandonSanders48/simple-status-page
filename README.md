@@ -2,6 +2,9 @@
 
 A sleek HTML/PHP status page with RSS feed support, fully configurable via JSON.
 
+
+## ----- NOTICE: Config file currently contains SMTP login details, I plan to fix this in the next release. -----
+
 ## Default Login
 
 **Username:** `admin`  
