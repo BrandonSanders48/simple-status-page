@@ -11,8 +11,6 @@
     "smtp": {
       "host": "smtp.yourdomain.com",
       "port": 587,
-      "username": "smtp-user@yourdomain.com",
-      "password": "your-smtp-password",
       "secure": "tls"
     }
   },

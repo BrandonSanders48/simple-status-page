@@ -16,6 +16,8 @@ $lang_strings = [
         'app_auth_required' => 'APP_AUTH_REQUIRED (true/false): Require authentication for admin features.',
         'app_username' => 'APP_USERNAME: Override admin username.',
         'app_password' => 'APP_PASSWORD: Override admin password.',
+        'smtp_user' => 'SMTP_USER: SMTP username (set only from environment variable).',
+        'smtp_pass' => 'SMTP_PASS: SMTP password (set only from environment variable).',
         'email_settings' => 'Email Settings',
         'purpose' => 'Purpose',
         'subscription_notifications' => 'Used for subscription notifications.',
@@ -99,6 +101,8 @@ $lang_strings = [
         'app_auth_required' => 'APP_AUTH_REQUIRED (true/false): Requiere autenticación para funciones de administrador.',
         'app_username' => 'APP_USERNAME: Sobrescribe el usuario administrador.',
         'app_password' => 'APP_PASSWORD: Sobrescribe la contraseña de administrador.',
+        'smtp_user' => 'SMTP_USER: Usuario SMTP (solo desde variable de entorno).',
+        'smtp_pass' => 'SMTP_PASS: Contraseña SMTP (solo desde variable de entorno).',
         'email_settings' => 'Configuración de Correo',
         'purpose' => 'Propósito',
         'subscription_notifications' => 'Usado para notificaciones de suscripción.',
@@ -313,6 +317,8 @@ pre {
                   <li><code><?= $t['app_auth_required'] ?></code></li>
                   <li><code><?= $t['app_username'] ?></code></li>
                   <li><code><?= $t['app_password'] ?></code></li>
+                  <li><code><?= $t['smtp_user'] ?></code></li>
+                  <li><code><?= $t['smtp_pass'] ?></code></li>
                 </ul>
               </li>
             </ul>

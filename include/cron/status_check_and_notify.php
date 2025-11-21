@@ -72,8 +72,8 @@ function send_smtp_mail($to, $subject, $body, $from, $reply, $smtp) {
         $mail->isSMTP();
         $mail->Host = $smtp['host'];
         $mail->SMTPAuth = true;
-        $mail->Username = $smtp['username'];
-        $mail->Password = $smtp['password'];
+        $mail->Username = getenv('SMTP_USER');
+        $mail->Password = getenv('SMTP_PASS');
         $mail->SMTPSecure = $smtp['secure'] ?? 'tls';
         $mail->Port = $smtp['port'];
         $mail->setFrom($from);
