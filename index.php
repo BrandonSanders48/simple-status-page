@@ -218,7 +218,6 @@ if (
 </head>
 <body class="<?= $dark_mode === 'on' ? 'dark-mode' : '' ?>"
     data-csrf="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"
-    data-admin="<?= $is_admin ? 'true' : 'false' ?>"
     data-all-systems-operational="<?= $t['all_systems_operational'] ?>"
     data-issues-detected="<?= $t['issues_detected'] ?>"
     data-light-mode="<?= $t['light_mode'] ?>"
