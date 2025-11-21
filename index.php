@@ -298,7 +298,7 @@ if (
 	data-service="<?= htmlspecialchars($t['service']) ?>"
 >
     <nav class="navbar navbar-expand-lg navbar-dark" style="background: #212529; box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
-        <div class="container-fluid">       
+        <div class="container-fluid">
             <span class="navbar-brand d-flex align-items-center">
                 <?php if ($business_logo): ?>
                     <img 
@@ -309,53 +309,67 @@ if (
                 <?php endif; ?>
                 simple-status-page
             </span>
-            <div class="ms-auto d-flex align-items-center">
-                <!-- Language Selector -->
-                <div class="d-flex align-items-center me-2" style="min-width: 220px; height:32px;">
-    <span class="input-group-text" style="min-width: 110px; height:32px; display: flex; align-items: center; gap: 6px; border-radius: 6px 0 0 6px; background: #343a40; color: #fff; border: 1px solid #23272b; padding-top:0; padding-bottom:0;">
-        <?= $lang === 'es' ? 'Idioma' : 'Language' ?>
-    </span>
-    <div style="background: #f8f9fa; border: 1px solid #ced4da; border-radius: 0 6px 6px 0; display: flex; align-items: center; padding: 0 8px 0 6px; margin-left: -1px; height:32px;">
-        <select name="lang" id="langSelect" class="form-select form-select-sm border-0 bg-transparent text-dark"
-            style="width: 110px; min-width: 90px; box-shadow: none; padding-left: 0; height:28px;">
-            <?php foreach ($supported_langs as $code => $label): ?>
-                <option value="<?= $code ?>" <?= $lang === $code ? 'selected' : '' ?>><?= $label ?></option>
-            <?php endforeach; ?>
-        </select>
+            <!-- Add toggler for mobile -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <!-- Responsive content -->
+            <div class="collapse navbar-collapse" id="navbarResponsive">
+                <!-- Navbar Buttons: All grouped and responsive -->
+<div class="ms-auto d-flex flex-wrap align-items-center justify-content-end gap-2" style="width:100%;">
+    <!-- Language Selector -->
+    <div class="d-flex align-items-center me-2 mb-2 mb-lg-0" style="min-width: 220px; height:32px;">
+        <span class="input-group-text" style="min-width: 110px; height:32px; display: flex; align-items: center; gap: 6px; border-radius: 6px 0 0 6px; background: #343a40; color: #fff; border: 1px solid #23272b; padding-top:0; padding-bottom:0;">
+            <?= $lang === 'es' ? 'Idioma' : 'Language' ?>
+        </span>
+        <div style="background: #f8f9fa; border: 1px solid #ced4da; border-radius: 0 6px 6px 0; display: flex; align-items: center; padding: 0 8px 0 6px; margin-left: -1px; height:32px;">
+            <select name="lang" id="langSelect" class="form-select form-select-sm border-0 bg-transparent text-dark"
+                style="width: 110px; min-width: 90px; box-shadow: none; padding-left: 0; height:28px;">
+                <?php foreach ($supported_langs as $code => $label): ?>
+                    <option value="<?= $code ?>" <?= $lang === $code ? 'selected' : '' ?>><?= $label ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
+    <!-- Auto-Refresh Controls -->
+    <div class="d-flex align-items-center me-2 mb-2 mb-lg-0" style="min-width: 220px; height:32px;">
+        <span class="input-group-text" style="min-width: 110px; height:32px; display: flex; align-items: center; gap: 6px; border-radius: 6px 0 0 6px; background: #343a40; color: #fff; border: 1px solid #23272b; padding-top:0; padding-bottom:0;">
+            <input type="checkbox" id="refreshToggle" checked style="margin-right:6px;vertical-align:middle;">
+            <?= $t['auto_refresh'] ?>
+        </span>
+        <div style="background: #f8f9fa; border: 1px solid #ced4da; border-radius: 0 6px 6px 0; display: flex; align-items: center; padding: 0 8px 0 6px; margin-left: -1px; height:32px;">
+            <input type="number" id="refreshInterval" value="<?= (int)$refresh_rate ?>" min="3000" step="500"
+                class="form-control form-control-sm border-0 bg-transparent text-dark"
+                style="width:70px;min-width:60px; text-align:right; background:transparent; box-shadow:none; height:28px;"
+                title="<?= $t['interval'] ?>"
+                aria-label="<?= $t['interval'] ?>">
+            <span style="margin-left:2px; font-size:0.95em; color:#555;">ms</span>
+        </div>
+    </div>
+    <!-- All Main Buttons Grouped -->
+    <div class="d-flex flex-row flex-wrap gap-2 align-items-center mb-2 mb-lg-0">
+        <!-- Subscribe Button -->
+        <button class="btn btn-success btn-sm d-flex align-items-center" type="button" data-bs-toggle="modal" data-bs-target="#subscribeModal" style="min-width: 100px; max-height:32px;">
+            <i class="fa-solid fa-envelope"></i>
+            <span class="ms-1"><?= $t['subscribe'] ?></span>
+        </button>
+        <?php if (isset($_SESSION['authenticated']) && $_SESSION['authenticated']): ?>
+            <!-- Create Incident Button -->
+            <button title="Create Incident" type="button" class="btn btn-warning btn-sm d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#createIncidentModal" style="min-width: 100px; max-height:32px;">
+                <i class="fa-solid fa-plus"></i> <span class="ms-1"><?= $t['incidents'] ?></span>
+            </button>
+            <!-- Edit Config Button -->
+            <button title="Edit Configuration" type="button" class="btn btn-secondary btn-sm d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addModal" style="min-width: 40px; max-height:32px;">
+                &nbsp;<i class="fa-solid fa-gear"></i>&nbsp;
+            </button>
+            <!-- Logout Button -->
+            <a href="?logout=1" class="btn btn-danger btn-sm" style="min-width: 70px; max-height:32px;"><?= $t['logout'] ?></a>
+        <?php else: ?>
+            <!-- Login Button -->
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal" style="min-width: 70px; max-height:32px;"><?= $t['login'] ?></button>
+        <?php endif; ?>
     </div>
 </div>
-
-<!-- Auto-Refresh Controls -->
-<div class="d-flex align-items-center me-2" style="min-width: 220px; height:32px;">
-    <span class="input-group-text" style="min-width: 110px; height:32px; display: flex; align-items: center; gap: 6px; border-radius: 6px 0 0 6px; background: #343a40; color: #fff; border: 1px solid #23272b; padding-top:0; padding-bottom:0;">
-        <input type="checkbox" id="refreshToggle" checked style="margin-right:6px;vertical-align:middle;">
-        <?= $t['auto_refresh'] ?>
-    </span>
-    <div style="background: #f8f9fa; border: 1px solid #ced4da; border-radius: 0 6px 6px 0; display: flex; align-items: center; padding: 0 8px 0 6px; margin-left: -1px; height:32px;">
-        <input type="number" id="refreshInterval" value="<?= (int)$refresh_rate ?>" min="3000" step="500"
-            class="form-control form-control-sm border-0 bg-transparent text-dark"
-            style="width:70px;min-width:60px; text-align:right; background:transparent; box-shadow:none; height:28px;"
-            title="<?= $t['interval'] ?>"
-            aria-label="<?= $t['interval'] ?>">
-        <span style="margin-left:2px; font-size:0.95em; color:#555;">ms</span>
-    </div>
-</div>
-                <!-- Subscribe Button -->
-                <button class="btn btn-success btn-sm me-2 d-flex align-items-center" type="button" data-bs-toggle="modal" data-bs-target="#subscribeModal" style="min-width: 100px; max-height:32px; display:flex; align-items:center;text-align:center">
-                    <i class="fa-solid fa-envelope"></i>
-                    <span class="ms-1"><?= $t['subscribe'] ?></span>
-                </button>
-                <?php if (isset($_SESSION['authenticated']) && $_SESSION['authenticated']): ?>
-                    <button title="Create Incident" type="button" class="btn btn-warning btn-sm me-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#createIncidentModal" style="min-width: 100px; max-height:32px;">
-                        <i class="fa-solid fa-plus"></i> <span class="ms-1"><?= $t['incidents'] ?></span>
-                    </button>                                  
-                    <button title="Edit Configuration" type="button" class="btn btn-secondary btn-sm me-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addModal" style="min-width: 40px; max-height:32px;">
-                        &nbsp;<i class="fa-solid fa-gear"></i>&nbsp;
-                    </button>
-                    <a href="?logout=1" class="btn btn-danger btn-sm" style="min-width: 70px; max-height:32px;"><?= $t['logout'] ?></a>                 
-                <?php else: ?>
-                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal" style="min-width: 70px; max-height:32px;"><?= $t['login'] ?></button>
-                <?php endif; ?>
             </div>
         </div>
     </nav>
