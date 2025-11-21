@@ -32,6 +32,24 @@ if ($json_data === null) {
     exit('Error decoding the JSON file');
 }
 
+// --- Simple Rate Limiting for Login and Subscription ---
+function rate_limit($key, $limit = 5, $window = 300) {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $session_key = "rate_limit_{$key}_{$ip}";
+    if (!isset($_SESSION[$session_key])) {
+        $_SESSION[$session_key] = [];
+    }
+    // Remove old attempts
+    $_SESSION[$session_key] = array_filter($_SESSION[$session_key], function($ts) use ($window) {
+        return $ts > (time() - $window);
+    });
+    if (count($_SESSION[$session_key]) >= $limit) {
+        return false;
+    }
+    $_SESSION[$session_key][] = time();
+    return true;
+}
+
 // --- Authentication (simple session-based) ---
 // Auth required flag: default true, can be overridden by env variable
 $auth_required = getenv('APP_AUTH_REQUIRED') !== false 
@@ -43,7 +61,11 @@ $admin_pass = getenv('APP_PASSWORD') ?: ($json_data['auth']['password'] ?? 'chan
 
 
 if (isset($_POST['login'])) {
-    if ($_POST['username'] === $admin_user && $_POST['password'] === $admin_pass) {
+    if (!rate_limit('login', 5, 300)) { // 5 attempts per 5 minutes
+        $login_error = "Too many login attempts. Please wait and try again.";
+        $show_login_modal = true;
+    } elseif ($_POST['username'] === $admin_user && $_POST['password'] === $admin_pass) {
+        session_regenerate_id(true); // Prevent session fixation
         $_SESSION['authenticated'] = true;
         header("Location: index.php");
         exit();
@@ -200,9 +222,27 @@ if (
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
+	<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
     <style>
+		html, body {
+            height: 100%;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 40px;
+            background: #f8f9fa;
+        }
+        .container.mt-4 {
+            flex: 1 0 auto;
+        }
+        footer {
+            flex-shrink: 0;
+            margin-top: auto;
+        }
         body.dark-mode {
-            background-color: #181a1b !important;
+            background: #181a1b !important;
             color: #e0e0e0;
         }
         body.dark-mode .modal-content,
@@ -214,6 +254,27 @@ if (
             background-color: #23272b !important;
             color: #e0e0e0;
         }
+        .card {
+            background: #fff;
+        }
+        .modal-content {
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}
+    #services_placeholder .card {
+        min-height: 140px;
+        transition: box-shadow 0.2s;
+    }
+    #services_placeholder .card:hover {
+        box-shadow: 0 6px 24px rgba(0,0,0,0.13);
+    }
+    #services_placeholder .badge,
+#services_placeholder .tag,
+#services_placeholder .status-tag {
+    background: #f1f3f5 !important;
+    color: #333 !important;
+    font-weight: 500;
+    border: 1px solid #e0e0e0 !important;
+}
     </style>
 </head>
 <body class="<?= $dark_mode === 'on' ? 'dark-mode' : '' ?>"
@@ -224,7 +285,7 @@ if (
     data-dark-mode="<?= $t['dark_mode'] ?>" 
 	data-admin="<?= (isset($_SESSION['authenticated']) && $_SESSION['authenticated']) ? 'true' : 'false' ?>"
 >
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background: #212529; box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
         <div class="container-fluid">       
             <span class="navbar-brand d-flex align-items-center">
                 <?php if ($business_logo): ?>
@@ -238,76 +299,95 @@ if (
             </span>
             <div class="ms-auto d-flex align-items-center">
                 <!-- Language Selector -->
-                <div class="input-group input-group-sm align-items-center me-2" style="width: 240px; min-width: 240px;">
-                    <span class="input-group-text" id="langLabel" style="min-width: 100px;"><?= $lang === 'es' ? 'Idioma' : 'Language' ?></span>
-                    <select name="lang" id="langSelect" class="form-select form-select-sm" style="min-width: 110px;">
-                        <?php foreach ($supported_langs as $code => $label): ?>
-                            <option value="<?= $code ?>" <?= $lang === $code ? 'selected' : '' ?>><?= $label ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <!-- Dark Mode Button -->
-                <button id="toggle-dark" type="button" class="btn btn-outline-secondary btn-sm me-2" style="color:#212529;border-color:#dee2e6 !important;min-width: 90px;">
-                    <?= $dark_mode === 'on' ? $t['light_mode'] : $t['dark_mode'] ?>
-                </button>
-                <!-- Auto-Refresh Controls -->
-                <div class="input-group input-group-sm align-items-center me-2" style="min-width: 220px;">
-                    <label class="input-group-text" for="refreshToggle" style="min-width: 110px; display: flex; align-items: center; gap: 6px;">
-                        <input type="checkbox" id="refreshToggle" checked style="margin-right:6px;vertical-align:middle;">
-                        <?= $t['auto_refresh'] ?>
-                    </label>
-                    <input type="number" id="refreshInterval" value="<?= (int)$refresh_rate ?>" min="1000" step="500"
-                        class="form-control form-control-sm"
-                        style="width:90px;min-width:90px;"
-                        title="<?= $t['interval'] ?>"
-                        aria-label="<?= $t['interval'] ?>">
-                    <span class="input-group-text" style="min-width: 40px;">ms</span>
-                </div>
+                <div class="d-flex align-items-center me-2" style="min-width: 220px; height:32px;">
+    <span class="input-group-text" style="min-width: 110px; height:32px; display: flex; align-items: center; gap: 6px; border-radius: 6px 0 0 6px; background: #343a40; color: #fff; border: 1px solid #23272b; padding-top:0; padding-bottom:0;">
+        <?= $lang === 'es' ? 'Idioma' : 'Language' ?>
+    </span>
+    <div style="background: #f8f9fa; border: 1px solid #ced4da; border-radius: 0 6px 6px 0; display: flex; align-items: center; padding: 0 8px 0 6px; margin-left: -1px; height:32px;">
+        <select name="lang" id="langSelect" class="form-select form-select-sm border-0 bg-transparent text-dark"
+            style="width: 110px; min-width: 90px; box-shadow: none; padding-left: 0; height:28px;">
+            <?php foreach ($supported_langs as $code => $label): ?>
+                <option value="<?= $code ?>" <?= $lang === $code ? 'selected' : '' ?>><?= $label ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+</div>
+
+<!-- Auto-Refresh Controls -->
+<div class="d-flex align-items-center me-2" style="min-width: 220px; height:32px;">
+    <span class="input-group-text" style="min-width: 110px; height:32px; display: flex; align-items: center; gap: 6px; border-radius: 6px 0 0 6px; background: #343a40; color: #fff; border: 1px solid #23272b; padding-top:0; padding-bottom:0;">
+        <input type="checkbox" id="refreshToggle" checked style="margin-right:6px;vertical-align:middle;">
+        <?= $t['auto_refresh'] ?>
+    </span>
+    <div style="background: #f8f9fa; border: 1px solid #ced4da; border-radius: 0 6px 6px 0; display: flex; align-items: center; padding: 0 8px 0 6px; margin-left: -1px; height:32px;">
+        <input type="number" id="refreshInterval" value="<?= (int)$refresh_rate ?>" min="3000" step="500"
+            class="form-control form-control-sm border-0 bg-transparent text-dark"
+            style="width:70px;min-width:60px; text-align:right; background:transparent; box-shadow:none; height:28px;"
+            title="<?= $t['interval'] ?>"
+            aria-label="<?= $t['interval'] ?>">
+        <span style="margin-left:2px; font-size:0.95em; color:#555;">ms</span>
+    </div>
+</div>
                 <!-- Subscribe Button -->
-                <button class="btn btn-outline-success btn-sm me-2" type="button" data-bs-toggle="modal" data-bs-target="#subscribeModal" style="min-width: 120px; max-height:32px; display:flex; align-items:center;">
-                    <i class="fa-solid fa-envelope"></i> <span class="ms-1"><?= $t['subscribe'] ?></span>
+                <button class="btn btn-success btn-sm me-2 d-flex align-items-center" type="button" data-bs-toggle="modal" data-bs-target="#subscribeModal" style="min-width: 100px; max-height:32px; display:flex; align-items:center;text-align:center">
+                    <i class="fa-solid fa-envelope"></i>
+                    <span class="ms-1"><?= $t['subscribe'] ?></span>
                 </button>
                 <?php if (isset($_SESSION['authenticated']) && $_SESSION['authenticated']): ?>
-                    <button title="Create Incident" type="button" class="btn btn-outline-warning btn-sm me-2" data-bs-toggle="modal" data-bs-target="#createIncidentModal" style="min-width: 120px; max-height:32px; display:flex; align-items:center;">
+                    <button title="Create Incident" type="button" class="btn btn-warning btn-sm me-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#createIncidentModal" style="min-width: 100px; max-height:32px;">
                         <i class="fa-solid fa-plus"></i> <span class="ms-1"><?= $t['incidents'] ?></span>
                     </button>                                  
-                    <button title="Edit Configuration" type="button" class="btn btn-outline-dark btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addModal" style="min-width: 40px; max-height:32px;">
-                        <i class="fa-solid fa-gear"></i>
+                    <button title="Edit Configuration" type="button" class="btn btn-secondary btn-sm me-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addModal" style="min-width: 40px; max-height:32px;">
+                        &nbsp;<i class="fa-solid fa-gear"></i>&nbsp;
                     </button>
-                    <a href="?logout=1" class="btn btn-outline-danger btn-sm" style="min-width: 70px; max-height:32px;"><?= $t['logout'] ?></a>                 
+                    <a href="?logout=1" class="btn btn-danger btn-sm" style="min-width: 70px; max-height:32px;"><?= $t['logout'] ?></a>                 
                 <?php else: ?>
-                    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal" style="min-width: 70px; max-height:32px;"><?= $t['login'] ?></button>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal" style="min-width: 70px; max-height:32px;"><?= $t['login'] ?></button>
                 <?php endif; ?>
             </div>
         </div>
     </nav>
 
     <div class="container mt-4">
-        <!-- Dynamic Status Placeholders -->
-        <div id="all_status" style="font-size:26px" class="alert alert-success text-center" role="alert">
-            <span id="webTicker"><b>...</b></span>
-        </div>
-        <div class="alert alert-default" style="border: 1px solid grey" role="alert" id="network_status_placeholder">
-            <h6><?= $t['local_area'] ?><span style="color:gray;float:right">...</span></h6>
-            <hr>
-            <h6><?= $t['wide_area'] ?><span style="color:gray;float:right">...</span></h6>
-        </div>
-        <h5><?= $t['internally_hosted'] ?></h5>
-        <hr>
-        <div class="row" id="services_placeholder">
-            <div class="text-center">Loading services...</div>
-        </div>
-        <h5 style="margin-top:20px"><i style="color:orange" class="fa-solid fa-circle-exclamation"></i> &nbsp;<?= $t['notices'] ?></h5>
-        <hr>
-        <div class="row" id="rss_area">
-            <div class="text-center">Loading notices...</div>
-        </div>
-        <div id="incidents_container" class="container mt-4" style="transition:opacity 0.5s;">
-            <h5>
-                <i class="fa-solid fa-triangle-exclamation text-warning"></i> <?= $t['incidents'] ?>
-            </h5>
-            <hr>
-            <div id="incidents_area"></div>
+        <div class="card shadow-sm mb-4" style="border-radius: 18px;">
+            <div class="card-body">
+                <!-- Dynamic Status Placeholders -->
+                <div id="all_status" class="alert alert-success text-center d-flex align-items-center justify-content-center" role="alert" style="font-size:26px;">
+    <span id="statusIcon" style="display:none;" class="me-2"></span>
+    <span id="webTicker"><b>...</b></span>
+</div>
+<div class="alert alert-light border" role="alert" id="network_status_placeholder" style="color:#333;">
+    <div class="d-flex justify-content-between align-items-center flex-wrap" style="gap: 16px;">
+        <h6 class="mb-0" style="font-weight:500; color:#444;">
+            <?= $t['local_area'] ?>
+            <span style="color:#888; margin-left:8px;" id="local_area_status">...</span>
+        </h6>
+        <h6 class="mb-0" style="font-weight:500; color:#444;">
+            <?= $t['wide_area'] ?>
+            <span style="color:#888; margin-left:8px;" id="wide_area_status">...</span>
+        </h6>
+    </div>
+</div>
+<h5 class="mt-4 mb-2">
+    <i class="fa-solid fa-server text-primary"></i> <?= $t['internally_hosted'] ?>
+</h5>
+<hr>
+<div class="row g-3" id="services_placeholder">
+    <!-- Service cards will be injected here by JS -->
+</div>
+                <h5 style="margin-top:20px"><i style="color:orange" class="fa-solid fa-circle-exclamation"></i> &nbsp;<?= $t['notices'] ?></h5>
+                <hr>
+                <div class="row" id="rss_area">
+                    <div class="text-center">Loading notices...</div>
+                </div>
+                <div id="incidents_container" class="container mt-4" style="transition:opacity 0.5s;">
+                    <h5>
+                        <i class="fa-solid fa-triangle-exclamation text-warning"></i> <?= $t['incidents'] ?>
+                    </h5>
+                    <hr>
+                    <div id="incidents_area"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -518,14 +598,15 @@ if (
   </div>
 </div>
 
-    <footer>
-        <hr>
-        <div class="text-center"><?= htmlspecialchars($footer_message) ?></div>
-        <?php if (!empty($meta['version'])): ?>
-            <div class="text-center" style="font-size:12px;color:#aaa;">
-                Config v<?= htmlspecialchars($meta['version']) ?><?= !empty($meta['author']) ? ' &mdash; ' . htmlspecialchars($meta['author']) : '' ?>
-            </div>
-        <?php endif; ?>
+    <footer class="bg-light py-3 mt-4 border-top">
+        <div class="container">
+            <div class="text-center small text-muted"><?= htmlspecialchars($footer_message) ?></div>
+            <?php if (!empty($meta['version'])): ?>
+                <div class="text-center small text-secondary">
+                    Config v<?= htmlspecialchars($meta['version']) ?><?= !empty($meta['author']) ? ' &mdash; ' . htmlspecialchars($meta['author']) : '' ?>
+                </div>
+            <?php endif; ?>
+        </div>
     </footer>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>

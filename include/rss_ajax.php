@@ -8,7 +8,10 @@ $rss_feeds = $json_data['RSS'] ?? [];
 
 // Helper: Get first item title from RSS/Atom
 function getRSSItem($url, $tag) {
-    $rss = @simplexml_load_file($url);
+    $context = stream_context_create(['http' => ['timeout' => 5]]);
+    $xmlString = @file_get_contents($url, false, $context);
+    if (!$xmlString) return '';
+    $rss = @simplexml_load_string($xmlString, null, LIBXML_NOERROR);
     if (!$rss) return '';
     if ($tag === "item" && isset($rss->channel->item)) {
         foreach ($rss->channel->item as $item) {

@@ -2,7 +2,8 @@
   "meta": {
     "version": "1.1",
     "description": "Configuration for Sample IT Status Page. Edit with care.",
-    "author": "Your Name or Team"
+    "author": "Your Name or Team",
+    "page_url": "https://your-status-page.example.com"
   },
   "auth": {
     "username": "admin",
@@ -59,6 +60,13 @@
       "type": "HTTPS",
       "name": "Test 3",
       "description": "Test 3 HTTPS check."
+    },
+    {
+      "host": "google.com",
+      "port": 443,
+      "type": "HTTPS",
+      "name": "Test 4",
+      "description": "Test 4 HTTPS check."
     },
     {
       "host": "google.com",

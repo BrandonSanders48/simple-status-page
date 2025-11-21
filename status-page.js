@@ -8,8 +8,8 @@ const allSystemsOperational = document.body.dataset.allSystemsOperational || 'Al
 const issuesDetected = document.body.dataset.issuesDetected || 'Issues Detected';
 const lightMode = document.body.dataset.lightMode || 'Light Mode';
 const darkMode = document.body.dataset.darkMode || 'Dark Mode';
-const localArea = document.body.dataset.localArea || 'Local Area';
-const wideArea = document.body.dataset.wideArea || 'Wide Area';
+const localArea = document.body.dataset.localArea || 'Local Area Network';
+const wideArea = document.body.dataset.wideArea || 'Wide Area Network';
 
 
 // --- Utility: simple HTML escape
@@ -76,9 +76,16 @@ function loadStatus() {
         const wide_text = data.wide_text || 'Unknown';
 
         $('#network_status_placeholder').html(
-            `<h6>${localArea}<span style="color:${local_color};float:right">${escapeHtml(local_text)}</span></h6>
-             <hr>
-             <h6>${wideArea}<span style="color:${wide_color};float:right">${escapeHtml(wide_text)}</span></h6>`
+            `<div class="d-flex justify-content-between align-items-center flex-wrap" style="gap: 16px;">
+                <h6 class="mb-0" style="font-weight:500; color:#444;">
+                    ${localArea}
+                    <span style="color:${local_color}; margin-left:8px;" id="local_area_status">${escapeHtml(local_text)}</span>
+                </h6>
+                <h6 class="mb-0" style="font-weight:500; color:#444;">
+                    ${wideArea}
+                    <span style="color:${wide_color}; margin-left:8px;" id="wide_area_status">${escapeHtml(wide_text)}</span>
+                </h6>
+            </div>`
         );
 
         let html = '';
@@ -86,15 +93,18 @@ function loadStatus() {
             const title = service.title || '';
             const type = service.type || '';
             const desc = service.desc || '';
-            html += `<div class="col-md-3 col-lg-3 col-sm-6 col-xl-3">
-                <div style="padding:10px" class="statusContainer">
-                    <div class="statusHeader">
-                        <div style="display:inline">${service.status_icon}</div> &nbsp;&nbsp;
-                        <h5 style="display:inline" class="statusTitle">${escapeHtml(title)}&nbsp;</h5>
-                    </div>
-                    <div class="statusSubtitle">
-                        <div class="sectionUrl"><span>${escapeHtml(type)} Service</span></div>
-                        ${desc ? `<div class="sectionUrl" style="font-size:12px;color:#888">${escapeHtml(desc)}</div>` : ''}
+            html += `
+            <div class="col-md-4 col-lg-3 col-sm-6 col-12">
+                <div class="card shadow-sm h-100" style="border-radius: 14px;">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                            <span style="font-size:1.5em;">${service.status_icon}</span>
+                            <h5 class="card-title ms-2 mb-0">${escapeHtml(title)}</h5>
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-secondary">${escapeHtml(type)} Service</span>
+                        </div>
+                        ${desc ? `<div class="text-muted" style="font-size:13px;">${escapeHtml(desc)}</div>` : ''}
                     </div>
                 </div>
             </div>`;
@@ -104,12 +114,19 @@ function loadStatus() {
         if ((data.errors || 0) === 0) {
             $('#all_status').removeClass('alert-danger').addClass('alert-success');
             $('#webTicker').html(`<b>${allSystemsOperational}</b>`);
+            $('#statusIcon')
+                .html('<i class="fa-solid fa-circle-check text-success"></i>')
+                .show();
         } else {
             $('#all_status').removeClass('alert-success').addClass('alert-danger');
             $('#webTicker').html(`<b>${issuesDetected}</b>`);
+            $('#statusIcon')
+                .html('<i class="fa-solid fa-circle-xmark text-danger"></i>')
+                .show();
         }
     }).fail(function() {
-        $('#network_status_placeholder').html('<div class="text-center text-danger">Failed to load status.</div>');
+        $('#network_status_placeholder').html('<div class="text-center text-danger">Unable to load network status. Please check your connection or try again later.</div>');
+        $('#statusIcon').hide();
     });
 }
 
@@ -148,7 +165,7 @@ function loadRSS() {
 
         window._allRssFeeds = data || [];
     }).fail(function() {
-        $('#rss_area').html('<div class="text-center text-danger">Failed to load notices.</div>');
+        $('#rss_area').html('<div class="text-center text-danger">Unable to load notices. Please try again later.</div>');
     });
 }
 
@@ -361,9 +378,16 @@ function startAutoRefresh() {
     }
 }
 
+const MIN_REFRESH_INTERVAL = 3000;
+
 $('#refreshInterval').on('change keyup', function(e) {
+    let val = parseInt($(this).val(), 10) || 60000;
+    if (val < MIN_REFRESH_INTERVAL) {
+        val = MIN_REFRESH_INTERVAL;
+        $(this).val(val);
+    }
     if (e.type === 'change' || e.key === 'Enter') {
-        refreshInterval = parseInt($(this).val(), 10) || 60000;
+        refreshInterval = val;
         saveRefreshInterval(refreshInterval);
         startAutoRefresh();
     }

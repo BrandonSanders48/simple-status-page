@@ -20,8 +20,32 @@ if (
     exit;
 }
 
-// Basic validation
+// --- Rate Limiting (per IP, 10 per 10 min) ---
+function rate_limit($key, $limit = 10, $window = 600) {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $session_key = "rate_limit_{$key}_{$ip}";
+    if (!isset($_SESSION[$session_key])) {
+        $_SESSION[$session_key] = [];
+    }
+    // Remove old attempts
+    $_SESSION[$session_key] = array_filter($_SESSION[$session_key], function($ts) use ($window) {
+        return $ts > (time() - $window);
+    });
+    if (count($_SESSION[$session_key]) >= $limit) {
+        return false;
+    }
+    $_SESSION[$session_key][] = time();
+    return true;
+}
+if (!rate_limit('subscribe', 10, 600)) {
+    http_response_code(429);
+    echo json_encode(['status' => 'error', 'message' => 'Too many subscription attempts. Please wait and try again.']);
+    exit;
+}
+
+// Basic validation & sanitization
 $email = trim($_POST['email'] ?? '');
+$email = filter_var($email, FILTER_SANITIZE_EMAIL);
 $services = $_POST['service'] ?? [];
 if (!is_array($services)) $services = [$services];
 
