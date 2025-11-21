@@ -149,7 +149,11 @@ $lang_strings = [
         'internally_hosted' => 'Internally Hosted Services',
         'local_area' => 'Local-Area Network',
         'wide_area' => 'Wide-Area Network',
-        'system_status' => 'System Status'
+        'system_status' => 'System Status',
+        'failure' => 'Failure',
+        'unknown_isp' => 'Unknown ISP',
+        'service' => 'Service',
+        'loading' => 'Loading...'
     ],
     'es' => [
         'status_page' => 'Página de Estado',
@@ -180,7 +184,11 @@ $lang_strings = [
         'internally_hosted' => 'Servicios Internos',
         'local_area' => 'Red de Área Local',
         'wide_area' => 'Red de Área Amplia',
-        'system_status' => 'Estado del Sistema'
+        'system_status' => 'Estado del Sistema',
+        'failure' => 'Fallo',
+        'unknown_isp' => 'ISP desconocido',
+        'service' => 'Servicio',
+        'loading' => 'Cargando...'
     ]
 ];
 $t = $lang_strings[$lang];
@@ -284,6 +292,10 @@ if (
     data-light-mode="<?= $t['light_mode'] ?>"
     data-dark-mode="<?= $t['dark_mode'] ?>" 
 	data-admin="<?= (isset($_SESSION['authenticated']) && $_SESSION['authenticated']) ? 'true' : 'false' ?>"
+	data-local-area="<?= htmlspecialchars($t['local_area']) ?>"
+    data-wide-area="<?= htmlspecialchars($t['wide_area']) ?>"
+    data-loading="<?= htmlspecialchars($t['loading']) ?>"
+	data-service="<?= htmlspecialchars($t['service']) ?>"
 >
     <nav class="navbar navbar-expand-lg navbar-dark" style="background: #212529; box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
         <div class="container-fluid">       
@@ -359,11 +371,11 @@ if (
 <div class="alert alert-light border" role="alert" id="network_status_placeholder" style="color:#333;">
     <div class="d-flex justify-content-between align-items-center flex-wrap" style="gap: 16px;">
         <h6 class="mb-0" style="font-weight:500; color:#444;">
-            <?= $t['local_area'] ?>
+            <?= $t['local_area'] ?>:
             <span style="color:#888; margin-left:8px;" id="local_area_status">...</span>
         </h6>
         <h6 class="mb-0" style="font-weight:500; color:#444;">
-            <?= $t['wide_area'] ?>
+            <?= $t['wide_area'] ?>:
             <span style="color:#888; margin-left:8px;" id="wide_area_status">...</span>
         </h6>
     </div>
@@ -373,12 +385,13 @@ if (
 </h5>
 <hr>
 <div class="row g-3" id="services_placeholder">
+    <div class="text-center w-100"><?= $t['loading'] ?></div>
     <!-- Service cards will be injected here by JS -->
 </div>
                 <h5 style="margin-top:20px"><i style="color:orange" class="fa-solid fa-circle-exclamation"></i> &nbsp;<?= $t['notices'] ?></h5>
                 <hr>
                 <div class="row" id="rss_area">
-                    <div class="text-center">Loading notices...</div>
+                    <div class="text-center"><?= $t['loading'] ?></div>
                 </div>
                 <div id="incidents_container" class="container mt-4" style="transition:opacity 0.5s;">
                     <h5>
@@ -409,17 +422,19 @@ if (
                     </div>
                     <div class="col-12">
                         <label for="subscribeService" class="form-label"><?= $t['select_service'] ?></label>
-                        <select id="subscribeService" name="service[]" class="form-select" multiple required size="10" style="min-height: 260px;"> <!-- size and min-height increased -->
+                        <select id="subscribeService" name="service[]" class="form-select" multiple required size="10" style="min-height: 260px;">
                             <?php foreach ($internal_hosts as $service): ?>
-                                <option value="<?= htmlspecialchars($service['name']) ?>"><?= htmlspecialchars($service['name']) ?></option>
+                                <option value="<?= htmlspecialchars($service['name']) ?>">
+                                    <?= $t['service'] ?>: <?= htmlspecialchars($service['name']) ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
-                        <div class="form-text">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</div>
+                        <div class="form-text"><?= $lang === 'es' ? 'Mantenga presionada Ctrl (Windows) o Cmd (Mac) para seleccionar varios.' : 'Hold Ctrl (Windows) or Cmd (Mac) to select multiple.' ?></div>
                     </div>
                     <div class="col-12 mt-3 text-end">
                         <button type="submit" class="btn btn-success px-4"><?= $t['subscribe'] ?></button>
                         <button type="button" class="btn btn-outline-secondary px-4 ms-2" data-bs-target="#manageSubModal" data-bs-toggle="modal" data-bs-dismiss="modal">
-                            <i class="fa-solid fa-gear"></i> Manage
+                            <i class="fa-solid fa-gear"></i> <?= $lang === 'es' ? 'Administrar' : 'Manage' ?>
                         </button>
                     </div>
                 </form>
@@ -435,7 +450,7 @@ if (
         <div class="modal-content" style="border-radius: 12px;">
             <div class="modal-header">
                 <h5 class="modal-title" id="manageSubModalLabel">
-                    <i class="fa-solid fa-gear text-primary"></i> Manage Subscriptions
+                    <i class="fa-solid fa-gear text-primary"></i> <?= $lang === 'es' ? 'Administrar Suscripciones' : 'Manage Subscriptions' ?>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= $t['close'] ?>"></button>
             </div>
@@ -446,16 +461,16 @@ if (
                         <input type="email" class="form-control" id="manageEmail" name="email" placeholder="<?= $t['email'] ?>" required>
                     </div>
                     <div class="col-12">
-                        <label for="manageAction" class="form-label">Action</label>
+                        <label for="manageAction" class="form-label"><?= $lang === 'es' ? 'Acción' : 'Action' ?></label>
                         <select id="manageAction" name="action" class="form-select" required>
-                            <option value="view">View Subscriptions</option>
-                            <option value="unsubscribe">Unsubscribe from All</option>
+                            <option value="view"><?= $lang === 'es' ? 'Ver Suscripciones' : 'View Subscriptions' ?></option>
+                            <option value="unsubscribe"><?= $lang === 'es' ? 'Darse de baja de todas' : 'Unsubscribe from All' ?></option>
                         </select>
                     </div>
                     <div class="col-12 mt-3 text-end">
-                        <button type="submit" class="btn btn-primary px-4">Submit</button>
+                        <button type="submit" class="btn btn-primary px-4"><?= $t['submit'] ?></button>
                         <button type="button" class="btn btn-secondary ms-2" data-bs-target="#subscribeModal" data-bs-toggle="modal" data-bs-dismiss="modal">
-                            <i class="fa-solid fa-arrow-left"></i> Back
+                            <i class="fa-solid fa-arrow-left"></i> <?= $lang === 'es' ? 'Atrás' : 'Back' ?>
                         </button>
                     </div>
                 </form>
@@ -538,20 +553,20 @@ if (
       <div class="modal-body">
         <form id="createIncidentForm" class="row g-2">
           <div class="col-12">
-            <label for="incidentTitle" class="form-label">Title</label>
+            <label for="incidentTitle" class="form-label"><?= $lang === 'es' ? 'Título' : 'Title' ?></label>
             <input type="text" class="form-control" id="incidentTitle" name="title" required>
           </div>
           <div class="col-12">
-            <label for="incidentDescription" class="form-label">Description</label>
+            <label for="incidentDescription" class="form-label"><?= $lang === 'es' ? 'Descripción' : 'Description' ?></label>
             <textarea class="form-control" id="incidentDescription" name="description" rows="3" required></textarea>
           </div>
           <div class="col-12">
-            <label for="incidentTime" class="form-label">Time</label>
+            <label for="incidentTime" class="form-label"><?= $lang === 'es' ? 'Hora' : 'Time' ?></label>
             <input type="text" class="form-control" id="incidentTime" name="time" value="<?= date('Y-m-d H:i') ?>" required>
-            <div class="form-text">Edit if needed (e.g. "2025-11-19 14:00")</div>
+            <div class="form-text"><?= $lang === 'es' ? 'Edite si es necesario (ej. "2025-11-19 14:00")' : 'Edit if needed (e.g. "2025-11-19 14:00")' ?></div>
           </div>
           <div class="col-12 text-end mt-2">
-            <button type="submit" class="btn btn-warning">Create</button>
+            <button type="submit" class="btn btn-warning"><?= $lang === 'es' ? 'Crear' : 'Create' ?></button>
           </div>
         </form>
         <div id="createIncidentMsg" class="mt-3"></div>
@@ -562,23 +577,23 @@ if (
 
 <!-- Remove Incident Confirmation Modal -->
 <div class="modal fade" id="removeIncidentModal" tabindex="-1" aria-labelledby="removeIncidentModalLabel" aria-hidden="true">
-	<div class="modal-dialog modal-dialog-centered">
-	<div class="modal-content" style="border-radius: 12px;">
-		<div class="modal-header">
-		<h5 class="modal-title" id="removeIncidentModalLabel">
-			<i class="fa fa-trash text-danger"></i> Remove Incident
-		</h5>
-		<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-		</div>
-		<div class="modal-body">
-		Are you sure you want to remove this incident?
-		</div>
-		<div class="modal-footer">
-		<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-		<button type="button" id="confirmRemoveIncident" class="btn btn-danger">Remove</button>
-		</div>
-	</div>
-	</div>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 12px;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="removeIncidentModalLabel">
+                    <i class="fa fa-trash text-danger"></i> <?= $lang === 'es' ? 'Eliminar Incidente' : 'Remove Incident' ?>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= $t['close'] ?>"></button>
+            </div>
+            <div class="modal-body">
+                <?= $lang === 'es' ? '¿Está seguro de que desea eliminar este incidente?' : 'Are you sure you want to remove this incident?' ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= $lang === 'es' ? 'Cancelar' : 'Cancel' ?></button>
+                <button type="button" id="confirmRemoveIncident" class="btn btn-danger"><?= $lang === 'es' ? 'Eliminar' : 'Remove' ?></button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- RSS Feed Modal -->

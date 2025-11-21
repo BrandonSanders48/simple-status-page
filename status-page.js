@@ -8,9 +8,8 @@ const allSystemsOperational = document.body.dataset.allSystemsOperational || 'Al
 const issuesDetected = document.body.dataset.issuesDetected || 'Issues Detected';
 const lightMode = document.body.dataset.lightMode || 'Light Mode';
 const darkMode = document.body.dataset.darkMode || 'Dark Mode';
-const localArea = document.body.dataset.localArea || 'Local-Area Network';
-const wideArea = document.body.dataset.wideArea || 'Wide-Area Network';
-
+const loadingText = document.body.dataset.loading || 'Loading...';
+const serviceText = document.body.dataset.service || 'Service';
 
 // --- Utility: simple HTML escape
 function escapeHtml(s) {
@@ -74,15 +73,17 @@ function loadStatus() {
         const local_text = data.local_text || 'Unknown';
         const wide_color = data.wide_color || 'gray';
         const wide_text = data.wide_text || 'Unknown';
+        const localArea = document.body.dataset.localArea || 'Local-Area Network';
+        const wideArea = document.body.dataset.wideArea || 'Wide-Area Network';
 
         $('#network_status_placeholder').html(
             `<div class="d-flex justify-content-between align-items-center flex-wrap" style="gap: 16px;">
                 <h6 class="mb-0" style="font-weight:500; color:#444;">
-                    ${localArea}
+                    ${localArea}:
                     <span style="color:${local_color}; margin-left:8px;" id="local_area_status">${escapeHtml(local_text)}</span>
                 </h6>
                 <h6 class="mb-0" style="font-weight:500; color:#444;">
-                    ${wideArea}
+                    ${wideArea}:
                     <span style="color:${wide_color}; margin-left:8px;" id="wide_area_status">${escapeHtml(wide_text)}</span>
                 </h6>
             </div>`
@@ -102,7 +103,7 @@ function loadStatus() {
                             <h5 class="card-title ms-2 mb-0">${escapeHtml(title)}</h5>
                         </div>
                         <div class="mb-1">
-                            <span class="badge bg-secondary">${escapeHtml(type)} Service</span>
+                            <span class="badge bg-secondary">${escapeHtml(type)} ${serviceText}</span>
                         </div>
                         ${desc ? `<div class="text-muted" style="font-size:13px;">${escapeHtml(desc)}</div>` : ''}
                     </div>

@@ -12,6 +12,27 @@ $domain = $network['domain'] ?? '';
 $isp_map = $network['isp_map'] ?? [];
 $internal_hosts = $json_data['internal_hosts'] ?? [];
 
+// --- Language Support ---
+$supported_langs = ['en', 'es'];
+$lang = $_GET['lang'] ?? ($_COOKIE['lang'] ?? 'en');
+if (!in_array($lang, $supported_langs)) $lang = 'en';
+
+$lang_strings = [
+    'en' => [
+        'failure' => 'Failure',
+        'unknown_isp' => 'Unknown ISP',
+        'operational' => 'Operational',
+        'ip_unavailable' => 'IP Unavailable'
+    ],
+    'es' => [
+        'failure' => 'Fallo',
+        'unknown_isp' => 'ISP desconocido',
+        'operational' => 'Operativo',
+        'ip_unavailable' => 'IP no disponible'
+    ]
+];
+$t = $lang_strings[$lang];
+
 // Helper: Check TCP port or HTTP
 function check_service($host, $port = 80) {
     $connection = @fsockopen($host, $port, $errno, $errstr, 2);
@@ -47,13 +68,13 @@ if (!empty($isp_map) && is_array($isp_map)) {
 }
 $wide_result = check_service($public_dns, 53); // DNS port check
 $wide_text = $public_ip
-    ? ($isp_found ? "$isp_name ($public_ip)" : "Unknown ISP ($public_ip)") . ": " . ($wide_result ? "Operational" : "Failure")
-    : "IP Unavailable";
+    ? ($isp_found ? "$isp_name ($public_ip)" : "{$t['unknown_isp']} ($public_ip)") . ": " . ($wide_result ? $t['operational'] : $t['failure'])
+    : $t['ip_unavailable'];
 $wide_color = $wide_result ? "green" : "red";
 
 // Local-Area Network check
 $local_result = check_service($gateway, 80); // HTTP port check on gateway
-$local_text = $local_result ? "Operational" : "Failure";
+$local_text = $local_result ? $t['operational'] : $t['failure'];
 $local_color = $local_result ? "green" : "red";
 
 // Services
