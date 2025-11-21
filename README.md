@@ -21,14 +21,7 @@ A sleek HTML/PHP status page with RSS feed support, fully configurable via JSON.
     ```
 4. Run the container:
     ```bash
-    docker run -d \
-    --name my-nginx \
-    -p 8080:80 \
-    -v ${PWD}:/usr/share/nginx/html \
-    -e APP_USERNAME="admin" \
-    -e APP_PASSWORD="changeme" \
-    -e APP_AUTH_REQUIRED="true" \
-    brandonsanders/simple-status-page
+    docker run -d -p 8080:80 -e APP_USERNAME="admin" -e APP_PASSWORD="changeme" -e APP_AUTH_REQUIRED="true" simple-status-page
     ```
     Your status page will be accessible at [http://localhost:8080](http://localhost:8080).
 
@@ -37,7 +30,14 @@ A sleek HTML/PHP status page with RSS feed support, fully configurable via JSON.
 Pull and run the pre-built image from Docker Hub:
 
 ```bash
-docker run -d -p 8080:80 brandonsanders/simple-status-page:latest
+docker run -d \
+    --name simple-status-page \
+    -p 8080:80 \
+    -v ${PWD}:/usr/share/nginx/html \
+    -e APP_USERNAME="admin" \
+    -e APP_PASSWORD="changeme" \
+    -e APP_AUTH_REQUIRED="true" \
+    brandonsanders/simple-status-page
 ```
 
 This will start the status page immediately. You can mount your own JSON config to customize it.
