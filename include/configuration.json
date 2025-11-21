@@ -32,13 +32,14 @@
   },
   "refresh_rate": 30000,
   "alert_sound": false,
+  "browser_notify": true,
   "internal_hosts": [
     {
-      "host": "google.com",
-      "port": 443,
-      "type": "HTTPS",
+      "host": "8.8.8.8",
+      "port": 53,
+      "type": "DNS",
       "name": "Test",
-      "description": "Checks HTTPS connectivity to Google."
+      "description": "Checks DNS connectivity to Google."
     },
     {
       "host": "google.com",
@@ -83,7 +84,7 @@
       "description": "Server 3 HTTPS check."
     },
     {
-      "host": "10.0.4.5",
+      "host": "8.8.8.8",
       "port": null,
       "type": "Ping",
       "name": "DR Site",

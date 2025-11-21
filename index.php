@@ -1,25 +1,22 @@
 <?php
-// Strict types and error reporting for better standards
 declare(strict_types=1);
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
-
-// Start session for CSRF protection
 session_start();
 
-
+// Logout handler
 if (isset($_GET['logout'])) {
     session_destroy();
     header("Location: index.php");
     exit();
 }
 
-// --- CSRF Token ---
+// CSRF Token
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// --- Load Configuration ---
+// Load Configuration
 $configPath = __DIR__ . '/include/configuration.json';
 $json = @file_get_contents($configPath);
 if ($json === false) {
@@ -32,40 +29,32 @@ if ($json_data === null) {
     exit('Error decoding the JSON file');
 }
 
-// --- Simple Rate Limiting for Login and Subscription ---
+// Rate Limiting
 function rate_limit($key, $limit = 5, $window = 300) {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $session_key = "rate_limit_{$key}_{$ip}";
     if (!isset($_SESSION[$session_key])) {
         $_SESSION[$session_key] = [];
     }
-    // Remove old attempts
-    $_SESSION[$session_key] = array_filter($_SESSION[$session_key], function($ts) use ($window) {
-        return $ts > (time() - $window);
-    });
-    if (count($_SESSION[$session_key]) >= $limit) {
-        return false;
-    }
+    $_SESSION[$session_key] = array_filter($_SESSION[$session_key], fn($ts) => $ts > (time() - $window));
+    if (count($_SESSION[$session_key]) >= $limit) return false;
     $_SESSION[$session_key][] = time();
     return true;
 }
 
-// --- Authentication (simple session-based) ---
-// Auth required flag: default true, can be overridden by env variable
+// Authentication
 $auth_required = getenv('APP_AUTH_REQUIRED') !== false 
     ? filter_var(getenv('APP_AUTH_REQUIRED'), FILTER_VALIDATE_BOOLEAN) 
     : true;
-// Use environment variables if set, otherwise JSON, otherwise default
 $admin_user = getenv('APP_USERNAME') ?: ($json_data['auth']['username'] ?? 'admin');
 $admin_pass = getenv('APP_PASSWORD') ?: ($json_data['auth']['password'] ?? 'changeme');
 
-
 if (isset($_POST['login'])) {
-    if (!rate_limit('login', 5, 300)) { // 5 attempts per 5 minutes
+    if (!rate_limit('login', 5, 300)) {
         $login_error = "Too many login attempts. Please wait and try again.";
         $show_login_modal = true;
     } elseif ($_POST['username'] === $admin_user && $_POST['password'] === $admin_pass) {
-        session_regenerate_id(true); // Prevent session fixation
+        session_regenerate_id(true);
         $_SESSION['authenticated'] = true;
         header("Location: index.php");
         exit();
@@ -75,7 +64,7 @@ if (isset($_POST['login'])) {
     }
 }
 
-// --- Use new structure for easier access ---
+// Config values
 $network = $json_data['network'] ?? [];
 $refresh_rate = $json_data['refresh_rate'] ?? 3000;
 $alert_sound = $json_data['alert_sound'] ?? false;
@@ -87,8 +76,8 @@ $business_logo = $json_data['business_logo'] ?? '';
 $footer_message = $json_data['footer_message'] ?? '';
 $meta = $json_data['meta'] ?? [];
 
-// --- Handle Configuration Save/Backup (admin only) ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['authenticated']) && $_SESSION['authenticated']) {
+// Config Save/Backup (admin only)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_SESSION['authenticated'] ?? false)) {
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         http_response_code(403);
         exit('Invalid CSRF token');
@@ -114,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['authenticated']) &
     }
 }
 
-// --- Language Support (simple) ---
+// Language Support
 $supported_langs = ['en' => 'English', 'es' => 'Español'];
 $lang = $_GET['lang'] ?? ($_COOKIE['lang'] ?? 'en');
 if (!array_key_exists($lang, $supported_langs)) $lang = 'en';
@@ -193,14 +182,14 @@ $lang_strings = [
 ];
 $t = $lang_strings[$lang];
 
-// --- Dark Mode Preference ---
+// Dark Mode Preference
 $dark_mode = $_COOKIE['dark_mode'] ?? 'off';
 
-// --- Incident Remove Handler (AJAX) ---
+// Incident Remove Handler (AJAX)
 if (
     $_SERVER['REQUEST_METHOD'] === 'POST' &&
     isset($_POST['remove_incident']) &&
-    isset($_SESSION['authenticated']) && $_SESSION['authenticated']
+    ($_SESSION['authenticated'] ?? false)
 ) {
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         http_response_code(403); exit('Invalid CSRF token');
@@ -220,6 +209,9 @@ if (
         http_response_code(404); exit('Incident not found');
     }
 }
+
+// Add this after your other $_GET processing, before HTML output
+$hide_navbar = isset($_GET['hide_navbar']) && $_GET['hide_navbar'] === '1';
 ?>
 <!DOCTYPE html>
 <html lang="<?= htmlspecialchars($lang) ?>">
@@ -283,7 +275,36 @@ if (
     font-weight: 500;
     border: 1px solid #e0e0e0 !important;
 }
-    </style>
+#help-fab {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    z-index: 1055;
+    width: 54px;
+    height: 54px;
+    background: #007bff !important; /* Force Bootstrap blue */
+    color: #fff !important;
+    border-radius: 50%;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    transition: box-shadow 0.2s, background 0.2s;
+    font-size: 2em;
+    user-select: none;
+    border: 2px solid #fff;
+}
+#help-fab:hover {
+    background: #0056b3 !important;
+    color: #fff !important;
+    box-shadow: 0 8px 24px rgba(0,123,255,0.18);
+}
+#help-fab:active {
+    cursor: grabbing;
+}
+</style>
+
 </head>
 <body class="<?= $dark_mode === 'on' ? 'dark-mode' : '' ?>"
     data-csrf="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"
@@ -296,7 +317,9 @@ if (
     data-wide-area="<?= htmlspecialchars($t['wide_area']) ?>"
     data-loading="<?= htmlspecialchars($t['loading']) ?>"
 	data-service="<?= htmlspecialchars($t['service']) ?>"
->
+    data-alert-sound="<?= $alert_sound ? 'true' : 'false' ?>"
+    data-browser-notify="<?= $json_data['browser_notify'] ? 'true' : 'false' ?>">
+<?php if (!$hide_navbar): ?>
     <nav class="navbar navbar-expand-lg navbar-dark" style="background: #212529; box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
         <div class="container-fluid">
             <span class="navbar-brand d-flex align-items-center">
@@ -307,7 +330,7 @@ if (
                         style="background:#fff; border-radius:12px; padding:6px 12px; margin-right:10px; max-height:40px;"
                     >
                 <?php endif; ?>
-                simple-status-page
+                simple-status-page 
             </span>
             <!-- Add toggler for mobile -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
@@ -373,6 +396,7 @@ if (
             </div>
         </div>
     </nav>
+<?php endif; ?>
 
     <div class="container mt-4">
         <div class="card shadow-sm mb-4" style="border-radius: 18px;">
@@ -628,17 +652,156 @@ if (
     </div>
   </div>
 </div>
+<?php if (isset($_SESSION['authenticated']) && $_SESSION['authenticated']): ?>
+<div id="help-fab" title="Help" style="position:fixed;bottom:32px;right:32px;">
+    <i class="fa fa-question"></i>
+</div>
+<script>
+(function() {
+    const fab = document.getElementById('help-fab');
+    let isDragging = false, offsetX = 0, offsetY = 0, startX = 0, startY = 0, moved = false;
 
-    <footer class="bg-light py-3 mt-4 border-top">
-        <div class="container">
-            <div class="text-center small text-muted"><?= htmlspecialchars($footer_message) ?></div>
-            <?php if (!empty($meta['version'])): ?>
-                <div class="text-center small text-secondary">
-                    Config v<?= htmlspecialchars($meta['version']) ?><?= !empty($meta['author']) ? ' &mdash; ' . htmlspecialchars($meta['author']) : '' ?>
-                </div>
-            <?php endif; ?>
-        </div>
-    </footer>
+    // Restore position from localStorage if available, else stick to side
+    function restoreFabPosition() {
+        const pos = localStorage.getItem('helpFabPos');
+        if (pos) {
+            const { left, top } = JSON.parse(pos);
+            fab.style.left = left;
+            fab.style.top = top;
+            fab.style.right = 'auto';
+            fab.style.bottom = 'auto';
+        } else {
+            fab.style.left = '';
+            fab.style.top = '';
+            fab.style.right = '32px';
+            fab.style.bottom = '32px';
+        }
+    }
+    restoreFabPosition();
+
+    fab.addEventListener('mousedown', function(e) {
+        isDragging = true;
+        moved = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        offsetX = e.clientX - fab.getBoundingClientRect().left;
+        offsetY = e.clientY - fab.getBoundingClientRect().top;
+        fab.style.transition = 'none';
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        moved = true;
+        let x = e.clientX - offsetX;
+        let y = e.clientY - offsetY;
+        // Keep inside viewport
+        x = Math.max(0, Math.min(window.innerWidth - fab.offsetWidth, x));
+        y = Math.max(0, Math.min(window.innerHeight - fab.offsetHeight, y));
+        fab.style.left = x + 'px';
+        fab.style.top = y + 'px';
+        fab.style.right = 'auto';
+        fab.style.bottom = 'auto';
+    });
+    document.addEventListener('mouseup', function(e) {
+        if (isDragging) {
+            isDragging = false;
+            fab.style.transition = '';
+            document.body.style.userSelect = '';
+            // Save position
+            if (fab.style.left && fab.style.top) {
+                localStorage.setItem('helpFabPos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
+            }
+            // If not moved, treat as click
+            if (!moved && Math.abs(e.clientX - startX) < 5 && Math.abs(e.clientY - startY) < 5) {
+                window.open('help.php', '_blank');
+            }
+        }
+    });
+    // Touch support
+    fab.addEventListener('touchstart', function(e) {
+        isDragging = true;
+        moved = false;
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        offsetX = touch.clientX - fab.getBoundingClientRect().left;
+        offsetY = touch.clientY - fab.getBoundingClientRect().top;
+        fab.style.transition = 'none';
+    });
+    document.addEventListener('touchmove', function(e) {
+        if (!isDragging) return;
+        moved = true;
+        const touch = e.touches[0];
+        let x = touch.clientX - offsetX;
+        let y = touch.clientY - offsetY;
+        x = Math.max(0, Math.min(window.innerWidth - fab.offsetWidth, x));
+        y = Math.max(0, Math.min(window.innerHeight - fab.offsetHeight, y));
+        fab.style.left = x + 'px';
+        fab.style.top = y + 'px';
+        fab.style.right = 'auto';
+        fab.style.bottom = 'auto';
+    });
+    document.addEventListener('touchend', function(e) {
+        if (isDragging) {
+            isDragging = false;
+            fab.style.transition = '';
+            // Save position
+            if (fab.style.left && fab.style.top) {
+                localStorage.setItem('helpFabPos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
+            }
+            // If not moved, treat as tap
+            if (!moved) {
+                window.open('help.php', '_blank');
+            }
+        }
+    });
+    // Also allow click if not dragged
+    fab.addEventListener('click', function(e) {
+        if (!isDragging && !moved) {
+            window.open('help.php', '_blank');
+        }
+    });
+
+    // Reset position if window is resized and bubble is out of bounds
+    window.addEventListener('resize', function() {
+        const pos = localStorage.getItem('helpFabPos');
+        if (pos) {
+            const { left, top } = JSON.parse(pos);
+            let x = parseInt(left);
+            let y = parseInt(top);
+            let changed = false;
+            if (x > window.innerWidth - fab.offsetWidth) {
+                x = window.innerWidth - fab.offsetWidth;
+                changed = true;
+            }
+            if (y > window.innerHeight - fab.offsetHeight) {
+                y = window.innerHeight - fab.offsetHeight;
+                changed = true;
+            }
+            if (changed) {
+                fab.style.left = x + 'px';
+                fab.style.top = y + 'px';
+                fab.style.right = 'auto';
+                fab.style.bottom = 'auto';
+                localStorage.setItem('helpFabPos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
+            }
+        }
+    });
+})();
+</script>
+<?php endif; ?>
+<footer class="bg-light py-3 mt-4 border-top">
+	<div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
+		<div class="text-center text-md-start small text-muted" style="flex:1;">
+			<?= htmlspecialchars($footer_message) ?>
+			<?php if (!empty($meta['version'])): ?>
+				<div class="small text-secondary">
+					Config v<?= htmlspecialchars($meta['version']) ?><?= !empty($meta['author']) ? ' &mdash; ' . htmlspecialchars($meta['author']) : '' ?>
+				</div>
+			<?php endif; ?>
+		</div>
+	</div>
+</footer>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.webticker/3.0.0/jquery.webticker.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>

@@ -10,7 +10,20 @@ const lightMode = document.body.dataset.lightMode || 'Light Mode';
 const darkMode = document.body.dataset.darkMode || 'Dark Mode';
 const loadingText = document.body.dataset.loading || 'Loading...';
 const serviceText = document.body.dataset.service || 'Service';
+const alertSoundEnabled = document.body.dataset.alertSound === 'false';
 
+// Add these variables at the top of your JS file
+let lastServiceStates = {};
+
+// Add this somewhere in your JS (e.g., after DOMContentLoaded)
+const alertAudio = new Audio('audio/alert.wav'); // Place audio/alert.wav in your project
+
+function playAlertSound() {
+    if (alertSoundEnabled) {
+        alertAudio.currentTime = 0;
+        alertAudio.play();
+    }
+}
 
 // --- Utility: simple HTML escape
 function escapeHtml(s) {
@@ -113,7 +126,8 @@ function loadStatus() {
         });
         $('#services_placeholder').html(html);
 
-        if ((data.errors || 0) === 0) {
+        // --- Main Banner Logic: Show red if either network fails ---
+        if (local_color === 'green' && wide_color === 'green' && (data.errors || 0) === 0) {
             $('#all_status').removeClass('alert-danger').addClass('alert-success');
             $('#webTicker').html(`<b>${allSystemsOperational}</b>`);
             $('#statusIcon')
@@ -125,6 +139,22 @@ function loadStatus() {
             $('#statusIcon')
                 .html('<i class="fa-solid fa-circle-xmark text-danger"></i>')
                 .show();
+        }
+
+        // Check for service status changes and play sound if needed
+        if (data.services) {
+            data.services.forEach(service => {
+                const key = service.title;
+                // Consider "up" if status_icon contains 'circle-check' or 'square-check'
+                const isUp = /check/.test(service.status_icon);
+                if (lastServiceStates.hasOwnProperty(key)) {
+                    if (lastServiceStates[key] !== isUp) {
+                        playAlertSound();
+                        showServiceNotification(key, isUp);
+                    }
+                }
+                lastServiceStates[key] = isUp;
+            });
         }
     }).fail(function() {
         $('#network_status_placeholder').html('<div class="text-center text-danger">Unable to load network status. Please check your connection or try again later.</div>');
@@ -446,5 +476,26 @@ $(document).on('click', '.unsubscribe-service-btn', function() {
         $('#manageSubMsg').html('<div class="alert alert-danger">' + escapeHtml(msg) + '</div>');
     });
 });
+
+// Add this near your other config flags
+const browserNotifyEnabled = document.body.dataset.browserNotify === 'true';
+
+// Request notification permission if enabled
+if (browserNotifyEnabled && "Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+}
+
+// Helper to show browser notification
+function showServiceNotification(serviceName, isUp) {
+    if (!browserNotifyEnabled || !("Notification" in window) || Notification.permission !== "granted") return;
+    const title = isUp ? `${serviceName} is UP` : `${serviceName} is DOWN`;
+    const body = isUp
+        ? `${serviceName} has recovered and is now operational.`
+        : `${serviceName} is currently down or unreachable.`;
+    const icon = isUp
+        ? 'images/up.png'   // Optional: add your own icons
+        : 'images/down.png';
+    new Notification(title, { body, icon });
+}
 
 

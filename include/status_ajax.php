@@ -33,14 +33,28 @@ $lang_strings = [
 ];
 $t = $lang_strings[$lang];
 
-// Helper: Check TCP port or HTTP
+// Helper: Check TCP port, HTTP, or ICMP ping if port is null
 function check_service($host, $port = 80) {
-    $connection = @fsockopen($host, $port, $errno, $errstr, 2);
-    if (is_resource($connection)) {
-        fclose($connection);
-        return true;
+    if ($port === null) {
+        // ICMP ping (cross-platform: Linux, Windows, K8s containers)
+        $host = escapeshellarg($host);
+        if (stripos(PHP_OS, 'WIN') === 0) {
+            // Windows: -n 1 (one ping), -w 2000 (timeout ms)
+            $cmd = "ping -n 1 -w 2000 $host";
+        } else {
+            // Linux/K8s: -c 1 (one ping), -W 2 (timeout sec)
+            $cmd = "ping -c 1 -W 2 $host";
+        }
+        exec($cmd, $output, $result);
+        return $result === 0;
+    } else {
+        $connection = @fsockopen($host, $port, $errno, $errstr, 2);
+        if (is_resource($connection)) {
+            fclose($connection);
+            return true;
+        }
+        return false;
     }
-    return false;
 }
 
 // Get public IP
@@ -67,22 +81,24 @@ if (!empty($isp_map) && is_array($isp_map)) {
     }
 }
 $wide_result = check_service($public_dns, 53); // DNS port check
-$wide_text = $public_ip
-    ? ($isp_found ? "$isp_name ($public_ip)" : "{$t['unknown_isp']} ($public_ip)") . ": " . ($wide_result ? $t['operational'] : $t['failure'])
-    : $t['ip_unavailable'];
-$wide_color = $wide_result ? "green" : "red";
 
 // Local-Area Network check
-$local_result = check_service($gateway, 80); // HTTP port check on gateway
+$local_result = check_service($gateway, null); // ICMP ping check on gateway
+
+// Set text and color for local and wide area network independently
 $local_text = $local_result ? $t['operational'] : $t['failure'];
 $local_color = $local_result ? "green" : "red";
+$wide_text = ($public_ip
+    ? ($isp_found ? "$isp_name ($public_ip)" : "{$t['unknown_isp']} ($public_ip)")
+    : $t['ip_unavailable']) . ": " . ($wide_result ? $t['operational'] : $t['failure']);
+$wide_color = $wide_result ? "green" : "red";
 
 // Services
 $services = [];
 $errors = 0;
 foreach ($internal_hosts as $value) {
     $host = $value['host'] ?? '';
-    $port = !empty($value['port']) ? (int)$value['port'] : 80;
+    $port = array_key_exists('port', $value) ? (is_null($value['port']) ? null : (int)$value['port']) : 80;
     $ok = check_service($host, $port);
     $status = $ok
         ? '<i style="font-size:30px;color:green" class="fa-solid fa-square-check"></i>'
