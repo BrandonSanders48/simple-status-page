@@ -8,8 +8,8 @@ const allSystemsOperational = document.body.dataset.allSystemsOperational || 'Al
 const issuesDetected = document.body.dataset.issuesDetected || 'Issues Detected';
 const lightMode = document.body.dataset.lightMode || 'Light Mode';
 const darkMode = document.body.dataset.darkMode || 'Dark Mode';
-const localArea = document.body.dataset.localArea || 'Local Area Network';
-const wideArea = document.body.dataset.wideArea || 'Wide Area Network';
+const localArea = document.body.dataset.localArea || 'Local-Area Network';
+const wideArea = document.body.dataset.wideArea || 'Wide-Area Network';
 
 
 // --- Utility: simple HTML escape
