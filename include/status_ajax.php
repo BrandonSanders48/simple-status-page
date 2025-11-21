@@ -12,10 +12,9 @@ $domain = $network['domain'] ?? '';
 $isp_map = $network['isp_map'] ?? [];
 $internal_hosts = $json_data['internal_hosts'] ?? [];
 
-// Helper: Check port
-function check_port($host, $port, $domain = '') {
-    $fqdn = $domain ? $host . '.' . $domain : $host;
-    $connection = @fsockopen($fqdn, $port, $errno, $errstr, 2);
+// Helper: Check TCP port or HTTP
+function check_service($host, $port = 80) {
+    $connection = @fsockopen($host, $port, $errno, $errstr, 2);
     if (is_resource($connection)) {
         fclose($connection);
         return true;
@@ -34,7 +33,7 @@ function get_public_ip() {
 
 $public_ip = get_public_ip();
 
-// Wide-Area Network
+// Wide-Area Network check
 $isp_name = '';
 $isp_found = false;
 if (!empty($isp_map) && is_array($isp_map)) {
@@ -46,48 +45,37 @@ if (!empty($isp_map) && is_array($isp_map)) {
         }
     }
 }
-exec("ping -n 1 " . escapeshellarg($public_dns), $output, $result);
+$wide_result = check_service($public_dns, 53); // DNS port check
+$wide_text = $public_ip
+    ? ($isp_found ? "$isp_name ($public_ip)" : "Unknown ISP ($public_ip)") . ": " . ($wide_result ? "Operational" : "Failure")
+    : "IP Unavailable";
+$wide_color = $wide_result ? "green" : "red";
 
-if ($public_ip) {
-    if ($isp_found) {
-        $wide_text = $isp_name . " ($public_ip): " . ($result === 0 ? "Operational" : "Failure");
-    } else {
-        $wide_text = "Unknown ISP ($public_ip): " . ($result === 0 ? "Operational" : "Failure");
-    }
-} else {
-    $wide_text = "IP Unavailable: " . ($result === 0 ? "Operational" : "Failure");
-}
-$wide_color = $result === 0 ? "green" : "red";
-
-// Local-Area Network
-exec("ping -n 1 " . escapeshellarg($gateway), $output, $result);
-$local_text = $result === 0 ? "Operational" : "Failure";
-$local_color = $result === 0 ? "green" : "red";
+// Local-Area Network check
+$local_result = check_service($gateway, 80); // HTTP port check on gateway
+$local_text = $local_result ? "Operational" : "Failure";
+$local_color = $local_result ? "green" : "red";
 
 // Services
 $services = [];
 $errors = 0;
 foreach ($internal_hosts as $value) {
-    $status = '';
-    $ok = false;
-    if (!empty($value['port'])) {
-        $ok = check_port($value['host'], (int)$value['port'], $domain);
-    } else {
-        exec("ping -n 2 " . escapeshellarg($value['host']), $output, $result);
-        $ok = $result === 0;
-    }
+    $host = $value['host'] ?? '';
+    $port = !empty($value['port']) ? (int)$value['port'] : 80;
+    $ok = check_service($host, $port);
     $status = $ok
         ? '<i style="font-size:30px;color:green" class="fa-solid fa-square-check"></i>'
         : '<i style="font-size:30px;color:red" class="fa-solid fa-square-xmark"></i>';
     if (!$ok) $errors++;
     $services[] = [
         'status_icon' => $status,
-        'title' => !empty($value['name']) ? $value['name'] : $value['host'],
+        'title' => $value['name'] ?? $host,
         'type' => htmlspecialchars($value['type'] ?? ''),
         'desc' => !empty($value['description']) ? htmlspecialchars($value['description']) : ''
     ];
 }
 
+// Output JSON
 echo json_encode([
     'wide_text' => $wide_text,
     'wide_color' => $wide_color,

@@ -33,9 +33,14 @@ if ($json_data === null) {
 }
 
 // --- Authentication (simple session-based) ---
-$auth_required = true;
-$admin_user = $json_data['auth']['username'] ?? 'admin';
-$admin_pass = $json_data['auth']['password'] ?? 'changeme';
+// Auth required flag: default true, can be overridden by env variable
+$auth_required = getenv('APP_AUTH_REQUIRED') !== false 
+    ? filter_var(getenv('APP_AUTH_REQUIRED'), FILTER_VALIDATE_BOOLEAN) 
+    : true;
+// Use environment variables if set, otherwise JSON, otherwise default
+$admin_user = getenv('APP_USERNAME') ?: ($json_data['auth']['username'] ?? 'admin');
+$admin_pass = getenv('APP_PASSWORD') ?: ($json_data['auth']['password'] ?? 'changeme');
+
 
 if (isset($_POST['login'])) {
     if ($_POST['username'] === $admin_user && $_POST['password'] === $admin_pass) {
@@ -78,11 +83,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['authenticated']) &
     if ($jsonInput !== '') {
         json_decode($jsonInput);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            header("Location: index.php?Error=InvalidJSON&access=true");
+            header("Location: index.php?Error=InvalidJSON");
             exit();
         }
         file_put_contents($configPath, $jsonInput);
-        header("Location: index.php?Saved=true&access=true");
+        header("Location: index.php?Saved=true");
         exit();
     }
 }
@@ -193,7 +198,6 @@ if (
     <title><?= htmlspecialchars($business_name) ?> <?= $t['status_page'] ?></title>
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="index.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
     <style>
@@ -738,7 +742,7 @@ if (
 				formData.push({name: 'service[]', value: s});
 			});
 			formData.push({name: 'csrf_token', value: csrfToken});
-			$.post('include/subscribe.php', $.param(formData), function(response) {
+			$.post('include/subscriptions.php', $.param(formData), function(response) {
 				$('#subscribeMsg').html('<div class="alert alert-success">' + response.message + '</div>');
 				$('#subscribeForm')[0].reset();
 			}, 'json').fail(function(xhr) {
@@ -866,14 +870,7 @@ if (
 			$('#loginModal').modal('show');
 		<?php endif; ?>
 		});
-			</script>
+	</script>
 
-			<?php if (!empty($show_login_modal)): ?>
-			<script>
-			$(function() {
-				$('#loginModal').modal('show');
-			});
-    </script>
-    <?php endif; ?>
 </body>
 </html>
