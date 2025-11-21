@@ -11,11 +11,8 @@ $lang_strings = [
         'footer_message' => 'Footer Message',
         'authentication' => 'Authentication',
         'admin_login' => 'Admin Login',
-        'username' => 'Username',
-        'password' => 'Password',
         'change_values' => 'Change these values to secure your status page.',
         'env_overrides' => 'Environment Variable Overrides',
-        'override_note' => 'If an environment variable is set, it takes precedence over the config file.',
         'app_auth_required' => 'APP_AUTH_REQUIRED (true/false): Require authentication for admin features.',
         'app_username' => 'APP_USERNAME: Override admin username.',
         'app_password' => 'APP_PASSWORD: Override admin password.',
@@ -97,11 +94,8 @@ $lang_strings = [
         'footer_message' => 'Mensaje de Pie de Página',
         'authentication' => 'Autenticación',
         'admin_login' => 'Inicio de Sesión de Administrador',
-        'username' => 'Usuario',
-        'password' => 'Contraseña',
         'change_values' => 'Cambie estos valores para asegurar su página de estado.',
         'env_overrides' => 'Variables de Entorno',
-        'override_note' => 'Si se establece una variable de entorno, tiene prioridad sobre el archivo de configuración.',
         'app_auth_required' => 'APP_AUTH_REQUIRED (true/false): Requiere autenticación para funciones de administrador.',
         'app_username' => 'APP_USERNAME: Sobrescribe el usuario administrador.',
         'app_password' => 'APP_PASSWORD: Sobrescribe la contraseña de administrador.',
@@ -311,7 +305,6 @@ pre {
           <div class="card-body">
             <ul class="list-group list-group-flush">
               <li class="list-group-item"><b><?= $t['admin_login'] ?>:</b><br>
-                <?= $t['username'] ?> / <?= $t['password'] ?> (<code>"auth"</code> section)
                 <span class="badge bg-warning text-dark mt-2"><?= $t['change_values'] ?></span>
               </li>
               <li class="list-group-item">
@@ -321,9 +314,6 @@ pre {
                   <li><code><?= $t['app_username'] ?></code></li>
                   <li><code><?= $t['app_password'] ?></code></li>
                 </ul>
-                <div class="form-text mt-2">
-                  <?= $t['override_note'] ?>
-                </div>
               </li>
             </ul>
           </div>

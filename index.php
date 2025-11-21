@@ -47,8 +47,8 @@ $auth_env = getenv('APP_AUTH_REQUIRED');
 $auth_required = ($auth_env === false || $auth_env === '')
     ? true
     : filter_var($auth_env, FILTER_VALIDATE_BOOLEAN);
-$admin_user = getenv('APP_USERNAME') ?: ($json_data['auth']['username'] ?? 'admin');
-$admin_pass = getenv('APP_PASSWORD') ?: ($json_data['auth']['password'] ?? 'changeme');
+$admin_user = getenv('APP_USERNAME') ?: 'admin';
+$admin_pass = getenv('APP_PASSWORD') ?: 'changeme';
 
 if ($auth_required === false) {
     $_SESSION['authenticated'] = true;  

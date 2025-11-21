@@ -5,10 +5,6 @@
     "author": "Your Name or Team",
     "page_url": "https://your-status-page.example.com"
   },
-  "auth": {
-    "username": "admin",
-    "password": "changeme"
-  },
   "email": {
     "from": "status@yourdomain.com",
     "reply_to": "helpdesk@yourdomain.com",
