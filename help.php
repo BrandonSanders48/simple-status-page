@@ -138,12 +138,24 @@ pre {
           <div class="card-body">
             <ul class="list-group list-group-flush">
               <li class="list-group-item"><b>Admin Login:</b><br>
-                Credentials are set in the <code>"auth"</code> section:
+                Credentials are set in the <code>"auth"</code> section of <code>configuration.json</code>:
                 <ul>
                   <li><b>Username:</b> <code>"username"</code></li>
                   <li><b>Password:</b> <code>"password"</code></li>
                 </ul>
                 <span class="badge bg-warning text-dark mt-2">Change these values to secure your status page.</span>
+              </li>
+              <li class="list-group-item">
+                <b>Environment Variable Overrides:</b><br>
+                You can override authentication settings using environment variables:
+                <ul>
+                  <li><code>APP_AUTH_REQUIRED</code> (<code>true</code>/<code>false</code>): Require authentication for admin features.</li>
+                  <li><code>APP_USERNAME</code>: Override admin username.</li>
+                  <li><code>APP_PASSWORD</code>: Override admin password.</li>
+                </ul>
+                <div class="form-text mt-2">
+                  If an environment variable is set, it takes precedence over the config file.
+                </div>
               </li>
             </ul>
           </div>

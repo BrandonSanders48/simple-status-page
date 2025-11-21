@@ -10,7 +10,7 @@ const lightMode = document.body.dataset.lightMode || 'Light Mode';
 const darkMode = document.body.dataset.darkMode || 'Dark Mode';
 const loadingText = document.body.dataset.loading || 'Loading...';
 const serviceText = document.body.dataset.service || 'Service';
-const alertSoundEnabled = document.body.dataset.alertSound === 'false';
+const alertSoundEnabled = document.body.dataset.alertSound === 'true';
 
 // Add these variables at the top of your JS file
 let lastServiceStates = {};
@@ -498,4 +498,134 @@ function showServiceNotification(serviceName, isUp) {
     new Notification(title, { body, icon });
 }
 
+(function() {
+    const fab = document.getElementById('help-fab');
+    let isDragging = false, offsetX = 0, offsetY = 0, startX = 0, startY = 0, moved = false;
 
+    // Restore position from localStorage if available, else stick to side
+    function restoreFabPosition() {
+        const pos = localStorage.getItem('helpFabPos');
+        if (pos) {
+            const { left, top } = JSON.parse(pos);
+            fab.style.left = left;
+            fab.style.top = top;
+            fab.style.right = 'auto';
+            fab.style.bottom = 'auto';
+        } else {
+            fab.style.left = '';
+            fab.style.top = '';
+            fab.style.right = '32px';
+            fab.style.bottom = '32px';
+        }
+    }
+    restoreFabPosition();
+
+    fab.addEventListener('mousedown', function(e) {
+        isDragging = true;
+        moved = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        offsetX = e.clientX - fab.getBoundingClientRect().left;
+        offsetY = e.clientY - fab.getBoundingClientRect().top;
+        fab.style.transition = 'none';
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        moved = true;
+        let x = e.clientX - offsetX;
+        let y = e.clientY - offsetY;
+        // Keep inside viewport
+        x = Math.max(0, Math.min(window.innerWidth - fab.offsetWidth, x));
+        y = Math.max(0, Math.min(window.innerHeight - fab.offsetHeight, y));
+        fab.style.left = x + 'px';
+        fab.style.top = y + 'px';
+        fab.style.right = 'auto';
+        fab.style.bottom = 'auto';
+    });
+    document.addEventListener('mouseup', function(e) {
+        if (isDragging) {
+            isDragging = false;
+            fab.style.transition = '';
+            document.body.style.userSelect = '';
+            // Save position
+            if (fab.style.left && fab.style.top) {
+                localStorage.setItem('helpFabPos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
+            }
+            // If not moved, treat as click
+            if (!moved && Math.abs(e.clientX - startX) < 5 && Math.abs(e.clientY - startY) < 5) {
+                window.open('help.php', '_blank');
+            }
+        }
+    });
+    // Touch support
+    fab.addEventListener('touchstart', function(e) {
+        isDragging = true;
+        moved = false;
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        offsetX = touch.clientX - fab.getBoundingClientRect().left;
+        offsetY = touch.clientY - fab.getBoundingClientRect().top;
+        fab.style.transition = 'none';
+    });
+    document.addEventListener('touchmove', function(e) {
+        if (!isDragging) return;
+        moved = true;
+        const touch = e.touches[0];
+        let x = touch.clientX - offsetX;
+        let y = touch.clientY - offsetY;
+        x = Math.max(0, Math.min(window.innerWidth - fab.offsetWidth, x));
+        y = Math.max(0, Math.min(window.innerHeight - fab.offsetHeight, y));
+        fab.style.left = x + 'px';
+        fab.style.top = y + 'px';
+        fab.style.right = 'auto';
+        fab.style.bottom = 'auto';
+    });
+    document.addEventListener('touchend', function(e) {
+        if (isDragging) {
+            isDragging = false;
+            fab.style.transition = '';
+            // Save position
+            if (fab.style.left && fab.style.top) {
+                localStorage.setItem('helpFabPos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
+            }
+            // If not moved, treat as tap
+            if (!moved) {
+                window.open('help.php', '_blank');
+            }
+        }
+    });
+    // Also allow click if not dragged
+    fab.addEventListener('click', function(e) {
+        if (!isDragging && !moved) {
+            window.open('help.php', '_blank');
+        }
+    });
+
+    // Reset position if window is resized and bubble is out of bounds
+    window.addEventListener('resize', function() {
+        const pos = localStorage.getItem('helpFabPos');
+        if (pos) {
+            const { left, top } = JSON.parse(pos);
+            let x = parseInt(left);
+            let y = parseInt(top);
+            let changed = false;
+            if (x > window.innerWidth - fab.offsetWidth) {
+                x = window.innerWidth - fab.offsetWidth;
+                changed = true;
+            }
+            if (y > window.innerHeight - fab.offsetHeight) {
+                y = window.innerHeight - fab.offsetHeight;
+                changed = true;
+            }
+            if (changed) {
+                fab.style.left = x + 'px';
+                fab.style.top = y + 'px';
+                fab.style.right = 'auto';
+                fab.style.bottom = 'auto';
+                localStorage.setItem('helpFabPos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
+            }
+        }
+    });
+})();
