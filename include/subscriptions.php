@@ -34,9 +34,40 @@ if (empty($services)) {
     exit;
 }
 
+// Before adding a new subscription, check if it already exists:
+$subsFile = __DIR__ . '/subscriptions.csv';
+$alreadySubscribed = false;
+
+// Load existing subscriptions
+$existing = [];
+if (file_exists($subsFile)) {
+    $rows = array_map('str_getcsv', file($subsFile));
+    foreach ($rows as $row) {
+        if (count($row) >= 2) {
+            $existingEmail = trim($row[0], " \t\n\r\0\x0B\"");
+            $existingService = trim($row[1], " \t\n\r\0\x0B\"");
+            $existing[$existingEmail][$existingService] = true;
+        }
+    }
+}
+
+// For each selected service, check if already subscribed
+foreach ($services as $service) {
+    $service = trim($service, " \t\n\r\0\x0B\"");
+    if (isset($existing[$email][$service])) {
+        $alreadySubscribed = true;
+        break;
+    }
+}
+
+// If already subscribed, return a message and do not add
+if ($alreadySubscribed) {
+    echo json_encode(['status' => 'error', 'message' => 'You are already subscribed to one or more selected services.']);
+    exit;
+}
+
 // Save each subscription
-$csvFile = __DIR__ . '/subscriptions.csv';
-$fp = fopen($csvFile, 'a');
+$fp = fopen($subsFile, 'a');
 foreach ($services as $service) {
     $entry = [$email, $service, date('Y-m-d H:i:s')];
     fputcsv($fp, $entry);
