@@ -12,9 +12,26 @@ const localArea = document.body.dataset.localArea || 'Local Area';
 const wideArea = document.body.dataset.wideArea || 'Wide Area';
 
 
+// --- Utility: simple HTML escape
+function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// --- Cache Busting ---
+function cacheBust(url) {
+    const sep = url.includes('?') ? '&' : '?';
+    return url + sep + 'cb=' + Date.now();
+}
+
 // --- Dynamic: Incidents ---
 function loadIncidents() {
-    $.getJSON('include/incidents.json', function(data) {
+    $.getJSON(cacheBust('include/incidents.json'), function(data) {
         if (!data || !data.length) {
             $('#incidents_area').html(`<div class="alert alert-success">${allSystemsOperational}</div>`);
             return;
@@ -51,7 +68,7 @@ function loadIncidents() {
 
 // --- Dynamic: Network Status and Services ---
 function loadStatus() {
-    $.getJSON('include/status_ajax.php', function(data) {
+    $.getJSON(cacheBust('include/status_ajax.php'), function(data) {
         // Protect against missing fields
         const local_color = data.local_color || 'gray';
         const local_text = data.local_text || 'Unknown';
@@ -98,7 +115,7 @@ function loadStatus() {
 
 // --- Dynamic: RSS Notices ---
 function loadRSS() {
-    $.getJSON('include/rss_ajax.php', function(data) {
+    $.getJSON(cacheBust('include/rss_ajax.php'), function(data) {
         let html = '';
         (data || []).forEach(function(feed, idx) {
             let bg2 = "background:#e2e3e5;color:#41464b;border-radius:10px;";
@@ -397,14 +414,3 @@ $(document).on('click', '.unsubscribe-service-btn', function() {
         $('#manageSubMsg').html('<div class="alert alert-danger">' + escapeHtml(msg) + '</div>');
     });
 });
-
-// Utility: simple HTML escape
-function escapeHtml(s) {
-    if (s === null || s === undefined) return '';
-    return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}

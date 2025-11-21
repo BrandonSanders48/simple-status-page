@@ -217,12 +217,13 @@ if (
     </style>
 </head>
 <body class="<?= $dark_mode === 'on' ? 'dark-mode' : '' ?>"
-      data-csrf="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"
+    data-csrf="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"
     data-admin="<?= $is_admin ? 'true' : 'false' ?>"
     data-all-systems-operational="<?= $t['all_systems_operational'] ?>"
     data-issues-detected="<?= $t['issues_detected'] ?>"
     data-light-mode="<?= $t['light_mode'] ?>"
-    data-dark-mode="<?= $t['dark_mode'] ?>"
+    data-dark-mode="<?= $t['dark_mode'] ?>" 
+	data-admin="<?= (isset($_SESSION['authenticated']) && $_SESSION['authenticated']) ? 'true' : 'false' ?>"
 >
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">       
