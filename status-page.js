@@ -11,6 +11,7 @@ const darkMode = document.body.dataset.darkMode || 'Dark Mode';
 const loadingText = document.body.dataset.loading || 'Loading...';
 const serviceText = document.body.dataset.service || 'Service';
 
+
 // --- Utility: simple HTML escape
 function escapeHtml(s) {
     if (s === null || s === undefined) return '';
@@ -174,16 +175,22 @@ function loadRSS() {
 function showRssFeedModal(idx) {
     const feeds = window._allRssFeeds || [];
     const feed = feeds[idx];
+    const lang = document.documentElement.lang || document.body.getAttribute('lang') || 'en';
+    const rssLatestItem = lang === 'es' ? 'Último elemento:' : 'Latest Item:';
+    const rssDescription = lang === 'es' ? 'Descripción:' : 'Description:';
+    const rssViewSource = lang === 'es' ? 'Ver fuente' : 'View Source';
+    const rssAllItems = lang === 'es' ? 'Todos los elementos:' : 'All Items:';
+    const serviceText = document.body.dataset.service || 'Service';
     if (!feed) return;
     $('#rssFeedModalTitle').text(feed.name || '');
 
     let html = '';
-    html += `<div><strong>Latest Item:</strong><br>${escapeHtml(feed.item || '')}</div>`;
-    if (feed.desc) html += `<div class="mt-2"><strong>Description:</strong><br>${escapeHtml(feed.desc)}</div>`;
-    if (feed.link) html += `<div class="mt-2"><a href="${escapeHtml(feed.link)}" target="_blank" rel="noopener">View Source</a></div>`;
+    html += `<div><strong>${rssLatestItem}</strong><br>${escapeHtml(feed.item || '')}</div>`;
+    if (feed.desc) html += `<div class="mt-2"><strong>${rssDescription}</strong><br>${escapeHtml(feed.desc)}</div>`;
+    if (feed.link) html += `<div class="mt-2"><a href="${escapeHtml(feed.link)}" target="_blank" rel="noopener">${rssViewSource}</a></div>`;
 
     if (Array.isArray(feed.items) && feed.items.length) {
-        html += `<hr><div><strong>All Items:</strong><ul>`;
+        html += `<hr><div><strong>${rssAllItems}</strong><ul>`;
         feed.items.forEach(function(itm) {
             html += `<li>${escapeHtml(itm)}</li>`;
         });
@@ -439,3 +446,5 @@ $(document).on('click', '.unsubscribe-service-btn', function() {
         $('#manageSubMsg').html('<div class="alert alert-danger">' + escapeHtml(msg) + '</div>');
     });
 });
+
+

@@ -602,7 +602,9 @@ if (
     <div class="modal-content" style="border-radius: 12px;">
       <div class="modal-header">
         <h5 class="modal-title" id="rssFeedModalLabel">
-          <i class="fa-solid fa-rss text-primary"></i> <span id="rssFeedModalTitle"></span>
+          <i class="fa-solid fa-rss text-primary"></i>
+          <!-- Use translated label -->
+          <span id="rssFeedModalTitle"><?= $lang === 'es' ? 'Fuente RSS' : 'RSS Feed' ?></span>
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?= $t['close'] ?>"></button>
       </div>
