@@ -43,11 +43,16 @@ function rate_limit($key, $limit = 5, $window = 300) {
 }
 
 // Authentication
-$auth_required = getenv('APP_AUTH_REQUIRED') !== false 
-    ? filter_var(getenv('APP_AUTH_REQUIRED'), FILTER_VALIDATE_BOOLEAN) 
-    : true;
+$auth_env = getenv('APP_AUTH_REQUIRED');
+$auth_required = ($auth_env === false || $auth_env === '')
+    ? true
+    : filter_var($auth_env, FILTER_VALIDATE_BOOLEAN);
 $admin_user = getenv('APP_USERNAME') ?: ($json_data['auth']['username'] ?? 'admin');
 $admin_pass = getenv('APP_PASSWORD') ?: ($json_data['auth']['password'] ?? 'changeme');
+
+if ($auth_required === false) {
+    $_SESSION['authenticated'] = true;  
+}
 
 if (isset($_POST['login'])) {
     if (!rate_limit('login', 5, 300)) {
@@ -315,9 +320,11 @@ $hide_navbar = isset($_GET['hide_navbar']) && $_GET['hide_navbar'] === '1';
                             <button title="Edit Configuration" type="button" class="btn btn-secondary btn-sm d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addModal" style="min-width: 40px; max-height:32px;">
                                 &nbsp;<i class="fa-solid fa-gear"></i>&nbsp;
                             </button>
-                            <!-- Logout Button -->
-                            <a href="?logout=1" class="btn btn-danger btn-sm" style="min-width: 70px; max-height:32px;"><?= $t['logout'] ?></a>
-                        <?php else: ?>
+                            <?php if($auth_required=="true"){ ?>
+                                <!-- Logout Button -->
+                                <a href="?logout=1" class="btn btn-danger btn-sm" style="min-width: 70px; max-height:32px;"><?= $t['logout'] ?></a>
+                            <?php } ?>
+                            <?php else: ?>
                             <!-- Login Button -->
                             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal" style="min-width: 70px; max-height:32px;"><?= $t['login'] ?></button>
                         <?php endif; ?>
@@ -352,7 +359,7 @@ $hide_navbar = isset($_GET['hide_navbar']) && $_GET['hide_navbar'] === '1';
     <div class="card shadow-sm mb-4" style="border-radius: 18px;">
         <div class="card-body">
             <!-- Dynamic Status Placeholders -->
-            <div id="all_status" class="alert alert-success text-center d-flex align-items-center justify-content-center" role="alert" style="font-size:26px;">
+            <div id="all_status" class="alert alert-dark text-center d-flex align-items-center justify-content-center" role="alert" style="font-size:26px;">
                 <span id="statusIcon" style="display:none;" class="me-2"></span>
                 <span id="webTicker"><b>...</b></span>
             </div>
@@ -609,7 +616,7 @@ $hide_navbar = isset($_GET['hide_navbar']) && $_GET['hide_navbar'] === '1';
   </div>
 </div>
 <?php if (isset($_SESSION['authenticated']) && $_SESSION['authenticated']): ?>
-<div id="help-fab" title="Help" style="position:fixed;bottom:32px;right:32px;">
+<div id="help-fab" title="<?= $lang === 'es' ? 'Ayuda' : 'Help' ?>" style="position:fixed;bottom:32px;right:32px;">
     <i class="fa fa-question"></i>
 </div>
 

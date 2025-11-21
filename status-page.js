@@ -128,12 +128,14 @@ function loadStatus() {
 
         // --- Main Banner Logic: Show red if either network fails ---
         if (local_color === 'green' && wide_color === 'green' && (data.errors || 0) === 0) {
+            $('#all_status').removeClass('alert-dark');
             $('#all_status').removeClass('alert-danger').addClass('alert-success');
             $('#webTicker').html(`<b>${allSystemsOperational}</b>`);
             $('#statusIcon')
                 .html('<i class="fa-solid fa-circle-check text-success"></i>')
                 .show();
         } else {
+            $('#all_status').removeClass('alert-dark');
             $('#all_status').removeClass('alert-success').addClass('alert-danger');
             $('#webTicker').html(`<b>${issuesDetected}</b>`);
             $('#statusIcon')

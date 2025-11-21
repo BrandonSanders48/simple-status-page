@@ -1,8 +1,187 @@
+<?php
+session_start();
+$lang = $_GET['lang'] ?? ($_COOKIE['lang'] ?? 'en');
+$lang_strings = [
+    'en' => [
+        'back' => 'Back',
+        'config_usage' => 'Configuration & Usage Instructions',
+        'general_info' => 'General Information',
+        'business_name' => 'Business Name',
+        'logo' => 'Logo',
+        'footer_message' => 'Footer Message',
+        'authentication' => 'Authentication',
+        'admin_login' => 'Admin Login',
+        'username' => 'Username',
+        'password' => 'Password',
+        'change_values' => 'Change these values to secure your status page.',
+        'env_overrides' => 'Environment Variable Overrides',
+        'override_note' => 'If an environment variable is set, it takes precedence over the config file.',
+        'app_auth_required' => 'APP_AUTH_REQUIRED (true/false): Require authentication for admin features.',
+        'app_username' => 'APP_USERNAME: Override admin username.',
+        'app_password' => 'APP_PASSWORD: Override admin password.',
+        'email_settings' => 'Email Settings',
+        'purpose' => 'Purpose',
+        'subscription_notifications' => 'Used for subscription notifications.',
+        'configuration' => 'Configuration',
+        'from' => 'The sender address for outgoing emails.',
+        'reply_to' => 'The reply-to address.',
+        'smtp' => 'SMTP server details (host, port, username, password, secure).',
+        'update_email' => 'Update these values to match your organization\'s email server.',
+        'network_checks' => 'Network Checks',
+        'lan' => 'Local Area Network (LAN)',
+        'gateway' => 'The IP address of your network gateway (e.g., 192.168.1.1). The status page will ping this address to check LAN connectivity.',
+        'domain' => 'Your internal domain name (optional, for display).',
+        'wan' => 'Wide Area Network (WAN)',
+        'public_dns' => 'A public DNS server (e.g., 8.8.8.8) to check internet connectivity.',
+        'isp_map' => 'Map public IPs to ISP names for display.',
+        'internal_hosts' => 'Internal Hosts Monitoring',
+        'monitor_services' => 'Monitor internal or external services (servers, websites, etc.).',
+        'each_entry' => 'Each entry in "internal_hosts" should include:',
+        'host' => 'Hostname or IP to check.',
+        'port' => 'Port number (use null for ICMP ping).',
+        'type' => 'Service type (e.g., DNS, HTTPS, Ping).',
+        'name' => 'Display name for the service.',
+        'description' => 'Short description.',
+        'example' => 'Example',
+        'ping_note' => 'If "port" is null, the service will be checked with a ping (ICMP).',
+        'rss_feeds' => 'RSS Feeds',
+        'display_status' => 'Display status from third-party providers.',
+        'each_rss' => 'Each entry in "RSS" should include:',
+        'rss_host' => 'RSS feed URL.',
+        'rss_name' => 'Provider name.',
+        'rss_tag' => 'XML tag to parse (usually item or entry).',
+        'rss_description' => 'Short description.',
+        'refresh_rate' => 'Refresh Rate',
+        'refresh_key' => 'Key: "refresh_rate"',
+        'refresh_value' => 'Value: Time in milliseconds between automatic status checks (e.g., 30000 for 30 seconds).',
+        'alerts' => 'Alerts: Sound & Browser Notifications',
+        'alert_sound' => 'Alert Sound ("alert_sound"):',
+        'alert_sound_desc' => 'true or false to enable/disable sound on service status change.',
+        'browser_notify' => 'Browser Notifications ("browser_notify"):',
+        'browser_notify_desc' => 'true or false to enable/disable browser notifications on service status change.',
+        'how_it_works' => 'How it works:',
+        'alert_explain' => 'When enabled, your browser will play a sound and/or show a notification if a monitored service goes up or down.',
+        'test_notification' => 'Test Notification',
+        'allow_notifications' => 'You may need to allow notifications in your browser when prompted.',
+        'sound_note' => 'Note: Sound may only play after you interact with the page due to browser security.',
+        'meta_info' => 'Meta Information',
+        'versioning' => 'For versioning and documentation.',
+        'fields' => 'Fields:',
+        'version' => 'Config version.',
+        'meta_description' => 'Description of the config.',
+        'author' => 'Author or team.',
+        'page_url' => 'URL of your status page.',
+        'edit_config' => 'How to Edit Configuration',
+        'login_admin' => 'Log in as admin.',
+        'open_editor' => 'Click the gear icon to open the configuration editor.',
+        'edit_json' => 'Edit the JSON as needed.',
+        'save_refresh' => 'Save changes and refresh the page.',
+        'tips' => 'Tips',
+        'docker' => 'For Docker/Kubernetes:',
+        'docker_tip' => 'Ensure the ping utility is installed in your container for ICMP checks.',
+        'security' => 'Security:',
+        'security_tip' => 'Change default admin credentials and SMTP passwords.',
+        'testing' => 'Testing:',
+        'testing_tip' => 'Use the "Test" services to verify your setup.',
+        'hide_navbar' => 'Hide Navbar:',
+        'hide_navbar_tip' => 'Add ?hide_navbar=1 to the URL to hide the navigation bar.',
+        'example_url' => 'Example: index.php?hide_navbar=1',
+        'customization' => 'For further customization, edit the configuration.json file directly or use the web editor as admin.',
+    ],
+    'es' => [
+        'back' => 'Atrás',
+        'config_usage' => 'Configuración e Instrucciones de Uso',
+        'general_info' => 'Información General',
+        'business_name' => 'Nombre de la Empresa',
+        'logo' => 'Logo',
+        'footer_message' => 'Mensaje de Pie de Página',
+        'authentication' => 'Autenticación',
+        'admin_login' => 'Inicio de Sesión de Administrador',
+        'username' => 'Usuario',
+        'password' => 'Contraseña',
+        'change_values' => 'Cambie estos valores para asegurar su página de estado.',
+        'env_overrides' => 'Variables de Entorno',
+        'override_note' => 'Si se establece una variable de entorno, tiene prioridad sobre el archivo de configuración.',
+        'app_auth_required' => 'APP_AUTH_REQUIRED (true/false): Requiere autenticación para funciones de administrador.',
+        'app_username' => 'APP_USERNAME: Sobrescribe el usuario administrador.',
+        'app_password' => 'APP_PASSWORD: Sobrescribe la contraseña de administrador.',
+        'email_settings' => 'Configuración de Correo',
+        'purpose' => 'Propósito',
+        'subscription_notifications' => 'Usado para notificaciones de suscripción.',
+        'configuration' => 'Configuración',
+        'from' => 'Dirección del remitente para correos salientes.',
+        'reply_to' => 'Dirección de respuesta.',
+        'smtp' => 'Detalles del servidor SMTP (host, puerto, usuario, contraseña, seguro).',
+        'update_email' => 'Actualice estos valores para que coincidan con el servidor de correo de su organización.',
+        'network_checks' => 'Verificaciones de Red',
+        'lan' => 'Red de Área Local (LAN)',
+        'gateway' => 'La IP de su gateway de red (ej: 192.168.1.1). La página hará ping a esta dirección para comprobar la conectividad LAN.',
+        'domain' => 'Su dominio interno (opcional, solo para mostrar).',
+        'wan' => 'Red de Área Amplia (WAN)',
+        'public_dns' => 'Un DNS público (ej: 8.8.8.8) para comprobar la conectividad a Internet.',
+        'isp_map' => 'Mapea IPs públicas a nombres de ISP para mostrar.',
+        'internal_hosts' => 'Monitoreo de Hosts Internos',
+        'monitor_services' => 'Monitorea servicios internos o externos (servidores, sitios web, etc.).',
+        'each_entry' => 'Cada entrada en "internal_hosts" debe incluir:',
+        'host' => 'Host o IP a comprobar.',
+        'port' => 'Número de puerto (use null para ping ICMP).',
+        'type' => 'Tipo de servicio (ej: DNS, HTTPS, Ping).',
+        'name' => 'Nombre para mostrar del servicio.',
+        'description' => 'Descripción corta.',
+        'example' => 'Ejemplo',
+        'ping_note' => 'Si "port" es null, el servicio se comprobará con ping (ICMP).',
+        'rss_feeds' => 'Fuentes RSS',
+        'display_status' => 'Muestra el estado de proveedores externos.',
+        'each_rss' => 'Cada entrada en "RSS" debe incluir:',
+        'rss_host' => 'URL de la fuente RSS.',
+        'rss_name' => 'Nombre del proveedor.',
+        'rss_tag' => 'Etiqueta XML a analizar (usualmente item o entry).',
+        'rss_description' => 'Descripción corta.',
+        'refresh_rate' => 'Frecuencia de Actualización',
+        'refresh_key' => 'Clave: "refresh_rate"',
+        'refresh_value' => 'Valor: Tiempo en milisegundos entre comprobaciones automáticas (ej: 30000 para 30 segundos).',
+        'alerts' => 'Alertas: Sonido y Notificaciones del Navegador',
+        'alert_sound' => 'Sonido de Alerta ("alert_sound"):',
+        'alert_sound_desc' => 'true o false para activar/desactivar sonido en cambios de estado.',
+        'browser_notify' => 'Notificaciones del Navegador ("browser_notify"):',
+        'browser_notify_desc' => 'true o false para activar/desactivar notificaciones del navegador en cambios de estado.',
+        'how_it_works' => 'Cómo funciona:',
+        'alert_explain' => 'Si está habilitado, su navegador reproducirá un sonido y/o mostrará una notificación si un servicio monitoreado cambia de estado.',
+        'test_notification' => 'Probar Notificación',
+        'allow_notifications' => 'Puede que deba permitir notificaciones en su navegador cuando se le solicite.',
+        'sound_note' => 'Nota: El sonido solo puede reproducirse después de interactuar con la página por seguridad del navegador.',
+        'meta_info' => 'Información Meta',
+        'versioning' => 'Para versionado y documentación.',
+        'fields' => 'Campos:',
+        'version' => 'Versión de la configuración.',
+        'meta_description' => 'Descripción de la configuración.',
+        'author' => 'Autor o equipo.',
+        'page_url' => 'URL de su página de estado.',
+        'edit_config' => 'Cómo Editar la Configuración',
+        'login_admin' => 'Inicie sesión como administrador.',
+        'open_editor' => 'Haga clic en el engranaje para abrir el editor de configuración.',
+        'edit_json' => 'Edite el JSON según sea necesario.',
+        'save_refresh' => 'Guarde los cambios y recargue la página.',
+        'tips' => 'Consejos',
+        'docker' => 'Para Docker/Kubernetes:',
+        'docker_tip' => 'Asegúrese de que el comando ping esté instalado en su contenedor para comprobaciones ICMP.',
+        'security' => 'Seguridad:',
+        'security_tip' => 'Cambie las credenciales de administrador y contraseñas SMTP predeterminadas.',
+        'testing' => 'Pruebas:',
+        'testing_tip' => 'Use los servicios "Test" para verificar su configuración.',
+        'hide_navbar' => 'Ocultar Barra de Navegación:',
+        'hide_navbar_tip' => 'Agregue ?hide_navbar=1 a la URL para ocultar la barra de navegación.',
+        'example_url' => 'Ejemplo: index.php?hide_navbar=1',
+        'customization' => 'Para más personalización, edite el archivo configuration.json directamente o use el editor web como administrador.',
+    ]
+];
+$t = $lang_strings[$lang] ?? $lang_strings['en'];
+?>
 <!DOCTYPE html>
 <html lang="<?= htmlspecialchars($lang) ?>">
 <head>
     <meta charset="UTF-8">
-    <title>Simple Status Page – Configuration & Usage Instructions</title>
+    <title>Simple Status Page – <?= $t['config_usage'] ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -104,29 +283,23 @@ pre {
   <div class="container py-4">
     <div class="mb-3">
       <a href="index.php" class="btn btn-outline-secondary">
-        <i class="fa fa-arrow-left me-1"></i> Back
+        <i class="fa fa-arrow-left me-1"></i> <?= $t['back'] ?>
       </a>
     </div>
     <div class="mb-4 text-center">
       <h1 class="display-5 fw-bold mb-2"><span class="text-success"><i class="fa-solid fa-circle-check"></i></span> simple-status-page</h1>
-      <p class="lead">Configuration &amp; Usage Instructions</p>
+      <p class="lead"><?= $t['config_usage'] ?></p>
       <hr>
     </div>
 
     <div class="row g-4">
       <div class="col-12 col-lg-6">
         <div class="card section-card">
-          <div class="card-header"><i class="fa-solid fa-info-circle me-2"></i>1. General Information</div>
+          <div class="card-header"><i class="fa-solid fa-info-circle me-2"></i>1. <?= $t['general_info'] ?></div>
           <div class="card-body">
             <ul class="list-group list-group-flush">
-              <li class="list-group-item"><b>Business Name:</b><br>
-                Set in <code>"business_name"</code>, this appears in the navbar and page title.
-              </li>
-              <li class="list-group-item"><b>Logo:</b><br>
-                Set <code>"business_logo"</code> to the path of your logo image (e.g., <code>images/logo.png</code>).
-              </li>
-              <li class="list-group-item"><b>Footer Message:</b><br>
-                The <code>"footer_message"</code> is shown at the bottom of the page.
+              <li class="list-group-item"><b><?= $t['business_name'] ?>:</b><br>
+                <?= $t['business_name'] ?> (<code>"business_name"</code>), <?= $t['logo'] ?> (<code>"business_logo"</code>), <?= $t['footer_message'] ?> (<code>"footer_message"</code>)
               </li>
             </ul>
           </div>
@@ -134,27 +307,22 @@ pre {
       </div>
       <div class="col-12 col-lg-6">
         <div class="card section-card">
-          <div class="card-header"><i class="fa-solid fa-user-shield me-2"></i>2. Authentication</div>
+          <div class="card-header"><i class="fa-solid fa-user-shield me-2"></i>2. <?= $t['authentication'] ?></div>
           <div class="card-body">
             <ul class="list-group list-group-flush">
-              <li class="list-group-item"><b>Admin Login:</b><br>
-                Credentials are set in the <code>"auth"</code> section of <code>configuration.json</code>:
-                <ul>
-                  <li><b>Username:</b> <code>"username"</code></li>
-                  <li><b>Password:</b> <code>"password"</code></li>
-                </ul>
-                <span class="badge bg-warning text-dark mt-2">Change these values to secure your status page.</span>
+              <li class="list-group-item"><b><?= $t['admin_login'] ?>:</b><br>
+                <?= $t['username'] ?> / <?= $t['password'] ?> (<code>"auth"</code> section)
+                <span class="badge bg-warning text-dark mt-2"><?= $t['change_values'] ?></span>
               </li>
               <li class="list-group-item">
-                <b>Environment Variable Overrides:</b><br>
-                You can override authentication settings using environment variables:
+                <b><?= $t['env_overrides'] ?></b><br>
                 <ul>
-                  <li><code>APP_AUTH_REQUIRED</code> (<code>true</code>/<code>false</code>): Require authentication for admin features.</li>
-                  <li><code>APP_USERNAME</code>: Override admin username.</li>
-                  <li><code>APP_PASSWORD</code>: Override admin password.</li>
+                  <li><code><?= $t['app_auth_required'] ?></code></li>
+                  <li><code><?= $t['app_username'] ?></code></li>
+                  <li><code><?= $t['app_password'] ?></code></li>
                 </ul>
                 <div class="form-text mt-2">
-                  If an environment variable is set, it takes precedence over the config file.
+                  <?= $t['override_note'] ?>
                 </div>
               </li>
             </ul>
@@ -163,19 +331,19 @@ pre {
       </div>
       <div class="col-12 col-lg-6">
         <div class="card section-card">
-          <div class="card-header"><i class="fa-solid fa-envelope me-2"></i>3. Email Settings</div>
+          <div class="card-header"><i class="fa-solid fa-envelope me-2"></i>3. <?= $t['email_settings'] ?></div>
           <div class="card-body">
             <ul class="list-group list-group-flush">
-              <li class="list-group-item"><b>Purpose:</b><br>
-                Used for subscription notifications.
+              <li class="list-group-item"><b><?= $t['purpose'] ?>:</b><br>
+                <?= $t['subscription_notifications'] ?>
               </li>
-              <li class="list-group-item"><b>Configuration:</b>
+              <li class="list-group-item"><b><?= $t['configuration'] ?>:</b>
                 <ul>
-                  <li><code>"from"</code>: The sender address for outgoing emails.</li>
-                  <li><code>"reply_to"</code>: The reply-to address.</li>
-                  <li><code>"smtp"</code>: SMTP server details (host, port, username, password, secure).</li>
+                  <li><code>"from"</code>: <?= $t['from'] ?></li>
+                  <li><code>"reply_to"</code>: <?= $t['reply_to'] ?></li>
+                  <li><code>"smtp"</code>: <?= $t['smtp'] ?></li>
                 </ul>
-                <span class="badge bg-info text-dark mt-2">Update these values to match your organization's email server.</span>
+                <span class="badge bg-info text-dark mt-2"><?= $t['update_email'] ?></span>
               </li>
             </ul>
           </div>
@@ -183,21 +351,19 @@ pre {
       </div>
       <div class="col-12 col-lg-6">
         <div class="card section-card">
-          <div class="card-header"><i class="fa-solid fa-network-wired me-2"></i>4. Network Checks</div>
+          <div class="card-header"><i class="fa-solid fa-network-wired me-2"></i>4. <?= $t['network_checks'] ?></div>
           <div class="card-body">
             <ul class="list-group list-group-flush">
-              <li class="list-group-item"><b>Local Area Network (LAN):</b>
+              <li class="list-group-item"><b><?= $t['lan'] ?>:</b>
                 <ul>
-                  <li><code>"gateway"</code>: The IP address of your network gateway (e.g., <code>192.168.1.1</code>).<br>
-                    The status page will ping this address to check LAN connectivity.
-                  </li>
-                  <li><code>"domain"</code>: Your internal domain name (optional, for display).</li>
+                  <li><code>"gateway"</code>: <?= $t['gateway'] ?></li>
+                  <li><code>"domain"</code>: <?= $t['domain'] ?></li>
                 </ul>
               </li>
-              <li class="list-group-item"><b>Wide Area Network (WAN):</b>
+              <li class="list-group-item"><b><?= $t['wan'] ?>:</b>
                 <ul>
-                  <li><code>"public_dns"</code>: A public DNS server (e.g., <code>8.8.8.8</code>) to check internet connectivity.</li>
-                  <li><code>"isp_map"</code>: Map public IPs to ISP names for display.</li>
+                  <li><code>"public_dns"</code>: <?= $t['public_dns'] ?></li>
+                  <li><code>"isp_map"</code>: <?= $t['isp_map'] ?></li>
                 </ul>
               </li>
             </ul>
@@ -206,22 +372,22 @@ pre {
       </div>
       <div class="col-12">
         <div class="card section-card">
-          <div class="card-header"><i class="fa-solid fa-server me-2"></i>5. Internal Hosts Monitoring</div>
+          <div class="card-header"><i class="fa-solid fa-server me-2"></i>5. <?= $t['internal_hosts'] ?></div>
           <div class="card-body">
             <ul class="list-group list-group-flush">
-              <li class="list-group-item"><b>Purpose:</b><br>
-                Monitor internal or external services (servers, websites, etc.).
+              <li class="list-group-item"><b><?= $t['purpose'] ?>:</b><br>
+                <?= $t['monitor_services'] ?>
               </li>
-              <li class="list-group-item"><b>Configuration:</b><br>
-                Each entry in <code>"internal_hosts"</code> should include:
+              <li class="list-group-item"><b><?= $t['configuration'] ?>:</b><br>
+                <?= $t['each_entry'] ?>
                 <ul>
-                  <li><code>"host"</code>: Hostname or IP to check.</li>
-                  <li><code>"port"</code>: Port number (use <code>null</code> for ICMP ping).</li>
-                  <li><code>"type"</code>: Service type (e.g., <code>DNS</code>, <code>HTTPS</code>, <code>Ping</code>).</li>
-                  <li><code>"name"</code>: Display name for the service.</li>
-                  <li><code>"description"</code>: Short description.</li>
+                  <li><code>"host"</code>: <?= $t['host'] ?></li>
+                  <li><code>"port"</code>: <?= $t['port'] ?></li>
+                  <li><code>"type"</code>: <?= $t['type'] ?></li>
+                  <li><code>"name"</code>: <?= $t['name'] ?></li>
+                  <li><code>"description"</code>: <?= $t['description'] ?></li>
                 </ul>
-                <div class="mt-2"><b>Example:</b></div>
+                <div class="mt-2"><b><?= $t['example'] ?>:</b></div>
                 <pre><code>{
   "host": "8.8.8.8",
   "port": null,
@@ -229,7 +395,7 @@ pre {
   "name": "DR Site",
   "description": "Disaster Recovery Site ping test."
 }</code></pre>
-                If <code>"port"</code> is <code>null</code>, the service will be checked with a ping (ICMP).
+                <?= $t['ping_note'] ?>
               </li>
             </ul>
           </div>
@@ -237,19 +403,19 @@ pre {
       </div>
       <div class="col-12 col-lg-6">
         <div class="card section-card">
-          <div class="card-header"><i class="fa-solid fa-rss me-2"></i>6. RSS Feeds</div>
+          <div class="card-header"><i class="fa-solid fa-rss me-2"></i>6. <?= $t['rss_feeds'] ?></div>
           <div class="card-body">
             <ul class="list-group list-group-flush">
-              <li class="list-group-item"><b>Purpose:</b><br>
-                Display status from third-party providers.
+              <li class="list-group-item"><b><?= $t['purpose'] ?>:</b><br>
+                <?= $t['display_status'] ?>
               </li>
-              <li class="list-group-item"><b>Configuration:</b><br>
-                Each entry in <code>"RSS"</code> should include:
+              <li class="list-group-item"><b><?= $t['configuration'] ?>:</b><br>
+                <?= $t['each_rss'] ?>
                 <ul>
-                  <li><code>"host"</code>: RSS feed URL.</li>
-                  <li><code>"name"</code>: Provider name.</li>
-                  <li><code>"tag"</code>: XML tag to parse (usually <code>item</code> or <code>entry</code>).</li>
-                  <li><code>"description"</code>: Short description.</li>
+                  <li><code>"host"</code>: <?= $t['rss_host'] ?></li>
+                  <li><code>"name"</code>: <?= $t['rss_name'] ?></li>
+                  <li><code>"tag"</code>: <?= $t['rss_tag'] ?></li>
+                  <li><code>"description"</code>: <?= $t['rss_description'] ?></li>
                 </ul>
               </li>
             </ul>
@@ -258,37 +424,37 @@ pre {
       </div>
       <div class="col-12 col-lg-6">
         <div class="card section-card">
-          <div class="card-header"><i class="fa-solid fa-clock-rotate-left me-2"></i>7. Refresh Rate</div>
+          <div class="card-header"><i class="fa-solid fa-clock-rotate-left me-2"></i>7. <?= $t['refresh_rate'] ?></div>
           <div class="card-body">
             <ul class="list-group list-group-flush">
-              <li class="list-group-item"><b>Key:</b> <code>"refresh_rate"</code></li>
-              <li class="list-group-item"><b>Value:</b> Time in milliseconds between automatic status checks (e.g., <code>30000</code> for 30 seconds).</li>
+              <li class="list-group-item"><b><?= $t['refresh_key'] ?></b></li>
+              <li class="list-group-item"><b><?= $t['refresh_value'] ?></b></li>
             </ul>
           </div>
         </div>
       </div>
       <div class="col-12 col-lg-6">
         <div class="card section-card">
-          <div class="card-header"><i class="fa-solid fa-bell me-2"></i>8. Alerts: Sound &amp; Browser Notifications</div>
+          <div class="card-header"><i class="fa-solid fa-bell me-2"></i>8. <?= $t['alerts'] ?></div>
           <div class="card-body">
             <ul class="list-group list-group-flush">
               <li class="list-group-item">
-                <b>Alert Sound (<code>"alert_sound"</code>):</b><br>
-                <code>true</code> or <code>false</code> to enable/disable sound on service status change.
+                <b><?= $t['alert_sound'] ?></b><br>
+                <?= $t['alert_sound_desc'] ?>
               </li>
               <li class="list-group-item">
-                <b>Browser Notifications (<code>"browser_notify"</code>):</b><br>
-                <code>true</code> or <code>false</code> to enable/disable browser notifications on service status change.
+                <b><?= $t['browser_notify'] ?></b><br>
+                <?= $t['browser_notify_desc'] ?>
               </li>
               <li class="list-group-item">
-                <b>How it works:</b><br>
-                When enabled, your browser will play a sound and/or show a notification if a monitored service goes up or down.<br>
+                <b><?= $t['how_it_works'] ?></b><br>
+                <?= $t['alert_explain'] ?><br>
                 <button id="test-notify-btn" class="btn btn-info btn-sm mt-2" style="display:none;">
-                  <i class="fa fa-bell"></i> Test Notification
+                  <i class="fa fa-bell"></i> <?= $t['test_notification'] ?>
                 </button>
                 <div class="form-text mt-2">
-                  You may need to allow notifications in your browser when prompted.<br>
-                  <b>Note:</b> Sound may only play after you interact with the page due to browser security.
+                  <?= $t['allow_notifications'] ?><br>
+                  <b><?= $t['sound_note'] ?></b>
                 </div>
               </li>
             </ul>
@@ -297,18 +463,18 @@ pre {
       </div>
       <div class="col-12 col-lg-6">
         <div class="card section-card">
-          <div class="card-header"><i class="fa-solid fa-file-lines me-2"></i>9. Meta Information</div>
+          <div class="card-header"><i class="fa-solid fa-file-lines me-2"></i>9. <?= $t['meta_info'] ?></div>
           <div class="card-body">
             <ul class="list-group list-group-flush">
-              <li class="list-group-item"><b>Purpose:</b><br>
-                For versioning and documentation.
+              <li class="list-group-item"><b><?= $t['purpose'] ?>:</b><br>
+                <?= $t['versioning'] ?>
               </li>
-              <li class="list-group-item"><b>Fields:</b>
+              <li class="list-group-item"><b><?= $t['fields'] ?></b>
                 <ul>
-                  <li><code>"version"</code>: Config version.</li>
-                  <li><code>"description"</code>: Description of the config.</li>
-                  <li><code>"author"</code>: Author or team.</li>
-                  <li><code>"page_url"</code>: URL of your status page.</li>
+                  <li><code>"version"</code>: <?= $t['version'] ?></li>
+                  <li><code>"description"</code>: <?= $t['meta_description'] ?></li>
+                  <li><code>"author"</code>: <?= $t['author'] ?></li>
+                  <li><code>"page_url"</code>: <?= $t['page_url'] ?></li>
                 </ul>
               </li>
             </ul>
@@ -317,34 +483,34 @@ pre {
       </div>
       <div class="col-12">
         <div class="card section-card">
-          <div class="card-header"><i class="fa-solid fa-pen-to-square me-2"></i>10. How to Edit Configuration</div>
+          <div class="card-header"><i class="fa-solid fa-pen-to-square me-2"></i>10. <?= $t['edit_config'] ?></div>
           <div class="card-body">
             <ol class="list-group list-group-numbered">
-              <li class="list-group-item">Log in as admin.</li>
-              <li class="list-group-item">Click the gear icon to open the configuration editor.</li>
-              <li class="list-group-item">Edit the JSON as needed.</li>
-              <li class="list-group-item">Save changes and refresh the page.</li>
+              <li class="list-group-item"><?= $t['login_admin'] ?></li>
+              <li class="list-group-item"><?= $t['open_editor'] ?></li>
+              <li class="list-group-item"><?= $t['edit_json'] ?></li>
+              <li class="list-group-item"><?= $t['save_refresh'] ?></li>
             </ol>
           </div>
         </div>
       </div>
       <div class="col-12">
         <div class="card section-card">
-          <div class="card-header"><i class="fa-solid fa-lightbulb me-2"></i>11. Tips</div>
+          <div class="card-header"><i class="fa-solid fa-lightbulb me-2"></i>11. <?= $t['tips'] ?></div>
           <div class="card-body">
             <ul class="list-group list-group-flush">
-              <li class="list-group-item"><b>For Docker/Kubernetes:</b><br>
-                Ensure the <code>ping</code> utility is installed in your container for ICMP checks.
+              <li class="list-group-item"><b><?= $t['docker'] ?></b><br>
+                <?= $t['docker_tip'] ?>
               </li>
-              <li class="list-group-item"><b>Security:</b><br>
-                Change default admin credentials and SMTP passwords.
+              <li class="list-group-item"><b><?= $t['security'] ?></b><br>
+                <?= $t['security_tip'] ?>
               </li>
-              <li class="list-group-item"><b>Testing:</b><br>
-                Use the "Test" services to verify your setup.
+              <li class="list-group-item"><b><?= $t['testing'] ?></b><br>
+                <?= $t['testing_tip'] ?>
               </li>
-              <li class="list-group-item"><b>Hide Navbar:</b><br>
-                Add <code>?hide_navbar=1</code> to the URL to hide the navigation bar. <br>
-                Example: <code>index.php?hide_navbar=1</code>
+              <li class="list-group-item"><b><?= $t['hide_navbar'] ?></b><br>
+                <?= $t['hide_navbar_tip'] ?> <br>
+                <code><?= $t['example_url'] ?></code>
               </li>
             </ul>
           </div>
@@ -354,7 +520,7 @@ pre {
 
     <div class="tip mt-4">
       <i class="fa-solid fa-wrench me-2"></i>
-      For further customization, edit the <code>configuration.json</code> file directly or use the web editor as admin.
+      <?= $t['customization'] ?>
     </div>
   </div>
 </body>
