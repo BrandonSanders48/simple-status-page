@@ -2,6 +2,8 @@
 
 A sleek HTML/PHP status page with RSS feed support, fully configurable via JSON.
 
+<img width="1914" height="957" alt="image" src="https://github.com/user-attachments/assets/9cadfc7d-3120-4d41-b49b-861d7757ea72" />
+
 
 ## Default Login
 
