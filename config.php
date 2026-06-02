@@ -118,8 +118,8 @@ function checked($v) { return $v ? 'checked' : ''; }
         /* ── Action buttons ── */
         .del-btn { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#f87171; cursor:pointer; transition:background .15s,color .15s; flex-shrink:0; }
         .del-btn:hover { background:rgba(239,68,68,.1); color:#ef4444; }
-        .dark .del-btn { color:#4b1212; }
-        .dark .del-btn:hover { background:rgba(239,68,68,.1); color:#f87171; }
+        .dark .del-btn { color:rgba(248,113,113,.4); }
+        .dark .del-btn:hover { background:rgba(239,68,68,.12); color:#f87171; }
         .add-row-btn { font-size:12px; font-weight:600; color:#6366f1; cursor:pointer; display:flex; align-items:center; gap:5px; padding:7px 4px; margin-top:6px; opacity:.8; transition:opacity .15s; }
         .add-row-btn:hover { opacity:1; }
         .dark .add-row-btn { color:#818cf8; }
@@ -129,7 +129,7 @@ function checked($v) { return $v ? 'checked' : ''; }
         .dark .section-card { background:linear-gradient(150deg, #0d1e38 0%, #111c2e 100%); border-color:rgba(148,163,184,.08); box-shadow:0 1px 0 rgba(255,255,255,.02) inset; }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased min-h-screen">
+<body class="bg-slate-50 dark:bg-[#0d1b30] text-slate-900 dark:text-slate-100 font-sans antialiased min-h-screen">
 
 <!-- Sticky top bar -->
 <div class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/70 shadow-sm">
@@ -164,14 +164,14 @@ function checked($v) { return $v ? 'checked' : ''; }
     </div>
     <!-- Tab bar -->
     <div class="<?= $embed ? 'px-4' : 'max-w-5xl mx-auto px-4' ?> flex gap-0 overflow-x-auto border-t border-slate-100 dark:border-slate-800">
-        <button class="tab-btn active" data-tab="services">
+        <button class="tab-btn active" data-tab="general">
+            <i class="fa-solid fa-sliders mr-1.5 text-emerald-500"></i>General
+        </button>
+        <button class="tab-btn" data-tab="services">
             <i class="fa-solid fa-server mr-1.5 text-indigo-500"></i>Services
         </button>
         <button class="tab-btn" data-tab="rss">
             <i class="fa-solid fa-rss mr-1.5 text-orange-500"></i>RSS Feeds
-        </button>
-        <button class="tab-btn" data-tab="general">
-            <i class="fa-solid fa-sliders mr-1.5 text-emerald-500"></i>General
         </button>
         <button class="tab-btn" data-tab="network">
             <i class="fa-solid fa-network-wired mr-1.5 text-sky-500"></i>Network
@@ -201,7 +201,7 @@ function checked($v) { return $v ? 'checked' : ''; }
 <div class="<?= $embed ? 'px-4' : 'max-w-5xl mx-auto px-4' ?> py-5 pb-10">
 
     <!-- ── Services tab ─────────────────────────────────────────────── -->
-    <div id="tab-services" class="tab-panel">
+    <div id="tab-services" class="tab-panel hidden">
         <div class="section-card">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="font-semibold text-slate-700 dark:text-slate-300">Monitored Services</h2>
@@ -244,7 +244,6 @@ function checked($v) { return $v ? 'checked' : ''; }
         <div class="section-card">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="font-semibold text-slate-700 dark:text-slate-300">RSS / Atom Status Feeds</h2>
-                <span class="text-xs text-slate-400">Use <code class="bg-slate-100 dark:bg-slate-700 px-1 rounded">item</code> for RSS, <code class="bg-slate-100 dark:bg-slate-700 px-1 rounded">entry</code> for Atom</span>
             </div>
             <div class="overflow-x-auto">
             <table id="rss-table">
@@ -252,7 +251,7 @@ function checked($v) { return $v ? 'checked' : ''; }
                     <tr>
                         <th style="width:18%">Name</th>
                         <th style="width:40%">Feed URL</th>
-                        <th style="width:9%">Tag</th>
+                        <th style="width:9%">Format</th>
                         <th style="width:26%">Description</th>
                         <th style="width:7%"></th>
                     </tr>
@@ -264,8 +263,8 @@ function checked($v) { return $v ? 'checked' : ''; }
                     <td><input class="tbl-input" data-field="host"        value="<?= e($f['host'] ?? '') ?>" placeholder="https://..."></td>
                     <td>
                         <select class="tbl-input" data-field="tag">
-                            <option value="item"  <?= ($f['tag'] ?? 'item') === 'item'  ? 'selected' : '' ?>>item</option>
-                            <option value="entry" <?= ($f['tag'] ?? '') === 'entry' ? 'selected' : '' ?>>entry</option>
+                            <option value="item"  <?= ($f['tag'] ?? 'item') === 'item'  ? 'selected' : '' ?>>RSS</option>
+                            <option value="entry" <?= ($f['tag'] ?? '') === 'entry' ? 'selected' : '' ?>>Atom</option>
                         </select>
                     </td>
                     <td><input class="tbl-input" data-field="description" value="<?= e($f['description'] ?? '') ?>"></td>
@@ -282,7 +281,7 @@ function checked($v) { return $v ? 'checked' : ''; }
     </div>
 
     <!-- ── General tab ─────────────────────────────────────────────── -->
-    <div id="tab-general" class="tab-panel hidden">
+    <div id="tab-general" class="tab-panel">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             <div class="section-card">
@@ -528,7 +527,7 @@ function addRssRow() {
     var tr = document.createElement('tr');
     tr.innerHTML = '<td><input class="tbl-input" data-field="name" placeholder="Service Name"></td>'
         + '<td><input class="tbl-input" data-field="host" placeholder="https://status.example.com/rss"></td>'
-        + '<td><select class="tbl-input" data-field="tag"><option value="item">item</option><option value="entry">entry</option></select></td>'
+        + '<td><select class="tbl-input" data-field="tag"><option value="item">RSS</option><option value="entry">Atom</option></select></td>'
         + '<td><input class="tbl-input" data-field="description"></td>'
         + '<td><button type="button" class="del-btn" onclick="this.closest(\'tr\').remove()"><i class="fa fa-trash text-xs"></i></button></td>';
     document.getElementById('rss-tbody').appendChild(tr);

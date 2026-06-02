@@ -492,16 +492,16 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
 </main>
 
 <!-- ── Floating actions ──────────────────────────────────────────────── -->
-<div class="fixed bottom-5 right-5 z-30 flex flex-col items-end gap-2.5">
+<div class="fixed bottom-5 right-5 z-30 flex flex-col gap-2.5 w-44">
     <?php if ($is_admin): ?>
     <button type="button" onclick="openModal('createIncidentModal')"
-        class="flex items-center gap-2 pl-3 pr-4 py-2.5 bg-amber-500 hover:bg-amber-400 dark:bg-amber-600 dark:hover:bg-amber-500 shadow-lg hover:shadow-xl rounded-full text-white text-sm font-medium transition-all hover:-translate-y-0.5 active:translate-y-0">
+        class="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-400 dark:bg-amber-600 dark:hover:bg-amber-500 shadow-lg hover:shadow-xl rounded-xl text-white text-sm font-medium transition-all hover:-translate-y-0.5 active:translate-y-0">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <span><?= $t['incidents'] ?></span>
     </button>
     <?php endif; ?>
     <button type="button" onclick="openModal('subscribeModal')"
-        class="flex items-center gap-2 pl-3 pr-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-700 dark:hover:bg-emerald-600 shadow-lg hover:shadow-xl rounded-full text-white text-sm font-medium transition-all hover:-translate-y-0.5 active:translate-y-0">
+        class="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-700 dark:hover:bg-emerald-600 shadow-lg hover:shadow-xl rounded-xl text-white text-sm font-medium transition-all hover:-translate-y-0.5 active:translate-y-0">
         <i class="fa-solid fa-bell"></i>
         <span><?= $t['subscribe'] ?></span>
     </button>
@@ -510,27 +510,25 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
 <!-- ── Footer ─────────────────────────────────────────────────────────── -->
 <footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-6 mt-6">
     <div class="max-w-screen-xl mx-auto px-4">
-        <!-- Company info section -->
+        <!-- Footer links -->
         <div class="flex flex-col sm:flex-row justify-center gap-6 mb-4 text-sm text-slate-600 dark:text-slate-400">
-            <?php if ($company_url): ?>
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-globe text-indigo-600 dark:text-indigo-400"></i>
-                    <a href="<?= htmlspecialchars($company_url) ?>" target="_blank" rel="noopener" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                        <?= $lang === 'es' ? 'Sitio web' : 'Website' ?>
-                    </a>
-                </div>
-            <?php endif; ?>
-            <?php if ($support_email): ?>
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-envelope text-emerald-600 dark:text-emerald-400"></i>
-                    <a href="mailto:<?= htmlspecialchars($support_email) ?>" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                        <?= htmlspecialchars($support_email) ?>
-                    </a>
-                </div>
-            <?php endif; ?>
+            <div class="flex items-center gap-2">
+                <i class="fa-brands fa-github text-slate-600 dark:text-slate-400"></i>
+                <a href="https://github.com/brandonsanders48/simple-status-page" target="_blank" rel="noopener"
+                   class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    GitHub
+                </a>
+            </div>
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-bug text-slate-500 dark:text-slate-500"></i>
+                <a href="https://github.com/brandonsanders48/simple-status-page/issues/new" target="_blank" rel="noopener"
+                   class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    Submit Issue
+                </a>
+            </div>
             <?php if ($support_phone): ?>
                 <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-phone text-blue-600 dark:text-blue-400"></i>
+                    <i class="fa-solid fa-phone text-slate-500 dark:text-slate-500"></i>
                     <span><?= htmlspecialchars($support_phone) ?></span>
                 </div>
             <?php endif; ?>
@@ -567,40 +565,55 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
 <!-- Subscribe Modal -->
 <div id="subscribeModal" class="sp-modal hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
      onclick="if(event.target===this)closeModal('subscribeModal')">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-            <h5 class="text-base font-semibold flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                <i class="fa-solid fa-envelope text-emerald-500"></i> <?= $t['subscribe_service'] ?>
-            </h5>
-            <button onclick="closeModal('subscribeModal')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none">&times;</button>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700/50">
+        <div class="flex items-start justify-between px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-700/60">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-bell text-emerald-600 dark:text-emerald-400"></i>
+                </div>
+                <div>
+                    <h5 class="font-semibold text-slate-900 dark:text-white text-sm"><?= $lang === 'es' ? 'Suscribirse a alertas' : 'Subscribe to Alerts' ?></h5>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"><?= $lang === 'es' ? 'Notificaciones por correo' : 'Get emailed when services go down' ?></p>
+                </div>
+            </div>
+            <button onclick="closeModal('subscribeModal')" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-lg leading-none mt-0.5">&times;</button>
         </div>
-        <div class="px-6 py-5 modal-scroll overflow-y-auto max-h-[70vh]">
+        <div class="px-6 py-5">
             <form id="subscribeForm" class="space-y-4">
                 <div>
-                    <label for="subscribeEmail" class="<?= $label_cls ?>"><?= $t['email'] ?></label>
-                    <input type="email" id="subscribeEmail" name="email" placeholder="you@example.com" required class="<?= $input_cls ?>">
+                    <label for="subscribeEmail" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $t['email'] ?></label>
+                    <input type="email" id="subscribeEmail" name="email" placeholder="you@example.com" required
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm transition">
                 </div>
                 <div>
-                    <label for="subscribeService" class="<?= $label_cls ?>"><?= $t['select_service'] ?></label>
-                    <select id="subscribeService" name="service[]" multiple required
-                        class="<?= $input_cls ?> min-h-[200px]" size="8">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide"><?= $t['select_service'] ?></label>
+                        <button type="button" id="selectAllSvcs" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium"><?= $lang === 'es' ? 'Todo' : 'Select all' ?></button>
+                    </div>
+                    <div class="max-h-48 overflow-y-auto modal-scroll rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40">
                         <?php foreach ($internal_hosts as $service): ?>
-                            <option value="<?= htmlspecialchars($service['name']) ?>">
-                                <?= $t['service'] ?>: <?= htmlspecialchars($service['name']) ?>
-                            </option>
+                        <label class="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40 cursor-pointer transition-colors">
+                            <input type="checkbox" name="service[]" value="<?= htmlspecialchars($service['name']) ?>"
+                                class="w-4 h-4 rounded accent-emerald-500 flex-shrink-0">
+                            <span class="text-sm text-slate-800 dark:text-slate-200 font-medium flex-1"><?= htmlspecialchars($service['name']) ?></span>
+                            <?php if (!empty($service['description'])): ?>
+                            <span class="text-xs text-slate-400 dark:text-slate-500 truncate max-w-[110px]"><?= htmlspecialchars($service['description']) ?></span>
+                            <?php endif; ?>
+                        </label>
                         <?php endforeach; ?>
-                    </select>
-                    <p class="text-xs text-gray-400 mt-1"><?= $lang === 'es' ? 'Ctrl (Win) o Cmd (Mac) para múltiples.' : 'Hold Ctrl (Win) or Cmd (Mac) to select multiple.' ?></p>
+                    </div>
                 </div>
-                <div class="flex justify-end gap-2 pt-1">
+                <div class="flex items-center justify-between pt-1">
                     <button type="button" onclick="closeModal('subscribeModal');openModal('manageSubModal')"
-                        class="<?= $btn_secondary ?>">
-                        <i class="fa-solid fa-gear mr-1"></i><?= $lang === 'es' ? 'Administrar' : 'Manage' ?>
+                        class="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-1.5 transition-colors">
+                        <i class="fa-solid fa-gear text-xs"></i> <?= $lang === 'es' ? 'Administrar' : 'Manage' ?>
                     </button>
-                    <button type="submit" class="<?= $btn_success ?>"><?= $t['subscribe'] ?></button>
+                    <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+                        <?= $t['subscribe'] ?>
+                    </button>
                 </div>
             </form>
-            <div id="subscribeMsg" class="mt-3"></div>
+            <div id="subscribeMsg" class="mt-3 text-sm"></div>
         </div>
     </div>
 </div>
@@ -645,32 +658,53 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
 <!-- Login Modal -->
 <div id="loginModal" class="sp-modal hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
      onclick="if(event.target===this)closeModal('loginModal')">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-            <h5 class="text-base font-semibold flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                <i class="fa-solid fa-user-lock text-blue-500"></i> <?= $t['login'] ?>
-            </h5>
-            <button onclick="closeModal('loginModal')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none">&times;</button>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-200 dark:border-slate-700/50">
+        <div class="px-6 pt-6 pb-4 text-center">
+            <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/40 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-lock text-indigo-600 dark:text-indigo-400 text-lg"></i>
+            </div>
+            <h5 class="text-lg font-bold text-slate-900 dark:text-white"><?= $t['login'] ?></h5>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5"><?= $lang === 'es' ? 'Se requiere acceso de administrador' : 'Admin access required' ?></p>
         </div>
-        <div class="px-6 py-5">
+        <div class="px-6 pb-6">
             <?php if (isset($login_error)): ?>
-                <div class="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 text-sm mb-4">
-                    <i class="fa-solid fa-circle-xmark"></i> <?= htmlspecialchars($login_error) ?>
+                <div class="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-400 rounded-lg px-3 py-2.5 text-sm mb-4">
+                    <i class="fa-solid fa-circle-xmark flex-shrink-0"></i> <?= htmlspecialchars($login_error) ?>
                 </div>
             <?php endif; ?>
-            <form method="post" autocomplete="off" class="space-y-4">
+            <form method="post" autocomplete="off" class="space-y-3">
                 <div>
-                    <label for="loginUsername" class="<?= $label_cls ?>"><?= $t['username'] ?></label>
-                    <input type="text" id="loginUsername" name="username" required class="<?= $input_cls ?>">
+                    <label for="loginUsername" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $t['username'] ?></label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                        <input type="text" id="loginUsername" name="username" required autocomplete="username"
+                            class="w-full pl-8 pr-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                    </div>
                 </div>
                 <div>
-                    <label for="loginPassword" class="<?= $label_cls ?>"><?= $t['password'] ?></label>
-                    <input type="password" id="loginPassword" name="password" required class="<?= $input_cls ?>">
+                    <label for="loginPassword" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $t['password'] ?></label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                        <input type="password" id="loginPassword" name="password" required autocomplete="current-password"
+                            class="w-full pl-8 pr-9 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                        <button type="button" tabindex="-1"
+                            onclick="var i=document.getElementById('loginPassword');i.type=i.type==='password'?'text':'password';this.querySelector('i').className=i.type==='password'?'fa-solid fa-eye text-xs':'fa-solid fa-eye-slash text-xs'"
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                            <i class="fa-solid fa-eye text-xs"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="flex justify-end pt-1">
-                    <button type="submit" name="login" class="<?= $btn_primary ?>"><?= $t['login'] ?></button>
+                <div class="pt-2">
+                    <button type="submit" name="login"
+                        class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-right-to-bracket text-xs"></i>
+                        <?= $t['login'] ?>
+                    </button>
                 </div>
             </form>
+            <button onclick="closeModal('loginModal')" class="w-full mt-2 py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                <?= $lang === 'es' ? 'Cancelar' : 'Cancel' ?>
+            </button>
         </div>
     </div>
 </div>
@@ -781,7 +815,7 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
 
 <!-- ── Config popup modal (iframe) ──────────────────────────────── -->
 <div id="configModal" class="sp-modal hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3">
-    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+    <div class="bg-white dark:bg-[#0d1b30] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-transparent dark:border-slate-600/40"
          style="width:96vw;max-width:1140px;height:93vh">
         <iframe id="config-iframe" src="" style="flex:1;border:0;min-height:0;width:100%"></iframe>
     </div>

@@ -367,16 +367,27 @@ $('#createIncidentForm').on('submit', function(e) {
 // --- Subscribe ---
 $('#subscribeForm').on('submit', function(e) {
     e.preventDefault();
-    var formData = $(this).serializeArray().filter(f => f.name !== 'service[]');
-    ($('#subscribeService').val() || []).forEach(s => formData.push({name: 'service[]', value: s}));
+    var formData = $(this).serializeArray();
+    if (!formData.some(function(f) { return f.name === 'service[]'; })) {
+        $('#subscribeMsg').html('<p class="text-amber-500">Please select at least one service.</p>');
+        return;
+    }
     formData.push({name: 'csrf_token', value: csrfToken});
     $.post('include/subscriptions.php', $.param(formData), function(response) {
-        $('#subscribeMsg').html('<p class="text-sm text-emerald-600 font-medium">' + escapeHtml(response.message || 'Subscribed!') + '</p>');
+        $('#subscribeMsg').html('<p class="text-emerald-600 dark:text-emerald-400 font-medium">' + escapeHtml(response.message || 'Subscribed!') + '</p>');
         $('#subscribeForm')[0].reset();
+        $('#selectAllSvcs').text('Select all');
     }, 'json').fail(function(xhr) {
         const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to subscribe.';
-        $('#subscribeMsg').html('<p class="text-sm text-red-500">' + escapeHtml(msg) + '</p>');
+        $('#subscribeMsg').html('<p class="text-red-500">' + escapeHtml(msg) + '</p>');
     });
+});
+
+$(document).on('click', '#selectAllSvcs', function() {
+    var $cbs = $('#subscribeForm input[type="checkbox"]');
+    var allChecked = $cbs.length > 0 && $cbs.length === $cbs.filter(':checked').length;
+    $cbs.prop('checked', !allChecked);
+    $(this).text(allChecked ? 'Select all' : 'Deselect all');
 });
 
 // --- Manage Subscription ---
