@@ -391,52 +391,75 @@ $(document).on('click', '#selectAllSvcs', function() {
 });
 
 // --- Manage Subscription ---
-$('#manageSubForm').on('submit', function(e) {
-    e.preventDefault();
-    const action = $('#manageAction').val();
-    const url    = action === 'view' ? 'include/manage_subscribe.php' : 'include/unsubscribe.php';
-    $('#manageSubMsg').html(''); $('#manageSubResults').html('');
+function renderManageSubList(subscriptions) {
+    var $list = $('#manageSubList');
+    $list.empty();
+    if (!subscriptions || subscriptions.length === 0) {
+        $list.append('<li class="px-3 py-3 text-sm text-slate-500 dark:text-slate-400 text-center">No active subscriptions found.</li>');
+        $('#manageSubUnsubAll').addClass('hidden');
+    } else {
+        subscriptions.forEach(function(sub) {
+            $list.append(
+                '<li class="flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">' +
+                '<span class="text-sm text-slate-800 dark:text-slate-200 font-medium">' + escapeHtml(sub) + '</span>' +
+                '<button class="unsubscribe-service-btn text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-md font-medium transition-colors" data-service="' + encodeURIComponent(sub) + '">Unsubscribe</button>' +
+                '</li>'
+            );
+        });
+        $('#manageSubUnsubAll').removeClass('hidden');
+    }
+    $('#manageSubResults').removeClass('hidden');
+}
 
-    $.post(url, $(this).serialize() + '&csrf_token=' + encodeURIComponent(csrfToken), function(response) {
-        const submitBtn = document.getElementById('manageSubSubmitBtn');
-        const backBtn   = document.getElementById('manageSubBackBtn');
-        if (action === 'view') {
-            if (submitBtn) submitBtn.style.display = 'none';
-            if (backBtn)   backBtn.style.display   = 'none';
-        } else {
-            if (submitBtn) submitBtn.style.display = '';
-            if (backBtn)   backBtn.style.display   = '';
-        }
+$('#manageSubLookup').on('click', function() {
+    const email = $('#manageEmail').val().trim();
+    if (!email) {
+        $('#manageSubMsg').html('<p class="text-sm text-amber-500">Please enter your email address.</p>');
+        return;
+    }
+    $('#manageSubMsg').html('');
+    $('#manageSubResults').addClass('hidden');
+    $('#manageSubUnsubAll').addClass('hidden');
 
-        if (response.status === 'success' && response.subscriptions) {
-            let html = '<ul class="space-y-2 mt-2">';
-            response.subscriptions.forEach(sub => {
-                html += `<li class="flex items-center justify-between bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2">
-                    <span class="text-sm text-slate-800 dark:text-slate-200">${escapeHtml(sub)}</span>
-                    <button class="unsubscribe-service-btn text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 text-red-600 dark:text-red-400 px-2 py-1 rounded-md" data-service="${encodeURIComponent(sub)}">Unsubscribe</button>
-                </li>`;
-            });
-            html += '</ul>';
-            $('#manageSubResults').html(html);
-        }
-
+    $.post('include/manage_subscribe.php', { email: email, action: 'view', csrf_token: csrfToken }, function(response) {
         const cls = response.status === 'success'
             ? 'text-emerald-600 dark:text-emerald-400'
             : 'text-red-500';
-        $('#manageSubMsg').html(`<p class="text-sm mt-2 ${cls}">${escapeHtml(response.message || '')}</p>`);
-        if (response.status === 'success' && response.action === 'unsubscribe') $('#manageSubResults').html('');
+        if (response.status === 'success' && response.subscriptions) {
+            renderManageSubList(response.subscriptions);
+            if (response.message) {
+                $('#manageSubMsg').html('<p class="text-sm ' + cls + '">' + escapeHtml(response.message) + '</p>');
+            }
+        } else {
+            $('#manageSubMsg').html('<p class="text-sm ' + cls + '">' + escapeHtml(response.message || 'Failed to look up subscriptions.') + '</p>');
+        }
     }, 'json').fail(function(xhr) {
-        const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to process request.';
+        const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to look up subscriptions.';
         $('#manageSubMsg').html('<p class="text-sm text-red-500">' + escapeHtml(msg) + '</p>');
     });
 });
 
-$('#manageAction').on('change', function() {
-    const isView  = $(this).val() === 'view';
-    const submit  = document.getElementById('manageSubSubmitBtn');
-    const back    = document.getElementById('manageSubBackBtn');
-    if (submit) submit.style.display = isView ? 'none' : '';
-    if (back)   back.style.display   = isView ? 'none' : '';
+$('#manageEmail').on('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); $('#manageSubLookup').trigger('click'); }
+});
+
+$('#manageSubUnsubAll').on('click', function() {
+    const email = $('#manageEmail').val().trim();
+    if (!email) return;
+    $.post('include/unsubscribe.php', { email: email, action: 'unsubscribe', csrf_token: csrfToken }, function(response) {
+        const cls = response.status === 'success'
+            ? 'text-emerald-600 dark:text-emerald-400'
+            : 'text-red-500';
+        $('#manageSubMsg').html('<p class="text-sm ' + cls + '">' + escapeHtml(response.message || '') + '</p>');
+        if (response.status === 'success') {
+            $('#manageSubList').empty();
+            $('#manageSubUnsubAll').addClass('hidden');
+            $('#manageSubResults').addClass('hidden');
+        }
+    }, 'json').fail(function(xhr) {
+        const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to unsubscribe.';
+        $('#manageSubMsg').html('<p class="text-sm text-red-500">' + escapeHtml(msg) + '</p>');
+    });
 });
 
 // --- Language selector ---

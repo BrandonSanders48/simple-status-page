@@ -36,8 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $currentVer = $incoming['meta']['version'] ?? ($json_data['meta']['version'] ?? '1.0');
             $parts = explode('.', (string)$currentVer);
             $incoming['meta']['version'] = ($parts[0] ?? '1') . '.' . ((int)($parts[1] ?? 0) + 1);
-            // Preserve author from existing config (read-only field)
-            $incoming['meta']['author'] = $json_data['meta']['author'] ?? ($incoming['meta']['author'] ?? '');
             // Merge so unknown fields (email, etc.) are preserved
             $merged = array_merge($json_data, $incoming);
             file_put_contents($configPath, json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
@@ -176,8 +174,8 @@ function checked($v) { return $v ? 'checked' : ''; }
         <button class="tab-btn" data-tab="network">
             <i class="fa-solid fa-network-wired mr-1.5 text-sky-500"></i>Network
         </button>
-        <button class="tab-btn" data-tab="raw">
-            <i class="fa-solid fa-code mr-1.5 text-slate-400"></i>Raw JSON
+        <button class="tab-btn" data-tab="notifications">
+            <i class="fa-solid fa-bell mr-1.5 text-violet-500"></i>Notifications
         </button>
     </div>
 </div>
@@ -284,68 +282,130 @@ function checked($v) { return $v ? 'checked' : ''; }
     <div id="tab-general" class="tab-panel">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+            <!-- Branding card -->
             <div class="section-card">
                 <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">Branding</h2>
                 <div class="space-y-4">
                     <div>
                         <label class="cfg-label">Business / Site Name</label>
-                        <input id="cfg-business-name" class="cfg-input" value="<?= e($json_data['business_name'] ?? '') ?>">
+                        <input id="cfg-business-name" class="cfg-input" value="<?= e($json_data['branding']['business_name'] ?? $json_data['business_name'] ?? '') ?>">
                     </div>
                     <div>
                         <label class="cfg-label">Logo Path or URL</label>
-                        <input id="cfg-business-logo" class="cfg-input" value="<?= e($json_data['business_logo'] ?? '') ?>" placeholder="images/logo.webp">
-                        <?php if (!empty($json_data['business_logo'])): ?>
-                        <img src="<?= e($json_data['business_logo']) ?>" alt="Logo preview" class="mt-2 max-h-12 rounded bg-white p-1 border border-slate-200">
+                        <input id="cfg-business-logo" class="cfg-input" value="<?= e($json_data['branding']['business_logo'] ?? $json_data['business_logo'] ?? '') ?>" placeholder="images/logo.webp">
+                        <?php $_logo = $json_data['branding']['business_logo'] ?? $json_data['business_logo'] ?? ''; if (!empty($_logo)): ?>
+                        <img src="<?= e($_logo) ?>" alt="Logo preview" class="mt-2 max-h-12 rounded bg-white p-1 border border-slate-200">
                         <?php endif; ?>
                     </div>
                     <div>
+                        <label class="cfg-label">Company URL</label>
+                        <input id="cfg-company-url" class="cfg-input" type="url" value="<?= e($json_data['branding']['company_url'] ?? $json_data['company_url'] ?? '') ?>" placeholder="https://example.com">
+                    </div>
+                    <div>
+                        <label class="cfg-label">Support Email</label>
+                        <input id="cfg-support-email" class="cfg-input" type="email" value="<?= e($json_data['branding']['support_email'] ?? $json_data['support_email'] ?? '') ?>" placeholder="support@example.com">
+                    </div>
+                    <div>
+                        <label class="cfg-label">Support Phone</label>
+                        <input id="cfg-support-phone" class="cfg-input" type="text" value="<?= e($json_data['branding']['support_phone'] ?? $json_data['support_phone'] ?? '') ?>" placeholder="+1 555-000-0000">
+                    </div>
+                    <div>
                         <label class="cfg-label">Footer Message</label>
-                        <input id="cfg-footer-message" class="cfg-input" value="<?= e($json_data['footer_message'] ?? '') ?>">
+                        <input id="cfg-footer-message" class="cfg-input" value="<?= e($json_data['branding']['footer_message'] ?? $json_data['footer_message'] ?? '') ?>">
                     </div>
                 </div>
             </div>
 
+            <!-- Announcement + Theme stacked -->
+            <div class="flex flex-col gap-4">
+
+                <!-- Announcement card -->
+                <div class="section-card">
+                    <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">Announcement Banner</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="cfg-label">Banner Text</label>
+                            <input id="cfg-announcement-banner" class="cfg-input" value="<?= e($json_data['branding']['announcement_banner'] ?? $json_data['announcement_banner'] ?? '') ?>" placeholder="Leave blank to hide banner">
+                        </div>
+                        <div>
+                            <label class="cfg-label">Banner Type</label>
+                            <select id="cfg-announcement-type" class="cfg-input">
+                                <?php $annType = $json_data['branding']['announcement_type'] ?? $json_data['announcement_type'] ?? 'info'; ?>
+                                <option value="info"    <?= $annType === 'info'    ? 'selected' : '' ?>>Info</option>
+                                <option value="warning" <?= $annType === 'warning' ? 'selected' : '' ?>>Warning</option>
+                                <option value="error"   <?= $annType === 'error'   ? 'selected' : '' ?>>Error</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Theme card -->
+                <div class="section-card">
+                    <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">Theme Colors</h2>
+                    <div class="grid grid-cols-1 gap-3">
+                        <?php
+                        $themeColors = [
+                            'cfg-primary-color' => ['Primary',  $json_data['theme']['primary_color']  ?? '#6366f1'],
+                            'cfg-accent-color'  => ['Accent',   $json_data['theme']['accent_color']   ?? '#8b5cf6'],
+                            'cfg-success-color' => ['Success',  $json_data['theme']['success_color']  ?? '#10b981'],
+                            'cfg-warning-color' => ['Warning',  $json_data['theme']['warning_color']  ?? '#f59e0b'],
+                            'cfg-error-color'   => ['Error',    $json_data['theme']['error_color']    ?? '#ef4444'],
+                        ];
+                        foreach ($themeColors as $id => [$label, $val]): ?>
+                        <div class="flex items-center justify-between gap-3">
+                            <label class="cfg-label mb-0 flex-1"><?= $label ?></label>
+                            <input id="<?= $id ?>" type="color" class="w-10 h-8 rounded cursor-pointer border border-slate-200 dark:border-slate-600 p-0.5" value="<?= e($val) ?>">
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+            </div><!-- /col -->
+
+            <!-- SLA card -->
             <div class="section-card">
-                <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">Display &amp; Behaviour</h2>
+                <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">SLA Tracking</h2>
+                <div class="space-y-4">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input id="cfg-sla-enabled" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['sla']['enabled'] ?? false) ?>>
+                        <span class="text-sm font-medium">Enable SLA reporting</span>
+                    </label>
+                    <div>
+                        <label class="cfg-label">Uptime Target (%)</label>
+                        <input id="cfg-sla-target" class="cfg-input" type="number" min="0" max="100" step="0.01"
+                               value="<?= e($json_data['sla']['uptime_target'] ?? 99.9) ?>">
+                    </div>
+                    <div>
+                        <label class="cfg-label">Reporting Period</label>
+                        <select id="cfg-sla-period" class="cfg-input">
+                            <?php $slaPeriod = $json_data['sla']['reporting_period'] ?? 'monthly'; ?>
+                            <option value="monthly"   <?= $slaPeriod === 'monthly'   ? 'selected' : '' ?>>Monthly</option>
+                            <option value="weekly"    <?= $slaPeriod === 'weekly'    ? 'selected' : '' ?>>Weekly</option>
+                            <option value="quarterly" <?= $slaPeriod === 'quarterly' ? 'selected' : '' ?>>Quarterly</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Meta card -->
+            <div class="section-card">
+                <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">About / Meta</h2>
                 <div class="space-y-4">
                     <div>
-                        <label class="cfg-label">Auto-Refresh Interval (ms)</label>
-                        <input id="cfg-refresh-rate" class="cfg-input" type="number" min="3000" step="500"
-                               value="<?= (int)($json_data['refresh_rate'] ?? 30000) ?>">
-                        <p class="text-xs text-slate-400 mt-1">3000 = 3 seconds. Minimum 3000.</p>
+                        <label class="cfg-label">Description</label>
+                        <input id="cfg-meta-description" class="cfg-input" value="<?= e($json_data['meta']['description'] ?? '') ?>" placeholder="A brief description of this status page">
                     </div>
-                    <div class="flex flex-col gap-3 pt-1">
-                        <label class="flex items-center gap-3 cursor-pointer">
-                            <input id="cfg-alert-sound" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['alert_sound'] ?? false) ?>>
-                            <span class="text-sm font-medium">Play alert sound on status change</span>
-                        </label>
-                        <label class="flex items-center gap-3 cursor-pointer">
-                            <input id="cfg-browser-notify" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['browser_notify'] ?? false) ?>>
-                            <span class="text-sm font-medium">Enable browser notifications</span>
-                        </label>
-                        <label class="flex items-center gap-3 cursor-pointer">
-                            <input id="cfg-require-auth" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['require_auth'] ?? true) ?>>
-                            <span class="text-sm font-medium">Require login for admin features
-                                <span class="block text-xs text-slate-400 font-normal">Uncheck to allow config access without logging in</span>
-                            </span>
-                        </label>
+                    <div>
+                        <label class="cfg-label">Author</label>
+                        <input id="cfg-author" class="cfg-input" value="<?= e($json_data['meta']['author'] ?? '') ?>">
                     </div>
-                </div>
-            </div>
-
-            <div class="section-card md:col-span-2">
-                <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">About / Meta</h2>
-                <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="cfg-label">Config Version <span class="text-slate-400 font-normal normal-case">(auto-increments on save)</span></label>
                         <input id="cfg-version" class="cfg-input" value="<?= e($json_data['meta']['version'] ?? '1.0') ?>" readonly>
                     </div>
-                    <div>
-                        <label class="cfg-label">Author</label>
-                        <input id="cfg-author" class="cfg-input" value="<?= e($json_data['meta']['author'] ?? '') ?>" readonly>
-                    </div>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -395,85 +455,72 @@ function checked($v) { return $v ? 'checked' : ''; }
         </div>
     </div>
 
-    <!-- ── Raw JSON tab ────────────────────────────────────────────── -->
-    <div id="tab-raw" class="tab-panel hidden">
-        <div class="section-card mb-4">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="font-semibold text-slate-700 dark:text-slate-300">Raw JSON</h2>
-                <span class="text-xs text-amber-500"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Edits here override the form tabs on save</span>
-            </div>
-            <textarea id="raw-json" style="background:#0f172a;color:#e2e8f0;font-family:monospace;resize:vertical;border:1px solid #334155;border-radius:8px;padding:14px;min-height:520px;width:100%;font-size:12.5px;line-height:1.7;box-sizing:border-box"
-                spellcheck="false"><?= htmlspecialchars($json) ?></textarea>
-        </div>
+    <!-- ── Notifications tab ─────────────────────────────────────────── -->
+    <div id="tab-notifications" class="tab-panel hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        <!-- Help Reference -->
-        <div class="section-card">
-            <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-circle-info text-indigo-400"></i> Configuration Reference
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-
-                <div>
-                    <h3 class="font-semibold text-slate-600 dark:text-slate-400 mb-2 text-xs uppercase tracking-wide">Services <code class="bg-slate-100 dark:bg-slate-700 px-1 rounded">internal_hosts[]</code></h3>
-                    <table class="w-full text-xs">
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">name</td><td class="py-1 text-slate-600 dark:text-slate-400">Display name</td></tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">host</td><td class="py-1 text-slate-600 dark:text-slate-400">Hostname or IP address</td></tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">port</td><td class="py-1 text-slate-600 dark:text-slate-400">Port number, or <code class="bg-slate-100 dark:bg-slate-700 px-0.5 rounded">null</code> for ICMP ping</td></tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">type</td><td class="py-1 text-slate-600 dark:text-slate-400">Label: PING, LDAP, SMB, HTTP…</td></tr>
-                        <tr><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">description</td><td class="py-1 text-slate-600 dark:text-slate-400">Short note shown on the card</td></tr>
-                    </table>
-                </div>
-
-                <div>
-                    <h3 class="font-semibold text-slate-600 dark:text-slate-400 mb-2 text-xs uppercase tracking-wide">RSS Feeds <code class="bg-slate-100 dark:bg-slate-700 px-1 rounded">RSS[]</code></h3>
-                    <table class="w-full text-xs">
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">name</td><td class="py-1 text-slate-600 dark:text-slate-400">Feed display name</td></tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">host</td><td class="py-1 text-slate-600 dark:text-slate-400">Full RSS/Atom URL</td></tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">tag</td><td class="py-1 text-slate-600 dark:text-slate-400"><code class="bg-slate-100 dark:bg-slate-700 px-0.5 rounded">item</code> (RSS) or <code class="bg-slate-100 dark:bg-slate-700 px-0.5 rounded">entry</code> (Atom)</td></tr>
-                        <tr><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">description</td><td class="py-1 text-slate-600 dark:text-slate-400">Short note shown on the box</td></tr>
-                    </table>
-                </div>
-
-                <div>
-                    <h3 class="font-semibold text-slate-600 dark:text-slate-400 mb-2 text-xs uppercase tracking-wide">Network <code class="bg-slate-100 dark:bg-slate-700 px-1 rounded">network{}</code></h3>
-                    <table class="w-full text-xs">
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">gateway</td><td class="py-1 text-slate-600 dark:text-slate-400">LAN gateway IP — pinged for local status</td></tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">public_dns</td><td class="py-1 text-slate-600 dark:text-slate-400">DNS checked on port 53 for WAN status</td></tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">domain</td><td class="py-1 text-slate-600 dark:text-slate-400">Internal domain (display only)</td></tr>
-                        <tr><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">isp_map</td><td class="py-1 text-slate-600 dark:text-slate-400">Object mapping public IP → ISP label</td></tr>
-                    </table>
-                </div>
-
-                <div>
-                    <h3 class="font-semibold text-slate-600 dark:text-slate-400 mb-2 text-xs uppercase tracking-wide">Top-level fields</h3>
-                    <table class="w-full text-xs">
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">business_name</td><td class="py-1 text-slate-600 dark:text-slate-400">Page / org name in navbar</td></tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">business_logo</td><td class="py-1 text-slate-600 dark:text-slate-400">Path or URL to logo image</td></tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">refresh_rate</td><td class="py-1 text-slate-600 dark:text-slate-400">Poll interval in ms (min 3000)</td></tr>
-                        <tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">alert_sound</td><td class="py-1 text-slate-600 dark:text-slate-400"><code class="bg-slate-100 dark:bg-slate-700 px-0.5 rounded">true</code> / <code class="bg-slate-100 dark:bg-slate-700 px-0.5 rounded">false</code></td></tr>
-                        <tr><td class="py-1 pr-3 font-mono text-indigo-600 dark:text-indigo-400">browser_notify</td><td class="py-1 text-slate-600 dark:text-slate-400"><code class="bg-slate-100 dark:bg-slate-700 px-0.5 rounded">true</code> / <code class="bg-slate-100 dark:bg-slate-700 px-0.5 rounded">false</code></td></tr>
-                    </table>
-                </div>
-
-                <div class="md:col-span-2">
-                    <h3 class="font-semibold text-slate-600 dark:text-slate-400 mb-2 text-xs uppercase tracking-wide">Environment variables (override config)</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                        <div class="bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"><code class="text-indigo-600 dark:text-indigo-400">APP_AUTH_REQUIRED</code><div class="text-slate-500 mt-0.5">true / false</div></div>
-                        <div class="bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"><code class="text-indigo-600 dark:text-indigo-400">APP_USERNAME</code><div class="text-slate-500 mt-0.5">Admin username</div></div>
-                        <div class="bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"><code class="text-indigo-600 dark:text-indigo-400">APP_PASSWORD</code><div class="text-slate-500 mt-0.5">Admin password</div></div>
+            <!-- Display & Behaviour card -->
+            <div class="section-card">
+                <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">Display &amp; Behaviour</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="cfg-label">Auto-Refresh Interval (ms)</label>
+                        <input id="cfg-refresh-rate" class="cfg-input" type="number" min="3000" step="500"
+                               value="<?= (int)($json_data['refresh_rate'] ?? 30000) ?>">
+                        <p class="text-xs text-slate-400 mt-1">3000 = 3 seconds. Minimum 3000.</p>
+                    </div>
+                    <div class="flex flex-col gap-3 pt-1">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input id="cfg-alert-sound" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['alert_sound'] ?? false) ?>>
+                            <span class="text-sm font-medium">Play alert sound on status change</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input id="cfg-browser-notify" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['browser_notify'] ?? false) ?>>
+                            <span class="text-sm font-medium">Enable browser notifications</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input id="cfg-require-auth" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['require_auth'] ?? true) ?>>
+                            <span class="text-sm font-medium">Require login for admin features
+                                <span class="block text-xs text-slate-400 font-normal">Uncheck to allow config access without logging in</span>
+                            </span>
+                        </label>
                     </div>
                 </div>
+            </div>
 
-                <div class="md:col-span-2">
-                    <h3 class="font-semibold text-slate-600 dark:text-slate-400 mb-2 text-xs uppercase tracking-wide">URL parameters</h3>
-                    <div class="flex flex-wrap gap-2 text-xs">
-                        <span class="bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-1.5"><code class="text-indigo-600 dark:text-indigo-400">?hide_navbar=1</code> — hide navigation bar</span>
-                        <span class="bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-1.5"><code class="text-indigo-600 dark:text-indigo-400">?debug=1</code> — show diagnostics overlay</span>
-                        <span class="bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-1.5"><code class="text-indigo-600 dark:text-indigo-400">?lang=es</code> — switch language</span>
+            <!-- Email / Notifications card -->
+            <div class="section-card">
+                <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">Email / Notifications</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="cfg-label">From Address</label>
+                        <input id="cfg-email-from" class="cfg-input" type="email" value="<?= e($json_data['email']['from'] ?? '') ?>" placeholder="noreply@example.com">
+                    </div>
+                    <div>
+                        <label class="cfg-label">Reply-To Address</label>
+                        <input id="cfg-email-replyto" class="cfg-input" type="email" value="<?= e($json_data['email']['reply_to'] ?? '') ?>" placeholder="support@example.com">
+                    </div>
+                    <div>
+                        <label class="cfg-label">SMTP Host</label>
+                        <input id="cfg-smtp-host" class="cfg-input" type="text" value="<?= e($json_data['email']['smtp']['host'] ?? '') ?>" placeholder="smtp.example.com">
+                    </div>
+                    <div>
+                        <label class="cfg-label">SMTP Port</label>
+                        <input id="cfg-smtp-port" class="cfg-input" type="number" min="1" max="65535"
+                               value="<?= (int)($json_data['email']['smtp']['port'] ?? 587) ?>">
+                    </div>
+                    <div>
+                        <label class="cfg-label">SMTP Security</label>
+                        <select id="cfg-smtp-secure" class="cfg-input">
+                            <?php $smtpSecure = $json_data['email']['smtp']['secure'] ?? 'tls'; ?>
+                            <option value="tls"  <?= $smtpSecure === 'tls'  ? 'selected' : '' ?>>TLS (STARTTLS)</option>
+                            <option value="ssl"  <?= $smtpSecure === 'ssl'  ? 'selected' : '' ?>>SSL</option>
+                            <option value="none" <?= $smtpSecure === 'none' ? 'selected' : '' ?>>None</option>
+                        </select>
                     </div>
                 </div>
-
             </div>
+
         </div>
     </div>
 
@@ -488,7 +535,6 @@ function checked($v) { return $v ? 'checked' : ''; }
 <script>
 // ── Inline config data (preserves unknown fields on save) ───────────
 var _cfg = <?= json_encode($json_data, JSON_UNESCAPED_SLASHES) ?>;
-var _rawEdited = false;
 
 // ── Tab switching ────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(function(btn) {
@@ -497,15 +543,8 @@ document.querySelectorAll('.tab-btn').forEach(function(btn) {
         document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
         document.getElementById('tab-' + this.dataset.tab).classList.remove('hidden');
         this.classList.add('active');
-        // Sync raw JSON view when switching to it
-        if (this.dataset.tab === 'raw' && !_rawEdited) {
-            document.getElementById('raw-json').value = JSON.stringify(buildConfig(), null, 2);
-        }
     });
 });
-
-// Mark raw JSON as user-edited if they type in it
-document.getElementById('raw-json').addEventListener('input', function() { _rawEdited = true; });
 
 // ── Row counters ────────────────────────────────────────────────────
 var _hostIdx = <?= count($json_data['internal_hosts'] ?? []) ?>;
@@ -594,8 +633,44 @@ function buildConfig() {
     var cfg = JSON.parse(JSON.stringify(_cfg));
 
     cfg.meta = Object.assign(cfg.meta || {}, {
-        version: v('cfg-version')
-        // author is read-only — preserved from the original config
+        version:     v('cfg-version'),
+        description: v('cfg-meta-description'),
+        author:      v('cfg-author')
+    });
+    cfg.branding = Object.assign(cfg.branding || {}, {
+        business_name:        v('cfg-business-name'),
+        business_logo:        v('cfg-business-logo'),
+        company_url:          v('cfg-company-url'),
+        support_email:        v('cfg-support-email'),
+        support_phone:        v('cfg-support-phone'),
+        footer_message:       v('cfg-footer-message'),
+        announcement_banner:  v('cfg-announcement-banner'),
+        announcement_type:    v('cfg-announcement-type')
+    });
+    // Backwards-compat flat fields
+    cfg.business_name  = v('cfg-business-name');
+    cfg.business_logo  = v('cfg-business-logo');
+    cfg.footer_message = v('cfg-footer-message');
+    cfg.theme = Object.assign(cfg.theme || {}, {
+        primary_color: v('cfg-primary-color'),
+        accent_color:  v('cfg-accent-color'),
+        success_color: v('cfg-success-color'),
+        warning_color: v('cfg-warning-color'),
+        error_color:   v('cfg-error-color')
+    });
+    cfg.sla = Object.assign(cfg.sla || {}, {
+        enabled:          chk('cfg-sla-enabled'),
+        uptime_target:    parseFloat(v('cfg-sla-target')) || 99.9,
+        reporting_period: v('cfg-sla-period')
+    });
+    cfg.email = Object.assign(cfg.email || {}, {
+        from:     v('cfg-email-from'),
+        reply_to: v('cfg-email-replyto'),
+        smtp: Object.assign(((cfg.email || {}).smtp) || {}, {
+            host:   v('cfg-smtp-host'),
+            port:   parseInt(v('cfg-smtp-port')) || 587,
+            secure: v('cfg-smtp-secure')
+        })
     });
     cfg.network = Object.assign(cfg.network || {}, {
         gateway:    v('cfg-gateway'),
@@ -603,30 +678,18 @@ function buildConfig() {
         domain:     v('cfg-domain'),
         isp_map:    buildIspMap()
     });
-    cfg.refresh_rate    = parseInt(v('cfg-refresh-rate')) || 30000;
-    cfg.alert_sound     = chk('cfg-alert-sound');
-    cfg.browser_notify  = chk('cfg-browser-notify');
-    cfg.require_auth    = chk('cfg-require-auth');
-    cfg.internal_hosts  = buildHosts();
-    cfg.RSS             = buildRss();
-    cfg.business_name   = v('cfg-business-name');
-    cfg.business_logo   = v('cfg-business-logo');
-    cfg.footer_message  = v('cfg-footer-message');
+    cfg.refresh_rate   = parseInt(v('cfg-refresh-rate')) || 30000;
+    cfg.alert_sound    = chk('cfg-alert-sound');
+    cfg.browser_notify = chk('cfg-browser-notify');
+    cfg.require_auth   = chk('cfg-require-auth');
+    cfg.internal_hosts = buildHosts();
+    cfg.RSS            = buildRss();
     return cfg;
 }
 
 // ── Save ────────────────────────────────────────────────────────────
 document.getElementById('saveBtn').addEventListener('click', function() {
-    var json;
-    if (_rawEdited) {
-        // Raw JSON tab was edited — use it directly
-        try { JSON.parse(document.getElementById('raw-json').value); }
-        catch(e) { showStatus('Invalid JSON: ' + e.message, false); return; }
-        json = document.getElementById('raw-json').value;
-    } else {
-        json = JSON.stringify(buildConfig(), null, 2);
-    }
-    document.getElementById('save-json-input').value = json;
+    document.getElementById('save-json-input').value = JSON.stringify(buildConfig(), null, 2);
     document.getElementById('save-form').submit();
 });
 

@@ -558,7 +558,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
 
 <!-- Shared modal close helper accessible inline -->
 <script>
-function openModal(id){const e=document.getElementById(id);if(!e)return;e.classList.remove('hidden');document.body.style.overflow='hidden';if(id==='manageSubModal'){['manageSubSubmitBtn','manageSubBackBtn'].forEach(b=>{const el=document.getElementById(b);if(el)el.style.display='';})}}
+function openModal(id){const e=document.getElementById(id);if(!e)return;e.classList.remove('hidden');document.body.style.overflow='hidden';}
 function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add('hidden');if(!document.querySelector('.sp-modal:not(.hidden)'))document.body.style.overflow='';}
 </script>
 
@@ -621,36 +621,48 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
 <!-- Manage Subscription Modal -->
 <div id="manageSubModal" class="sp-modal hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
      onclick="if(event.target===this)closeModal('manageSubModal')">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-            <h5 class="text-base font-semibold flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                <i class="fa-solid fa-gear text-blue-500"></i> <?= $lang === 'es' ? 'Administrar Suscripciones' : 'Manage Subscriptions' ?>
-            </h5>
-            <button onclick="closeModal('manageSubModal')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none">&times;</button>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700/50">
+        <!-- Header -->
+        <div class="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-slate-200 dark:border-slate-700/50">
+            <div class="w-9 h-9 bg-red-50 dark:bg-red-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-bell-slash text-red-500 dark:text-red-400"></i>
+            </div>
+            <div class="flex-1">
+                <h5 class="font-semibold text-slate-900 dark:text-white text-sm"><?= $lang === 'es' ? 'Administrar Suscripciones' : 'Manage Subscriptions' ?></h5>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"><?= $lang === 'es' ? 'Busca y administra tus alertas' : 'Look up and manage your alerts' ?></p>
+            </div>
+            <button onclick="closeModal('manageSubModal')" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-lg leading-none mt-0.5">&times;</button>
         </div>
-        <div class="px-6 py-5">
-            <form id="manageSubForm" class="space-y-4">
-                <div>
-                    <label for="manageEmail" class="<?= $label_cls ?>"><?= $t['email'] ?></label>
-                    <input type="email" id="manageEmail" name="email" placeholder="you@example.com" required class="<?= $input_cls ?>">
-                </div>
-                <div>
-                    <label for="manageAction" class="<?= $label_cls ?>"><?= $lang === 'es' ? 'Acción' : 'Action' ?></label>
-                    <select id="manageAction" name="action" class="<?= $input_cls ?>">
-                        <option value="view"><?= $lang === 'es' ? 'Ver Suscripciones' : 'View Subscriptions' ?></option>
-                        <option value="unsubscribe"><?= $lang === 'es' ? 'Darse de baja de todas' : 'Unsubscribe from All' ?></option>
-                    </select>
-                </div>
-                <div class="flex justify-end gap-2 pt-1">
-                    <button type="button" id="manageSubBackBtn" onclick="closeModal('manageSubModal');openModal('subscribeModal')"
-                        class="<?= $btn_secondary ?>">
-                        <i class="fa-solid fa-arrow-left mr-1"></i><?= $lang === 'es' ? 'Atrás' : 'Back' ?>
+        <!-- Body -->
+        <div class="px-6 py-5 space-y-4">
+            <div>
+                <label for="manageEmail" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $t['email'] ?></label>
+                <div class="flex gap-2">
+                    <input type="email" id="manageEmail" name="email" placeholder="you@example.com" required
+                        class="flex-1 px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition">
+                    <button type="button" id="manageSubLookup"
+                        class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm whitespace-nowrap">
+                        <i class="fa-solid fa-magnifying-glass mr-1.5"></i><?= $lang === 'es' ? 'Buscar' : 'Look Up' ?>
                     </button>
-                    <button type="submit" id="manageSubSubmitBtn" class="<?= $btn_primary ?>"><?= $t['submit'] ?></button>
                 </div>
-            </form>
+            </div>
             <div id="manageSubMsg"></div>
-            <div id="manageSubResults"></div>
+            <div id="manageSubResults" class="hidden">
+                <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2"><?= $lang === 'es' ? 'Suscripciones activas' : 'Active subscriptions' ?></div>
+                <ul id="manageSubList" class="space-y-2 max-h-56 overflow-y-auto modal-scroll rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40"></ul>
+            </div>
+        </div>
+        <!-- Footer -->
+        <div class="flex items-center justify-between px-6 pb-5 pt-1 gap-2">
+            <button type="button" id="manageSubUnsubAll"
+                class="hidden px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+                <i class="fa-solid fa-trash-can mr-1.5"></i><?= $lang === 'es' ? 'Darse de baja de todas' : 'Unsubscribe from All' ?>
+            </button>
+            <span class="flex-1"></span>
+            <button type="button" onclick="closeModal('manageSubModal');openModal('subscribeModal')"
+                class="<?= $btn_secondary ?>">
+                <i class="fa-solid fa-arrow-left mr-1"></i><?= $lang === 'es' ? 'Atrás' : 'Back' ?>
+            </button>
         </div>
     </div>
 </div>
