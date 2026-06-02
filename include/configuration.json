@@ -1,8 +1,25 @@
 {
   "meta": {
-    "version": "1.1",
+    "version": "2.0",
     "description": "Configuration for Sample IT Status Page. Edit with care.",
     "author": "Your Name or Team"
+  },
+  "branding": {
+    "business_name": "Status Page",
+    "business_logo": "",
+    "company_url": "https://example.com",
+    "support_email": "support@example.com",
+    "support_phone": "",
+    "footer_message": "© 2026 Your Company. All rights reserved.",
+    "announcement_banner": "",
+    "announcement_type": "info"
+  },
+  "theme": {
+    "primary_color": "#4f46e5",
+    "accent_color": "#06b6d4",
+    "success_color": "#059669",
+    "warning_color": "#d97706",
+    "error_color": "#dc2626"
   },
   "email": {
     "from": "status@yourdomain.com",
@@ -23,9 +40,21 @@
       "203.0.113.2": "Your Secondary ISP Name"
     }
   },
+  "sla": {
+    "enabled": true,
+    "uptime_target": 99.9,
+    "reporting_period": "monthly"
+  },
   "refresh_rate": 30000,
   "alert_sound": false,
   "browser_notify": true,
+  "maintenance_windows": [],
+  "status_categories": {
+    "operational": { "label": "Operational", "color": "#059669" },
+    "degraded": { "label": "Degraded Performance", "color": "#d97706" },
+    "outage": { "label": "Outage", "color": "#dc2626" },
+    "maintenance": { "label": "Maintenance", "color": "#6366f1" }
+  },
   "internal_hosts": [
     {
       "host": "8.8.8.8",

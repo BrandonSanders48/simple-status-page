@@ -1,15 +1,89 @@
 # Simple Status Page
 
-A sleek HTML/PHP status page with RSS feed support, fully configurable via JSON.
+A sleek, production-ready status page built with HTML/PHP/Tailwind CSS. Features real-time service monitoring, incident management, email subscriptions, RSS feed integration, and comprehensive branding customization.
 
-<<<<<<< HEAD
-=======
 ## Screenshot
 
 ![Simple Status Page](images/screenshot.png)
 
+## Features
 
->>>>>>> 23d4ece (Updated Readme)
+✅ **Real-time Monitoring** – Monitor internal services and network connectivity  
+✅ **Incident Management** – Create, track, and manage incidents with timestamps  
+✅ **Email Subscriptions** – Users can subscribe to service updates  
+✅ **RSS Feed Integration** – Display external status feeds (e.g., vendor status pages)  
+✅ **Customizable Branding** – Company logo, colors, footer, announcement banners  
+✅ **SLA Support** – Display uptime targets and SLA status  
+✅ **Multi-Language** – Built-in English/Spanish support  
+✅ **Dark Mode** – Beautiful dark theme with system preference detection  
+✅ **Responsive Design** – Works perfectly on mobile, tablet, and desktop  
+✅ **Docker Ready** – Includes Dockerfile and Docker Compose support  
+✅ **SMTP Email** – Send email notifications via configured SMTP server  
+
+## Configuration Highlights
+
+### Branding & Theme
+Customize the appearance of your status page:
+
+```json
+{
+  "branding": {
+    "business_name": "Your Company",
+    "business_logo": "https://example.com/logo.png",
+    "company_url": "https://example.com",
+    "support_email": "support@example.com",
+    "support_phone": "+1-555-0123",
+    "footer_message": "© 2026 Your Company. All rights reserved.",
+    "announcement_banner": "Scheduled maintenance on Sunday 2-4 PM EST",
+    "announcement_type": "info"
+  },
+  "theme": {
+    "primary_color": "#4f46e5",
+    "accent_color": "#06b6d4",
+    "success_color": "#059669",
+    "warning_color": "#d97706",
+    "error_color": "#dc2626"
+  }
+}
+```
+
+### SLA Configuration
+Display uptime targets:
+
+```json
+{
+  "sla": {
+    "enabled": true,
+    "uptime_target": 99.9,
+    "reporting_period": "monthly"
+  }
+}
+```
+
+### Service Monitoring
+Monitor internal services with flexible status types:
+
+```json
+{
+  "internal_hosts": [
+    {
+      "host": "192.168.1.1",
+      "port": 443,
+      "type": "HTTPS",
+      "name": "Web Server",
+      "description": "Main web server"
+    },
+    {
+      "host": "8.8.8.8",
+      "port": 53,
+      "type": "DNS",
+      "name": "Public DNS",
+      "description": "Google DNS connectivity check"
+    }
+  ]
+}
+```
+
 ## Default Login
 
 **Username:** `admin`  
@@ -49,3 +123,4 @@ docker run -d \
 ```
 
 This will start the status page immediately. You can mount your own JSON config to customize it.
+

@@ -60,9 +60,31 @@ $refresh_rate   = $json_data['refresh_rate']   ?? 30000;
 $alert_sound    = $json_data['alert_sound']    ?? false;
 $internal_hosts = $json_data['internal_hosts'] ?? [];
 $rss_feeds      = $json_data['RSS']            ?? [];
-$business_name  = $json_data['business_name']  ?? 'Status Page';
-$business_logo  = $json_data['business_logo']  ?? '';
-$footer_message = $json_data['footer_message'] ?? '';
+
+// Branding (support both old and new config structure)
+$branding       = $json_data['branding']       ?? [];
+$business_name  = $branding['business_name'] ?? $json_data['business_name'] ?? 'Status Page';
+$business_logo  = $branding['business_logo'] ?? $json_data['business_logo'] ?? '';
+$company_url    = $branding['company_url']   ?? '';
+$support_email  = $branding['support_email'] ?? '';
+$support_phone  = $branding['support_phone'] ?? '';
+$footer_message = $branding['footer_message'] ?? $json_data['footer_message'] ?? '';
+$announcement   = $branding['announcement_banner'] ?? '';
+$announcement_type = $branding['announcement_type'] ?? 'info';
+
+// Theme colors
+$theme          = $json_data['theme']         ?? [];
+$primary_color  = $theme['primary_color']     ?? '#4f46e5';
+$accent_color   = $theme['accent_color']      ?? '#06b6d4';
+$success_color  = $theme['success_color']     ?? '#059669';
+$warning_color  = $theme['warning_color']     ?? '#d97706';
+$error_color    = $theme['error_color']       ?? '#dc2626';
+
+// SLA configuration
+$sla            = $json_data['sla']           ?? ['enabled' => false];
+$sla_enabled    = $sla['enabled'] ?? false;
+$sla_target     = $sla['uptime_target'] ?? 99.9;
+
 $meta           = $json_data['meta']           ?? [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_SESSION['authenticated'] ?? false)) {
@@ -186,6 +208,15 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
     <script src="https://cdn.tailwindcss.com"></script>
     <?php endif; ?>
     <script>tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter','system-ui','-apple-system','sans-serif'] } } } }</script>
+    <style>
+        :root {
+            --primary-color: <?= htmlspecialchars($primary_color) ?>;
+            --accent-color: <?= htmlspecialchars($accent_color) ?>;
+            --success-color: <?= htmlspecialchars($success_color) ?>;
+            --warning-color: <?= htmlspecialchars($warning_color) ?>;
+            --error-color: <?= htmlspecialchars($error_color) ?>;
+        }
+    </style>
     <?php if ($local_fa): ?>
     <link rel="stylesheet" href="assets/fontawesome/css/all.min.css">
     <?php else: ?>
@@ -208,6 +239,17 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
     data-browser-notify="<?= !empty($json_data['browser_notify']) ? 'true' : 'false' ?>">
 
 <?php if (!$hide_navbar): ?>
+
+<!-- ── Announcement Banner ───────────────────────────────────────────── -->
+<?php if ($announcement): ?>
+<div class="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-3">
+    <div class="max-w-screen-xl mx-auto flex items-center gap-3">
+        <i class="fa-solid fa-bell text-blue-600 dark:text-blue-400 flex-shrink-0"></i>
+        <span class="text-sm text-blue-900 dark:text-blue-100"><?= htmlspecialchars($announcement) ?></span>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- ── Navbar ─────────────────────────────────────────────────────────── -->
 <nav class="border-b border-slate-800/60 shadow-lg" style="background:linear-gradient(180deg,#0f172a 0%,#1a2540 100%)">
     <div class="max-w-screen-xl mx-auto px-4">
@@ -219,7 +261,12 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
                     <img src="<?= htmlspecialchars($business_logo) ?>" alt="Logo"
                         class="bg-white rounded-lg px-2 py-1 max-h-9 object-contain">
                 <?php endif; ?>
-                <span class="text-white font-semibold text-base tracking-tight"><?= htmlspecialchars($business_name) ?></span>
+                <div class="flex flex-col gap-0">
+                    <span class="text-white font-semibold text-base tracking-tight"><?= htmlspecialchars($business_name) ?></span>
+                    <?php if ($sla_enabled): ?>
+                        <span class="text-xs text-emerald-300">SLA: <?= htmlspecialchars($sla_target) ?>% Uptime</span>
+                    <?php endif; ?>
+                </div>
             </div>
 
             <!-- Desktop controls -->
@@ -454,12 +501,49 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
 </main>
 
 <!-- ── Footer ─────────────────────────────────────────────────────────── -->
-<footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-4 mt-6">
-    <div class="max-w-screen-xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-1 text-xs text-slate-400">
-        <span><?= htmlspecialchars($footer_message) ?></span>
-        <?php if (!empty($meta['version'])): ?>
-            <span>Config v<?= htmlspecialchars($meta['version']) ?><?= !empty($meta['author']) ? ' | <a href="https://github.com/brandonsanders48" target="_blank" rel="noopener" class="hover:text-indigo-400 transition-colors">' . htmlspecialchars($meta['author']) . '</a>' : '' ?></span>
-        <?php endif; ?>
+<footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-6 mt-6">
+    <div class="max-w-screen-xl mx-auto px-4">
+        <!-- Company info section -->
+        <div class="flex flex-col sm:flex-row justify-center gap-6 mb-4 text-sm text-slate-600 dark:text-slate-400">
+            <?php if ($company_url): ?>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-globe text-indigo-600 dark:text-indigo-400"></i>
+                    <a href="<?= htmlspecialchars($company_url) ?>" target="_blank" rel="noopener" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                        <?= $lang === 'es' ? 'Sitio web' : 'Website' ?>
+                    </a>
+                </div>
+            <?php endif; ?>
+            <?php if ($support_email): ?>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-envelope text-emerald-600 dark:text-emerald-400"></i>
+                    <a href="mailto:<?= htmlspecialchars($support_email) ?>" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                        <?= htmlspecialchars($support_email) ?>
+                    </a>
+                </div>
+            <?php endif; ?>
+            <?php if ($support_phone): ?>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-phone text-blue-600 dark:text-blue-400"></i>
+                    <span><?= htmlspecialchars($support_phone) ?></span>
+                </div>
+            <?php endif; ?>
+        </div>
+        
+        <!-- Footer message and version -->
+        <div class="flex flex-col sm:flex-row justify-center items-center gap-3 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800 pt-4">
+            <span><?= htmlspecialchars($footer_message) ?></span>
+            <?php if (!empty($meta['version'])): ?>
+                <span class="text-slate-400 dark:text-slate-600">•</span>
+                <span>Config v<?= htmlspecialchars($meta['version']) ?>
+                    <?php if (!empty($meta['author'])): ?>
+                        <span class="text-slate-400 dark:text-slate-600">•</span>
+                        <a href="https://github.com/brandonsanders48" target="_blank" rel="noopener" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                            <?= htmlspecialchars($meta['author']) ?>
+                        </a>
+                    <?php endif; ?>
+                </span>
+            <?php endif; ?>
+        </div>
     </div>
 </footer>
 
