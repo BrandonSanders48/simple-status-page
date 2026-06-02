@@ -357,7 +357,7 @@ function checked($v) { return $v ? 'checked' : ''; }
                         <?php
                         $themeColors = [
                             'cfg-primary-color' => ['Primary',  $json_data['theme']['primary_color']  ?? '#6366f1'],
-                            'cfg-accent-color'  => ['Accent',   $json_data['theme']['accent_color']   ?? '#8b5cf6'],
+                            'cfg-accent-color'  => ['Accent',   $json_data['theme']['accent_color']   ?? '#06b6d4'],
                             'cfg-success-color' => ['Success',  $json_data['theme']['success_color']  ?? '#10b981'],
                             'cfg-warning-color' => ['Warning',  $json_data['theme']['warning_color']  ?? '#f59e0b'],
                             'cfg-error-color'   => ['Error',    $json_data['theme']['error_color']    ?? '#ef4444'],

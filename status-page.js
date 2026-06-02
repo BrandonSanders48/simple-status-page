@@ -177,8 +177,8 @@ function loadStatus() {
             if (service.port) tipParts.push(service.port === 'ping' ? 'ICMP ping' : 'port ' + service.port);
             var tip = tipParts.join('  ·  ');
             var statusDot = isUp
-                ? '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>Up</span>'
-                : '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 dark:text-red-400"><span class="w-1.5 h-1.5 rounded-full bg-red-500 dark:bg-red-400"></span>Down</span>';
+                ? '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold" style="color:var(--success-color)"><span class="w-1.5 h-1.5 rounded-full" style="background:var(--success-color)"></span>Up</span>'
+                : '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold" style="color:var(--error-color)"><span class="w-1.5 h-1.5 rounded-full" style="background:var(--error-color)"></span>Down</span>';
             html += `
             <div class="service-card"${tip ? ` data-tooltip="${escapeHtml(tip)}"` : ''}>
                 <div class="flex items-start justify-between gap-1.5 mb-2">
@@ -243,12 +243,12 @@ function _rssCardColors(itemText) {
     var bg, color;
     if (isDark) {
         bg = '#0c1a2e'; color = '#7c8fa8';
-        if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = '#1c1400'; color = '#d97706'; }
-        if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = '#1e0a0a'; color = '#f87171'; }
+        if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = 'color-mix(in srgb, var(--warning-color) 14%, #0c1a2e)'; color = 'var(--warning-color)'; }
+        if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = 'color-mix(in srgb, var(--error-color) 14%, #0c1a2e)';   color = 'color-mix(in srgb, var(--error-color) 80%, white)'; }
     } else {
         bg = '#f1f5f9'; color = '#475569';
-        if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = '#fffbeb'; color = '#78350f'; }
-        if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = '#fff1f2'; color = '#881337'; }
+        if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = 'color-mix(in srgb, var(--warning-color) 12%, white)'; color = 'color-mix(in srgb, var(--warning-color) 60%, #000)'; }
+        if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = 'color-mix(in srgb, var(--error-color) 10%, white)';   color = 'color-mix(in srgb, var(--error-color) 60%, #000)'; }
     }
     return { bg: bg, color: color };
 }

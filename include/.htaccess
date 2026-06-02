@@ -1,23 +1,26 @@
-# Block direct browser access to all files in this directory
-# PHP files are still accessible via include/require from parent scripts
+# Block sensitive data files from direct browser access.
+# AJAX endpoints (status_ajax.php, rss_ajax.php, etc.) remain reachable.
 
-Order deny,allow
-Deny from all
-
-# Allow .php files to be executed server-side (not browsed directly)
-<Files "*.php">
+# Config — contains SMTP credentials and auth settings
+<Files "configuration.json">
     Order deny,allow
     Deny from all
 </Files>
 
-# Specifically block the JSON data files
-<Files "*.json">
+# Subscriber email list
+<Files "subscriptions.csv">
     Order deny,allow
     Deny from all
 </Files>
 
-# Block CSV subscription data
-<Files "*.csv">
+# Internal service state cache (not needed by the browser directly)
+<Files "service_status.json">
+    Order deny,allow
+    Deny from all
+</Files>
+
+# Cron script — should only run server-side, never via HTTP
+<Files "status_check_and_notify.php">
     Order deny,allow
     Deny from all
 </Files>

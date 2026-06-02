@@ -28,16 +28,16 @@ footer { flex-shrink: 0; margin-top: auto; }
     box-shadow: none;
 }
 #all_status[data-status="ok"] {
-    background: #f0fdf4;
-    border: 2px solid #86efac;
-    color: #15803d;
-    box-shadow: 0 4px 24px rgba(16,185,129,0.10);
+    background: color-mix(in srgb, var(--success-color) 8%, #f8fafc);
+    border: 2px solid color-mix(in srgb, var(--success-color) 45%, transparent);
+    color: color-mix(in srgb, var(--success-color) 65%, #0f172a);
+    box-shadow: 0 4px 24px color-mix(in srgb, var(--success-color) 10%, transparent);
 }
 #all_status[data-status="error"] {
-    background: #fef2f2;
-    border: 2px solid #fca5a5;
-    color: #b91c1c;
-    box-shadow: 0 4px 24px rgba(220,38,38,0.10);
+    background: color-mix(in srgb, var(--error-color) 8%, #f8fafc);
+    border: 2px solid color-mix(in srgb, var(--error-color) 45%, transparent);
+    color: color-mix(in srgb, var(--error-color) 65%, #0f172a);
+    box-shadow: 0 4px 24px color-mix(in srgb, var(--error-color) 10%, transparent);
 }
 
 /* ── Skeleton shimmer ────────────────────────────────────────────────── */
@@ -65,8 +65,8 @@ footer { flex-shrink: 0; margin-top: auto; }
     position: relative;
 }
 .service-card:hover {
-    box-shadow: 0 4px 20px rgba(99,102,241,0.10), 0 1px 4px rgba(0,0,0,0.06);
-    border-color: rgba(99,102,241,0.25);
+    box-shadow: 0 4px 20px color-mix(in srgb, var(--primary-color) 10%, transparent), 0 1px 4px rgba(0,0,0,0.06);
+    border-color: color-mix(in srgb, var(--primary-color) 25%, transparent);
     transform: translateY(-2px);
 }
 
@@ -209,20 +209,16 @@ footer { flex-shrink: 0; margin-top: auto; }
     color: #475569;
 }
 .dark #all_status[data-status="ok"] {
-    background: rgba(5,150,105,0.08);
-    border-color: rgba(16,185,129,0.35);
-    color: #34d399;
-    box-shadow: 0 4px 32px rgba(5,150,105,0.12);
+    background: color-mix(in srgb, var(--success-color) 8%, transparent);
+    border-color: color-mix(in srgb, var(--success-color) 35%, transparent);
+    color: color-mix(in srgb, var(--success-color) 80%, white);
+    box-shadow: 0 4px 32px color-mix(in srgb, var(--success-color) 12%, transparent);
 }
 .dark #all_status[data-status="error"] {
-    background: rgba(220,38,38,0.08);
-    border-color: rgba(239,68,68,0.35);
-    color: #f87171;
-    box-shadow: 0 4px 32px rgba(220,38,38,0.10);
-}
-.dark #all_status[data-status="error"] {
-    box-shadow: 0 0 80px rgba(220,38,38,0.15),
-                0 8px 40px rgba(220,38,38,0.22);
+    background: color-mix(in srgb, var(--error-color) 8%, transparent);
+    border-color: color-mix(in srgb, var(--error-color) 35%, transparent);
+    color: color-mix(in srgb, var(--error-color) 80%, white);
+    box-shadow: 0 4px 32px color-mix(in srgb, var(--error-color) 10%, transparent);
 }
 
 /* Modals */

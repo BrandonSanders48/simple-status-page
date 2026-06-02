@@ -74,11 +74,11 @@ $announcement_type = $branding['announcement_type'] ?? 'info';
 
 // Theme colors
 $theme          = $json_data['theme']         ?? [];
-$primary_color  = $theme['primary_color']     ?? '#4f46e5';
-$accent_color   = $theme['accent_color']      ?? '#06b6d4';
-$success_color  = $theme['success_color']     ?? '#059669';
-$warning_color  = $theme['warning_color']     ?? '#d97706';
-$error_color    = $theme['error_color']       ?? '#dc2626';
+$primary_color  = $theme['primary_color']  ?? '#6366f1';
+$accent_color   = $theme['accent_color']   ?? '#06b6d4';
+$success_color  = $theme['success_color']  ?? '#10b981';
+$warning_color  = $theme['warning_color']  ?? '#f59e0b';
+$error_color    = $theme['error_color']    ?? '#ef4444';
 
 // SLA configuration
 $sla            = $json_data['sla']           ?? ['enabled' => false];
