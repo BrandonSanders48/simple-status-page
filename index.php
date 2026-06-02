@@ -264,7 +264,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
                 <div class="flex flex-col gap-0">
                     <span class="text-white font-semibold text-base tracking-tight"><?= htmlspecialchars($business_name) ?></span>
                     <?php if ($sla_enabled): ?>
-                        <span class="text-xs text-emerald-300">SLA: <?= htmlspecialchars($sla_target) ?>% Uptime</span>
+                        <span class="text-xs text-emerald-300">SLA: <?= htmlspecialchars((string)$sla_target) ?>% Uptime</span>
                     <?php endif; ?>
                 </div>
             </div>
