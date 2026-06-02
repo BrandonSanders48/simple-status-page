@@ -2,6 +2,14 @@
 
 A sleek HTML/PHP status page with RSS feed support, fully configurable via JSON.
 
+<<<<<<< HEAD
+=======
+## Screenshot
+
+![Simple Status Page](images/screenshot.png)
+
+
+>>>>>>> 23d4ece (Updated Readme)
 ## Default Login
 
 **Username:** `admin`  
