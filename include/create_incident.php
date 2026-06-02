@@ -1,5 +1,15 @@
 <?php
 session_start();
+
+$_authEnv = getenv('APP_AUTH_REQUIRED');
+$_configData = ($c = @file_get_contents(__DIR__ . '/configuration.json')) ? (json_decode($c, true) ?? []) : [];
+$_authRequired = ($_authEnv !== false && $_authEnv !== '')
+    ? filter_var($_authEnv, FILTER_VALIDATE_BOOLEAN)
+    : ($_configData['require_auth'] ?? true);
+if ($_authRequired === false) {
+    $_SESSION['authenticated'] = true;
+}
+
 if (!isset($_SESSION['authenticated']) || !$_SESSION['authenticated']) {
     http_response_code(403);
     exit('Not authorized');

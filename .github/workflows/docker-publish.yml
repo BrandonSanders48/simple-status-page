@@ -1,0 +1,41 @@
+name: Docker Publish
+
+on:
+  push:
+    branches: [ main ]
+    tags:    [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            brandonsanders/simple-status-page:latest
+            brandonsanders/simple-status-page:${{ github.sha }}
+            brandonsanders/simple-status-page:${{ github.ref_name }}

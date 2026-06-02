@@ -5,17 +5,24 @@ $configPath = __DIR__ . '/configuration.json';
 $json = @file_get_contents($configPath);
 $json_data = json_decode($json, true);
 
-$network = $json_data['network'] ?? [];
-$gateway = $network['gateway'] ?? '';
-$public_dns = $network['public_dns'] ?? '';
-$domain = $network['domain'] ?? '';
-$isp_map = $network['isp_map'] ?? [];
-$internal_hosts = $json_data['internal_hosts'] ?? [];
-
 // --- Language Support ---
 $supported_langs = ['en', 'es'];
 $lang = $_GET['lang'] ?? ($_COOKIE['lang'] ?? 'en');
 if (!in_array($lang, $supported_langs)) $lang = 'en';
+
+// --- Cache (30 seconds, per language) ---
+$cacheFile = sys_get_temp_dir() . '/status_cache_v3_' . $lang . '.json';
+$cacheTTL = 30;
+if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTTL) {
+    echo file_get_contents($cacheFile);
+    exit;
+}
+
+$network = $json_data['network'] ?? [];
+$gateway = $network['gateway'] ?? '';
+$public_dns = $network['public_dns'] ?? '';
+$isp_map = $network['isp_map'] ?? [];
+$internal_hosts = $json_data['internal_hosts'] ?? [];
 
 $lang_strings = [
     'en' => [
@@ -33,17 +40,15 @@ $lang_strings = [
 ];
 $t = $lang_strings[$lang];
 
-// Helper: Check TCP port, HTTP, or ICMP ping if port is null
+// Helper: Check TCP port (non-blocking connect via curl for parallelism),
+// or ICMP ping if port is null.
 function check_service($host, $port = 80) {
     if ($port === null) {
-        // ICMP ping (cross-platform: Linux, Windows, K8s containers)
-        $host = escapeshellarg($host);
+        $escaped = escapeshellarg($host);
         if (stripos(PHP_OS, 'WIN') === 0) {
-            // Windows: -n 1 (one ping), -w 2000 (timeout ms)
-            $cmd = "ping -n 1 -w 2000 $host";
+            $cmd = "ping -n 1 -w 2000 $escaped";
         } else {
-            // Linux/K8s: -c 1 (one ping), -W 2 (timeout sec)
-            $cmd = "ping -c 1 -W 2 $host";
+            $cmd = "ping -c 1 -W 2 $escaped";
         }
         exec($cmd, $output, $result);
         return $result === 0;
@@ -57,9 +62,66 @@ function check_service($host, $port = 80) {
     }
 }
 
+// Parallel TCP checks via curl_multi; falls back to sequential fsockopen for pings.
+function check_services_parallel(array $hosts): array {
+    $tcp = [];
+    $ping = [];
+    foreach ($hosts as $i => $value) {
+        $port = array_key_exists('port', $value) ? (is_null($value['port']) ? null : (int)$value['port']) : 80;
+        if ($port === null) {
+            $ping[$i] = $value;
+        } else {
+            $tcp[$i] = ['host' => $value['host'] ?? '', 'port' => $port];
+        }
+    }
+
+    // Run TCP checks in parallel with curl_multi
+    $results = [];
+    if (!empty($tcp) && function_exists('curl_multi_init')) {
+        $mh = curl_multi_init();
+        $handles = [];
+        foreach ($tcp as $i => $info) {
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL            => 'tcp://' . $info['host'] . ':' . $info['port'],
+                CURLOPT_CONNECT_ONLY   => true,
+                CURLOPT_TIMEOUT        => 2,
+                CURLOPT_CONNECTTIMEOUT => 2,
+                CURLOPT_RETURNTRANSFER => true,
+            ]);
+            curl_multi_add_handle($mh, $ch);
+            $handles[$i] = $ch;
+        }
+        $running = null;
+        do {
+            curl_multi_exec($mh, $running);
+            if ($running) curl_multi_select($mh, 0.1);
+        } while ($running > 0);
+        foreach ($handles as $i => $ch) {
+            $results[$i] = (curl_errno($ch) === 0);
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+        }
+        curl_multi_close($mh);
+    } else {
+        // fallback: sequential
+        foreach ($tcp as $i => $info) {
+            $results[$i] = check_service($info['host'], $info['port']);
+        }
+    }
+
+    // Sequential ping checks (exec is inherently sequential)
+    foreach ($ping as $i => $value) {
+        $results[$i] = check_service($value['host'] ?? '', null);
+    }
+
+    return $results;
+}
+
 // Get public IP
 function get_public_ip() {
-    $ip = @file_get_contents('https://api.ipify.org');
+    $ctx = stream_context_create(['http' => ['timeout' => 3]]);
+    $ip = @file_get_contents('https://api.ipify.org', false, $ctx);
     if ($ip && filter_var($ip, FILTER_VALIDATE_IP)) {
         return $ip;
     }
@@ -80,44 +142,46 @@ if (!empty($isp_map) && is_array($isp_map)) {
         }
     }
 }
-$wide_result = check_service($public_dns, 53); // DNS port check
+$wide_result = check_service($public_dns, 53);
+$local_result = check_service($gateway, null);
 
-// Local-Area Network check
-$local_result = check_service($gateway, null); // ICMP ping check on gateway
-
-// Set text and color for local and wide area network independently
 $local_text = $local_result ? $t['operational'] : $t['failure'];
-$local_color = $local_result ? "green" : "red";
+$local_color = $local_result ? "#10b981" : "#ef4444";
 $wide_text = ($public_ip
     ? ($isp_found ? "$isp_name ($public_ip)" : "{$t['unknown_isp']} ($public_ip)")
     : $t['ip_unavailable']) . ": " . ($wide_result ? $t['operational'] : $t['failure']);
-$wide_color = $wide_result ? "green" : "red";
+$wide_color  = $wide_result  ? "#10b981" : "#ef4444";
 
-// Services
+// Services — parallel TCP checks
+$service_results = check_services_parallel($internal_hosts);
 $services = [];
 $errors = 0;
-foreach ($internal_hosts as $value) {
-    $host = $value['host'] ?? '';
-    $port = array_key_exists('port', $value) ? (is_null($value['port']) ? null : (int)$value['port']) : 80;
-    $ok = check_service($host, $port);
+foreach ($internal_hosts as $i => $value) {
+    $ok = $service_results[$i] ?? false;
     $status = $ok
-        ? '<i style="font-size:30px;color:green" class="fa-solid fa-square-check"></i>'
-        : '<i style="font-size:30px;color:red" class="fa-solid fa-square-xmark"></i>';
+        ? '<i style="font-size:28px;color:#10b981" class="fa-solid fa-circle-check"></i>'
+        : '<i style="font-size:28px;color:#ef4444" class="fa-solid fa-circle-xmark"></i>';
     if (!$ok) $errors++;
     $services[] = [
         'status_icon' => $status,
-        'title' => $value['name'] ?? $host,
-        'type' => htmlspecialchars($value['type'] ?? ''),
-        'desc' => !empty($value['description']) ? htmlspecialchars($value['description']) : ''
+        'title'       => $value['name'] ?? ($value['host'] ?? ''),
+        'type'        => htmlspecialchars($value['type'] ?? ''),
+        'desc'        => !empty($value['description']) ? htmlspecialchars($value['description']) : '',
+        'host'        => htmlspecialchars($value['host'] ?? ''),
+        'port'        => $port === null ? 'ping' : (string)$port,
     ];
 }
 
-// Output JSON
-echo json_encode([
-    'wide_text' => $wide_text,
-    'wide_color' => $wide_color,
-    'local_text' => $local_text,
+$output = json_encode([
+    'wide_text'   => $wide_text,
+    'wide_color'  => $wide_color,
+    'wide_ok'     => $wide_result,
+    'local_text'  => $local_text,
     'local_color' => $local_color,
-    'services' => $services,
-    'errors' => $errors
+    'local_ok'    => $local_result,
+    'services'    => $services,
+    'errors'      => $errors
 ]);
+
+file_put_contents($cacheFile, $output);
+echo $output;

@@ -2,8 +2,7 @@
   "meta": {
     "version": "1.1",
     "description": "Configuration for Sample IT Status Page. Edit with care.",
-    "author": "Your Name or Team",
-    "page_url": "https://your-status-page.example.com"
+    "author": "Your Name or Team"
   },
   "email": {
     "from": "status@yourdomain.com",
@@ -125,5 +124,6 @@
   ],
   "business_name": "Sample",
   "business_logo": "images/logo.png",
-  "footer_message": "For IT Department Use Only"
+  "footer_message": "For IT Department Use Only",
+  "require_auth": false
 }
