@@ -240,9 +240,12 @@ function checked($v) { return $v ? 'checked' : ''; }
                 </tbody>
             </table>
             </div>
-            <button type="button" class="add-row-btn" onclick="addHostRow()">
-                <i class="fa-solid fa-plus text-xs"></i> Add Service
-            </button>
+            <div class="flex items-center justify-between mt-1">
+                <button type="button" id="addHostBtn" class="add-row-btn" onclick="addHostRow()">
+                    <i class="fa-solid fa-plus text-xs"></i> Add Service
+                </button>
+                <span id="hosts-count" class="text-xs text-slate-400 dark:text-slate-500"></span>
+            </div>
         </div>
     </div>
 
@@ -283,9 +286,12 @@ function checked($v) { return $v ? 'checked' : ''; }
                 </tbody>
             </table>
             </div>
-            <button type="button" class="add-row-btn" onclick="addRssRow()">
-                <i class="fa-solid fa-plus text-xs"></i> Add Feed
-            </button>
+            <div class="flex items-center justify-between mt-1">
+                <button type="button" id="addRssBtn" class="add-row-btn" onclick="addRssRow()">
+                    <i class="fa-solid fa-plus text-xs"></i> Add Feed
+                </button>
+                <span id="rss-count" class="text-xs text-slate-400 dark:text-slate-500"></span>
+            </div>
         </div>
     </div>
 
@@ -572,11 +578,22 @@ document.querySelectorAll('.tab-btn').forEach(function(btn) {
     });
 });
 
-// ── Row counters ────────────────────────────────────────────────────
-var _hostIdx = <?= count($json_data['internal_hosts'] ?? []) ?>;
-var _rssIdx  = <?= count($json_data['RSS'] ?? []) ?>;
+// ── Row counters & caps ─────────────────────────────────────────────
+var MAX_SERVICES = 20;
+var MAX_RSS      = 10;
+
+function _updateCount(tbodyId, countId, btnId, max) {
+    var count = document.querySelectorAll('#' + tbodyId + ' tr').length;
+    var el  = document.getElementById(countId);
+    var btn = document.getElementById(btnId);
+    if (el)  el.textContent = count + ' / ' + max;
+    if (btn) { btn.disabled = count >= max; btn.style.opacity = count >= max ? '0.35' : ''; btn.style.pointerEvents = count >= max ? 'none' : ''; }
+}
+function updateHostCount() { _updateCount('hosts-tbody', 'hosts-count', 'addHostBtn', MAX_SERVICES); }
+function updateRssCount()  { _updateCount('rss-tbody',  'rss-count',  'addRssBtn',  MAX_RSS); }
 
 function addHostRow() {
+    if (document.querySelectorAll('#hosts-tbody tr').length >= MAX_SERVICES) return;
     var tr = document.createElement('tr');
     tr.setAttribute('draggable', 'true');
     tr.innerHTML = '<td><div class="drag-handle" title="Drag to reorder"><i class="fa-solid fa-grip-vertical text-xs"></i></div></td>'
@@ -591,6 +608,7 @@ function addHostRow() {
 }
 
 function addRssRow() {
+    if (document.querySelectorAll('#rss-tbody tr').length >= MAX_RSS) return;
     var tr = document.createElement('tr');
     tr.setAttribute('draggable', 'true');
     tr.innerHTML = '<td><div class="drag-handle" title="Drag to reorder"><i class="fa-solid fa-grip-vertical text-xs"></i></div></td>'
@@ -762,6 +780,12 @@ function initDragSort(tbodyId) {
 }
 initDragSort('hosts-tbody');
 initDragSort('rss-tbody');
+
+// ── Live count badges (react to add AND delete) ──────────────────────
+new MutationObserver(updateHostCount).observe(document.getElementById('hosts-tbody'), { childList: true });
+new MutationObserver(updateRssCount).observe(document.getElementById('rss-tbody'),  { childList: true });
+updateHostCount();
+updateRssCount();
 
 // ── Save ────────────────────────────────────────────────────────────
 document.getElementById('saveBtn').addEventListener('click', function() {

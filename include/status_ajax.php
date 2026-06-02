@@ -11,7 +11,7 @@ $lang = $_GET['lang'] ?? ($_COOKIE['lang'] ?? 'en');
 if (!in_array($lang, $supported_langs)) $lang = 'en';
 
 // --- Cache (30 seconds, per language) ---
-$cacheFile = sys_get_temp_dir() . '/status_cache_v3_' . $lang . '.json';
+$cacheFile = sys_get_temp_dir() . '/status_cache_v4_' . $lang . '.json';
 $cacheTTL = 30;
 if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTTL) {
     echo file_get_contents($cacheFile);
@@ -23,6 +23,16 @@ $gateway = $network['gateway'] ?? '';
 $public_dns = $network['public_dns'] ?? '';
 $isp_map = $network['isp_map'] ?? [];
 $internal_hosts = $json_data['internal_hosts'] ?? [];
+
+// Load downtime history written by the cron checker
+$_histFile = __DIR__ . '/cron/service_status.json';
+$_histRaw  = file_exists($_histFile) ? json_decode(file_get_contents($_histFile), true) : [];
+$serviceHistory = [];
+if (is_array($_histRaw)) {
+    foreach ($_histRaw as $k => $v) {
+        $serviceHistory[$k] = is_array($v) ? $v : ['status' => $v];
+    }
+}
 
 $lang_strings = [
     'en' => [
@@ -156,21 +166,64 @@ $wide_color  = $wide_result  ? "#10b981" : "#ef4444";
 $service_results = check_services_parallel($internal_hosts);
 $services = [];
 $errors = 0;
+$updatedHistory = $serviceHistory;
 foreach ($internal_hosts as $i => $value) {
-    $ok = $service_results[$i] ?? false;
+    $ok      = $service_results[$i] ?? false;
+    $svcPort = array_key_exists('port', $value) ? (is_null($value['port']) ? null : (int)$value['port']) : 80;
+    $name    = $value['name'] ?? ($value['host'] ?? '');
+    $curStr  = $ok ? 'up' : 'down';
+
+    $prev    = $serviceHistory[$name] ?? ['status' => null, 'last_down_at' => null, 'last_down_duration_s' => null, 'went_down_at' => null];
+    $prevStr = $prev['status'] ?? null;
+
+    $hist = [
+        'status'               => $curStr,
+        'last_down_at'         => $prev['last_down_at']         ?? null,
+        'last_down_duration_s' => $prev['last_down_duration_s'] ?? null,
+        'went_down_at'         => $prev['went_down_at']         ?? null,
+    ];
+
+    if ($curStr === 'down' && $prevStr !== 'down') {
+        $hist['went_down_at'] = time();
+        $hist['last_down_at'] = time();
+    } elseif ($curStr === 'up' && $prevStr === 'down' && !empty($prev['went_down_at'])) {
+        $hist['last_down_duration_s'] = time() - (int)$prev['went_down_at'];
+        $hist['went_down_at']         = null;
+        // Append to outage log
+        $_logFile = __DIR__ . '/cron/outage_log.json';
+        $_log = file_exists($_logFile) ? json_decode(file_get_contents($_logFile), true) : [];
+        if (!is_array($_log)) $_log = [];
+        array_unshift($_log, [
+            'service'      => $name,
+            'went_down_at' => (int)$prev['went_down_at'],
+            'came_up_at'   => time(),
+            'duration_s'   => $hist['last_down_duration_s'],
+        ]);
+        if (count($_log) > 200) $_log = array_slice($_log, 0, 200);
+        @file_put_contents($_logFile, json_encode($_log, JSON_PRETTY_PRINT));
+    }
+
+    $updatedHistory[$name] = $hist;
+
     $status = $ok
         ? '<i style="font-size:28px;color:#10b981" class="fa-solid fa-circle-check"></i>'
         : '<i style="font-size:28px;color:#ef4444" class="fa-solid fa-circle-xmark"></i>';
     if (!$ok) $errors++;
     $services[] = [
-        'status_icon' => $status,
-        'title'       => $value['name'] ?? ($value['host'] ?? ''),
-        'type'        => htmlspecialchars($value['type'] ?? ''),
-        'desc'        => !empty($value['description']) ? htmlspecialchars($value['description']) : '',
-        'host'        => htmlspecialchars($value['host'] ?? ''),
-        'port'        => $port === null ? 'ping' : (string)$port,
+        'status_icon'          => $status,
+        'title'                => $name,
+        'type'                 => htmlspecialchars($value['type'] ?? ''),
+        'desc'                 => !empty($value['description']) ? htmlspecialchars($value['description']) : '',
+        'host'                 => htmlspecialchars($value['host'] ?? ''),
+        'port'                 => $svcPort === null ? 'ping' : (string)$svcPort,
+        'last_down_at'         => $hist['last_down_at'],
+        'last_down_duration_s' => $hist['last_down_duration_s'],
+        'went_down_at'         => $hist['went_down_at'],
     ];
 }
+
+// Persist downtime history so tooltip data survives across cache refreshes
+@file_put_contents($_histFile, json_encode($updatedHistory, JSON_PRETTY_PRINT));
 
 $output = json_encode([
     'wide_text'   => $wide_text,

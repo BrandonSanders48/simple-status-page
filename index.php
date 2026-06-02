@@ -416,10 +416,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
         <span id="webTicker"><b><?= $t['loading'] ?></b></span>
         <span id="live-indicator" style="display:none;position:absolute;right:1rem;top:50%;transform:translateY(-50%)"
               class="flex items-center gap-1.5 text-xs font-semibold tracking-widest opacity-80">
-            <span style="position:relative;display:flex;width:8px;height:8px">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-60"></span>
-                <span style="position:relative;display:inline-flex;width:8px;height:8px;border-radius:50%;background:#fff"></span>
-            </span>
+            <span class="sp-ping-dot"></span>
             LIVE
         </span>
     </div>
@@ -456,9 +453,16 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
 
     <!-- Services (skeleton) -->
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5 mb-5 sp-panel">
-        <h5 class="flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-200 mb-4">
-            <i class="fa-solid fa-server text-indigo-500"></i> <?= $t['internally_hosted'] ?>
-        </h5>
+        <div class="flex items-center justify-between mb-4">
+            <h5 class="flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-200">
+                <i class="fa-solid fa-server text-indigo-500"></i> <?= $t['internally_hosted'] ?>
+            </h5>
+            <button type="button" onclick="openOutageLog()"
+                class="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50">
+                <i class="fa-solid fa-clock-rotate-left text-[11px]"></i>
+                <?= $lang === 'es' ? 'Historial' : 'Outage History' ?>
+            </button>
+        </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3" id="services_placeholder">
             <?php for ($i = 0; $i < 4; $i++): ?>
             <div class="service-card">
@@ -787,10 +791,19 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                     <textarea id="incidentDescription" name="description" rows="3" required placeholder="<?= $lang === 'es' ? 'Describe el problema...' : 'Describe what is happening and affected services...' ?>"
                         class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm transition resize-none"></textarea>
                 </div>
-                <div>
-                    <label for="incidentTime" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $lang === 'es' ? 'Hora' : 'Time' ?></label>
-                    <input type="text" id="incidentTime" name="time" value="<?= date('Y-m-d H:i') ?>" required
-                        class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm font-mono transition">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label for="incidentStartTime" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $lang === 'es' ? 'Inicio' : 'Start Time' ?></label>
+                        <input type="datetime-local" id="incidentStartTime" name="start_time" value="<?= date('Y-m-d\TH:i') ?>" required
+                            class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm transition dark:[color-scheme:dark]">
+                    </div>
+                    <div>
+                        <label for="incidentEndTime" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                            <?= $lang === 'es' ? 'Fin' : 'End Time' ?> <span class="normal-case font-normal text-slate-400">(<?= $lang === 'es' ? 'opcional' : 'optional' ?>)</span>
+                        </label>
+                        <input type="datetime-local" id="incidentEndTime" name="end_time"
+                            class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm transition dark:[color-scheme:dark]">
+                    </div>
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" onclick="closeModal('createIncidentModal')"
@@ -830,6 +843,27 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                 class="w-full py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
                 <?= $lang === 'es' ? 'Cancelar' : 'Cancel' ?>
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- Outage History Modal -->
+<div id="outageLogModal" class="sp-modal hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+     onclick="if(event.target===this)closeModal('outageLogModal')">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-200 dark:border-slate-700/50 flex flex-col max-h-[80vh]">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700/60 flex-shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-600 dark:text-indigo-400 text-sm"></i>
+                </div>
+                <h5 class="font-bold text-slate-900 dark:text-white"><?= $lang === 'es' ? 'Historial de Interrupciones' : 'Outage History' ?></h5>
+            </div>
+            <button onclick="closeModal('outageLogModal')" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-lg leading-none">&times;</button>
+        </div>
+        <div class="overflow-y-auto flex-1 px-6 py-4">
+            <div id="outageLogBody">
+                <p class="text-sm text-slate-400 text-center py-6"><?= $lang === 'es' ? 'Cargando...' : 'Loading...' ?></p>
+            </div>
         </div>
     </div>
 </div>

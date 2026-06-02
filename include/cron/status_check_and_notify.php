@@ -30,7 +30,14 @@ $email_reply = $json_data['email']['reply_to'] ?? $email_from;
 $smtp = $json_data['email']['smtp'] ?? null;
 
 $statusFile = __DIR__ . '/service_status.json';
-$prevStatus = file_exists($statusFile) ? json_decode(file_get_contents($statusFile), true) : [];
+$prevData = file_exists($statusFile) ? json_decode(file_get_contents($statusFile), true) : [];
+if (!is_array($prevData)) $prevData = [];
+// Normalize old "up"/"down" string format to rich object format
+foreach ($prevData as $k => $v) {
+    if (is_string($v)) {
+        $prevData[$k] = ['status' => $v, 'last_down_at' => null, 'last_down_duration_s' => null, 'went_down_at' => null];
+    }
+}
 
 // Include PHPMailer
 require_once __DIR__ . '/PHPMailer/src/PHPMailer.php';
@@ -109,17 +116,37 @@ foreach ($internal_hosts as $service) {
         exec($pingCmd, $output, $result);
         $isUp = $result === 0;
     }
-    $currentStatus[$name] = $isUp ? 'up' : 'down';
+    $curStr  = $isUp ? 'up' : 'down';
+    $prev    = $prevData[$name] ?? ['status' => null, 'last_down_at' => null, 'last_down_duration_s' => null, 'went_down_at' => null];
+    $prevStr = $prev['status'] ?? null;
 
-    // Detect status change
-    if (isset($prevStatus[$name]) && $prevStatus[$name] !== $currentStatus[$name]) {
+    $entry = [
+        'status'               => $curStr,
+        'last_down_at'         => $prev['last_down_at']         ?? null,
+        'last_down_duration_s' => $prev['last_down_duration_s'] ?? null,
+        'went_down_at'         => $prev['went_down_at']         ?? null,
+    ];
+
+    if ($curStr === 'down') {
+        if ($prevStr !== 'down') {
+            $entry['went_down_at'] = time();
+            $entry['last_down_at'] = time();
+        }
+    } elseif ($curStr === 'up' && $prevStr === 'down' && !empty($prev['went_down_at'])) {
+        $entry['last_down_duration_s'] = time() - (int)$prev['went_down_at'];
+        $entry['went_down_at']         = null;
+    }
+
+    $currentStatus[$name] = $entry;
+
+    // Detect status change and send notifications
+    if ($prevStr !== null && $prevStr !== $curStr) {
         $emails = $subscribers[$name] ?? [];
-        error_log("[$name] STATUS CHANGE DETECTED: {$prevStatus[$name]} → {$currentStatus[$name]}\n", 3, $logFile);
+        error_log("[$name] STATUS CHANGE DETECTED: {$prevStr} → {$curStr}\n", 3, $logFile);
         error_log("[$name] Subscribers: " . (!empty($emails) ? implode(', ', $emails) : 'None') . "\n", 3, $logFile);
-        // Send notification
         foreach ($emails as $email) {
             error_log("Preparing to email subscriber: $email\n", 3, $logFile);
-            $subject = "Service '{$name}' is now " . strtoupper($currentStatus[$name]);
+            $subject = "Service '{$name}' is now " . strtoupper($curStr);
             $message = '
 <html>
 <head>
@@ -142,7 +169,7 @@ foreach ($internal_hosts as $service) {
     .status-icon {
       font-size: 32px;
       margin-right: 14px;
-      color: ' . ($currentStatus[$name] === 'up' ? '#28a745' : '#dc3545') . ';
+      color: ' . ($curStr === 'up' ? '#28a745' : '#dc3545') . ';
     }
     .status-title {
       font-size: 22px;
@@ -152,7 +179,7 @@ foreach ($internal_hosts as $service) {
     .status-state {
       font-size: 18px;
       font-weight: bold;
-      color: ' . ($currentStatus[$name] === 'up' ? '#28a745' : '#dc3545') . ';
+      color: ' . ($curStr === 'up' ? '#28a745' : '#dc3545') . ';
       margin-bottom: 10px;
     }
     .status-details {
@@ -182,18 +209,18 @@ foreach ($internal_hosts as $service) {
 <body>
   <div class="status-container">
     <div class="status-header">
-      <span class="status-icon">' . 
-        ($currentStatus[$name] === 'up'
+      <span class="status-icon">' .
+        ($curStr === 'up'
           ? '<i class="fa-solid fa-circle-check"></i>'
-          : '<i class="fa-solid fa-circle-exclamation"></i>') . 
+          : '<i class="fa-solid fa-circle-exclamation"></i>') .
       '</span>
       <span class="status-title">' . htmlspecialchars($name) . '</span>
     </div>
     <div class="status-state">
-      Status: ' . strtoupper($currentStatus[$name]) . '
+      Status: ' . strtoupper($curStr) . '
     </div>
     <div class="status-details">
-      The service <b>' . htmlspecialchars($name) . '</b> has changed status and is now <b style="color:' . ($currentStatus[$name] === 'up' ? '#28a745' : '#dc3545') . ';">' . strtoupper($currentStatus[$name]) . '</b>.<br>
+      The service <b>' . htmlspecialchars($name) . '</b> has changed status and is now <b style="color:' . ($curStr === 'up' ? '#28a745' : '#dc3545') . ';">' . strtoupper($curStr) . '</b>.<br>
       <small>Checked at: ' . date('Y-m-d H:i:s') . '</small>
     </div>
     <a class="button" href="' . htmlspecialchars($page_url) . '" target="_blank">View Status Page</a>

@@ -66,6 +66,15 @@ function escapeHtml(s) {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+
+function formatDuration(seconds) {
+    seconds = Math.max(0, Math.floor(seconds));
+    if (seconds < 60)   return seconds + 's';
+    if (seconds < 3600) { var m = Math.floor(seconds/60); var s = seconds%60; return m + 'm' + (s ? ' ' + s + 's' : ''); }
+    var h = Math.floor(seconds/3600), m = Math.floor((seconds%3600)/60);
+    if (h < 24) return h + 'h' + (m ? ' ' + m + 'm' : '');
+    var d = Math.floor(h/24); return d + 'd' + (h%24 ? ' ' + (h%24) + 'h' : '');
+}
 function cacheBust(url) {
     return url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now();
 }
@@ -117,20 +126,32 @@ function loadIncidents() {
         var html = '';
         data.forEach(function(incident, idx) {
             var sev = severityMap[incident.severity] || severityMap.outage;
+            var fmtTime = function(iso) {
+                if (!iso) return '';
+                var d = new Date(iso.replace('T', ' '));
+                return isNaN(d) ? iso.replace('T',' ') : d.toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+            };
+            var startFmt = fmtTime(incident.start_time || incident.time || '');
+            var endFmt   = incident.end_time ? fmtTime(incident.end_time) : '';
+            var timeRange = startFmt
+                ? (endFmt
+                    ? `${startFmt} <span class="opacity-50 mx-0.5">→</span> ${endFmt}`
+                    : `${startFmt} <span class="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-200/60 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">Ongoing</span>`)
+                : '';
             html += `
             <div class="rounded-xl p-4 mb-3" style="background:${sev.bg};border:1px solid ${sev.border}">
                 <div class="flex justify-between items-start gap-2 mb-1.5">
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
                         <i class="fa-solid ${sev.icon} text-sm" style="color:${sev.iconColor}"></i>
                         <span class="font-semibold text-sm text-slate-900 dark:text-slate-100">${escapeHtml(incident.title)}</span>
                         <span class="text-xs font-medium px-2 py-0.5 rounded-full ${sev.badge}">${sev.label}</span>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <span class="text-xs text-slate-400">${escapeHtml(incident.time || '')}</span>
                         ${isAdmin ? `<button class="remove-incident-btn p-1 rounded-md text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 text-xs" data-idx="${idx}" title="Remove"><i class="fa fa-trash"></i></button>` : ''}
                     </div>
                 </div>
-                <p class="text-sm text-slate-600 dark:text-slate-300 ml-6">${escapeHtml(incident.description || '')}</p>
+                <p class="text-sm text-slate-600 dark:text-slate-300 ml-6 mb-1.5">${escapeHtml(incident.description || '')}</p>
+                ${timeRange ? `<p class="text-xs text-slate-400 dark:text-slate-500 ml-6"><i class="fa-regular fa-clock mr-1 opacity-70"></i>${timeRange}</p>` : ''}
             </div>`;
         });
         _html('incidents_area', html);
@@ -172,13 +193,23 @@ function loadStatus() {
             var type    = service.type  || '';
             var desc    = service.desc  || '';
             var isUp    = /check/.test(service.status_icon);
-            var tipParts = [];
-            if (service.host) tipParts.push(service.host);
-            if (service.port) tipParts.push(service.port === 'ping' ? 'ICMP ping' : 'port ' + service.port);
-            var tip = tipParts.join('  ·  ');
+            var tipLines = [];
+            var portStr = (service.port && service.port !== 'ping') ? service.port : '';
+            var connStr = (service.host || '') + (portStr ? '  ·  ' + portStr : '');
+            if (connStr) tipLines.push(connStr);
+            if (service.last_down_at) {
+                var d = new Date(service.last_down_at * 1000);
+                tipLines.push('Last offline: ' + d.toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}));
+                if (service.last_down_duration_s) tipLines.push('Duration: ' + formatDuration(service.last_down_duration_s));
+            }
+            var tip = tipLines.join('\n');
+            var wentDownAt = (!isUp && service.went_down_at) ? parseInt(service.went_down_at, 10) : 0;
             var statusDot = isUp
                 ? '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold" style="color:var(--success-color)"><span class="w-1.5 h-1.5 rounded-full" style="background:var(--success-color)"></span>Up</span>'
                 : '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold" style="color:var(--error-color)"><span class="w-1.5 h-1.5 rounded-full" style="background:var(--error-color)"></span>Down</span>';
+            var downTimer = (!isUp && wentDownAt)
+                ? `<p class="text-[10px] font-mono mt-1.5" style="color:var(--error-color)" data-down-since="${wentDownAt}">${formatDuration(Math.floor(Date.now()/1000) - wentDownAt)}</p>`
+                : '';
             html += `
             <div class="service-card"${tip ? ` data-tooltip="${escapeHtml(tip)}"` : ''}>
                 <div class="flex items-start justify-between gap-1.5 mb-2">
@@ -187,6 +218,7 @@ function loadStatus() {
                 </div>
                 <span class="service-badge self-start">${escapeHtml(type)}</span>
                 ${desc ? `<p class="text-[11px] text-slate-400 dark:text-slate-500 leading-snug mt-2">${escapeHtml(desc)}</p>` : ''}
+                ${downTimer}
             </div>`;
         });
         _html('services_placeholder', html);
@@ -649,6 +681,88 @@ function showServiceNotification(serviceName, isUp) {
     });
 })();
 
+// --- Outage History ---
+var _outageData = [];
+
+function _applyOutageFilters() {
+    var svc  = document.getElementById('outageFilterSvc')  ? document.getElementById('outageFilterSvc').value  : '';
+    var time = document.getElementById('outageFilterTime') ? document.getElementById('outageFilterTime').value : '';
+    var cutoff = 0;
+    if (time) { var h = parseInt(time, 10); cutoff = Math.floor(Date.now() / 1000) - h * 3600; }
+    document.querySelectorAll('#outageLogBody tbody tr').forEach(function(tr) {
+        var matchSvc  = !svc  || tr.dataset.service === svc;
+        var matchTime = !cutoff || (parseInt(tr.dataset.downAt || '0', 10) >= cutoff);
+        tr.style.display = (matchSvc && matchTime) ? '' : 'none';
+    });
+    var any = !!document.querySelector('#outageLogBody tbody tr:not([style*="none"])');
+    var empty = document.getElementById('outageLogEmpty');
+    if (empty) empty.style.display = any ? 'none' : '';
+}
+
+function openOutageLog() {
+    openModal('outageLogModal');
+    _get(cacheBust('include/outage_log.php'), function(data) {
+        var el = document.getElementById('outageLogBody');
+        if (!el) return;
+        _outageData = data || [];
+        if (!_outageData.length) {
+            el.innerHTML = '<p class="text-sm text-slate-400 dark:text-slate-500 text-center py-8">No outages recorded yet.</p>';
+            return;
+        }
+        var fmt = function(ts) {
+            var d = new Date(ts * 1000);
+            return d.toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+        };
+        var services = _outageData.reduce(function(acc, e) {
+            if (e.service && acc.indexOf(e.service) === -1) acc.push(e.service);
+            return acc;
+        }, []);
+        var svcOpts = services.map(function(s) {
+            return '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>';
+        }).join('');
+        var rows = _outageData.map(function(e) {
+            return `<tr class="border-b border-slate-100 dark:border-slate-700/50 last:border-0" data-service="${escapeHtml(e.service||'')}" data-down-at="${e.went_down_at||0}">
+                <td class="py-2.5 pr-4 text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">${escapeHtml(e.service || '')}</td>
+                <td class="py-2.5 pr-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">${e.went_down_at ? fmt(e.went_down_at) : '—'}</td>
+                <td class="py-2.5 pr-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">${e.came_up_at ? fmt(e.came_up_at) : '—'}</td>
+                <td class="py-2.5 text-xs font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">${e.duration_s ? formatDuration(e.duration_s) : '—'}</td>
+            </tr>`;
+        }).join('');
+        var inputCls = 'text-xs border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500';
+        el.innerHTML = `
+            <div class="flex flex-wrap items-center gap-2 mb-4">
+                <select id="outageFilterSvc" class="${inputCls}">
+                    <option value="">All services</option>${svcOpts}
+                </select>
+                <select id="outageFilterTime" class="${inputCls}">
+                    <option value="">All time</option>
+                    <option value="1">Last hour</option>
+                    <option value="8">Last 8 hours</option>
+                    <option value="24">Last 24 hours</option>
+                    <option value="168">Last 7 days</option>
+                    <option value="720">Last 30 days</option>
+                </select>
+            </div>
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-slate-700">
+                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Service</th>
+                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Went Down</th>
+                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Recovered</th>
+                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Duration</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <p id="outageLogEmpty" style="display:none" class="text-sm text-slate-400 dark:text-slate-500 text-center py-6">No outages match the selected filters.</p>`;
+        document.getElementById('outageFilterSvc').addEventListener('change',  _applyOutageFilters);
+        document.getElementById('outageFilterTime').addEventListener('change', _applyOutageFilters);
+    }, function() {
+        var el = document.getElementById('outageLogBody');
+        if (el) el.innerHTML = '<p class="text-sm text-red-500 text-center py-6">Failed to load outage history.</p>';
+    });
+}
+
 // --- Boot ---
 function _try(label, fn) {
     try { fn(); } catch(e) { _log('ERROR in ' + label + ': ' + e.message); }
@@ -662,6 +776,13 @@ function _boot() {
     _try('loadRSS',             loadRSS);
     _try('startAutoRefresh',    startAutoRefresh);
     setInterval(_updateLastUpdated, 10000);
+    setInterval(function() {
+        var now = Math.floor(Date.now() / 1000);
+        document.querySelectorAll('[data-down-since]').forEach(function(el) {
+            var since = parseInt(el.dataset.downSince, 10);
+            if (since) el.textContent = formatDuration(now - since);
+        });
+    }, 1000);
     if (window.showLoginModal) openModal('loginModal');
 
     var rssArea = document.getElementById('rss_area');
