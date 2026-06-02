@@ -191,7 +191,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
 <html lang="<?= htmlspecialchars($lang) ?>"<?= $is_dark ? ' class="dark"' : '' ?>>
 <head>
     <meta charset="UTF-8">
-    <title><?= htmlspecialchars($business_name) ?> — <?= $t['status_page'] ?></title>
+    <title><?= htmlspecialchars($business_name) ?> | <?= $t['status_page'] ?></title>
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <?php if (!$local_tw && !$local_fa && !$local_jq): ?>

@@ -2,11 +2,6 @@
   {
     "title": "Network Maintenance",
     "description": "Scheduled maintenance on the core network. Some services may be intermittently unavailable.",
-    "time": "2025-11-19 02:00"
-  },
-  {
-    "title": "Email Service Outage",
-    "description": "We are investigating an issue with the email service. Updates will follow.",
-    "time": "2025-11-18 10:15"
+    "time": "2026-11-19 02:00"
   }
 ]
