@@ -81,41 +81,58 @@ function checked($v) { return $v ? 'checked' : ''; }
     <?php endif; ?>
     <link href="status-page.css" rel="stylesheet">
     <style>
-        .tab-btn { padding:8px 16px; font-size:13px; font-weight:500; border-bottom:2px solid transparent; color:#64748b; cursor:pointer; white-space:nowrap; transition:color 0.15s,border-color 0.15s; }
+        /* ── Tabs ── */
+        .tab-btn { padding:9px 16px; font-size:13px; font-weight:500; border-bottom:2px solid transparent; color:#64748b; cursor:pointer; white-space:nowrap; transition:color .15s,border-color .15s; }
         .tab-btn:hover { color:#6366f1; }
         .tab-btn.active { color:#6366f1; border-bottom-color:#6366f1; }
-        .dark .tab-btn { color:#94a3b8; }
+        .dark .tab-btn { color:#64748b; }
         .dark .tab-btn:hover, .dark .tab-btn.active { color:#818cf8; border-bottom-color:#818cf8; }
-        .cfg-input { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:7px 10px; font-size:13px; background:#fff; color:#0f172a; transition:border-color .15s,box-shadow .15s; }
-        .cfg-input:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,0.12); }
-        .dark .cfg-input { background:#1e293b; border-color:#334155; color:#e2e8f0; }
-        .dark .cfg-input:focus { border-color:#818cf8; box-shadow:0 0 0 3px rgba(129,140,248,0.15); }
-        .cfg-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px; letter-spacing:0.03em; text-transform:uppercase; }
-        .dark .cfg-label { color:#94a3b8; }
-        .tbl-input { width:100%; border:0; background:transparent; font-size:12.5px; padding:4px 6px; color:#0f172a; border-radius:4px; }
-        .tbl-input:focus { outline:none; background:#f1f5f9; box-shadow:inset 0 0 0 1px #6366f1; }
-        .dark .tbl-input { color:#e2e8f0; }
-        .dark .tbl-input:focus { background:#334155; }
+
+        /* ── Form inputs ── */
+        .cfg-input { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:7px 11px; font-size:13px; background:#fff; color:#0f172a; transition:border-color .15s,box-shadow .15s; }
+        .cfg-input:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.12); }
+        .dark .cfg-input { background:#0d1e36; border-color:rgba(148,163,184,.14); color:#cbd5e1; }
+        .dark .cfg-input:focus { border-color:#818cf8; box-shadow:0 0 0 3px rgba(129,140,248,.14); }
+        .cfg-input[readonly] { cursor:default; background:#f1f5f9 !important; color:#94a3b8 !important; border-color:#e2e8f0 !important; }
+        .dark .cfg-input[readonly] { background:#060e1c !important; color:#4b5675 !important; border-color:rgba(148,163,184,.06) !important; }
+
+        /* ── Labels ── */
+        .cfg-label { display:block; font-size:11px; font-weight:600; color:#64748b; margin-bottom:5px; letter-spacing:0.04em; text-transform:uppercase; }
+        .dark .cfg-label { color:#475569; }
+
+        /* ── Table inputs ── */
+        .tbl-input { width:100%; border:0; background:transparent; font-size:12.5px; padding:5px 7px; color:#1e293b; border-radius:5px; }
+        .tbl-input:focus { outline:none; background:#eff2ff; box-shadow:inset 0 0 0 1.5px #6366f1; }
+        .dark .tbl-input { color:#94a3b8; }
+        .dark .tbl-input:focus { background:rgba(99,102,241,.1); box-shadow:inset 0 0 0 1.5px #818cf8; }
+
+        /* ── Tables ── */
         table { width:100%; border-collapse:collapse; }
-        th { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:#64748b; padding:8px 8px 6px; text-align:left; border-bottom:1px solid #e2e8f0; }
-        .dark th { color:#94a3b8; border-color:#334155; }
+        th { font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8; padding:6px 8px 8px; text-align:left; border-bottom:1px solid #e2e8f0; }
+        .dark th { color:#334155; border-color:rgba(148,163,184,.08); }
         td { padding:2px 2px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
-        .dark td { border-color:#1e293b; }
+        .dark td { border-color:rgba(7,16,31,.6); }
         tr:hover td { background:#f8fafc; }
-        .dark tr:hover td { background:#1e293b; }
-        .del-btn { width:28px; height:28px; display:flex;align-items:center;justify-content:center; border-radius:6px; color:#ef4444; cursor:pointer; transition:background .15s; flex-shrink:0; }
-        .del-btn:hover { background:#fee2e2; }
-        .dark .del-btn:hover { background:#450a0a; }
-        .add-row-btn { font-size:12px; font-weight:600; color:#6366f1; cursor:pointer; display:flex; align-items:center; gap:4px; padding:6px 2px; margin-top:8px; }
-        .add-row-btn:hover { color:#4f46e5; }
-        .section-card { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:20px 24px; margin-bottom:16px; }
-        .dark .section-card { background:#1e293b; border-color:#334155; }
+        .dark tr:hover td { background:rgba(15,31,56,.4); }
+
+        /* ── Action buttons ── */
+        .del-btn { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#f87171; cursor:pointer; transition:background .15s,color .15s; flex-shrink:0; }
+        .del-btn:hover { background:rgba(239,68,68,.1); color:#ef4444; }
+        .dark .del-btn { color:#4b1212; }
+        .dark .del-btn:hover { background:rgba(239,68,68,.1); color:#f87171; }
+        .add-row-btn { font-size:12px; font-weight:600; color:#6366f1; cursor:pointer; display:flex; align-items:center; gap:5px; padding:7px 4px; margin-top:6px; opacity:.8; transition:opacity .15s; }
+        .add-row-btn:hover { opacity:1; }
+        .dark .add-row-btn { color:#818cf8; }
+
+        /* ── Section cards ── */
+        .section-card { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:22px 24px; margin-bottom:16px; }
+        .dark .section-card { background:linear-gradient(150deg, #0d1e38 0%, #111c2e 100%); border-color:rgba(148,163,184,.08); box-shadow:0 1px 0 rgba(255,255,255,.02) inset; }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased min-h-screen">
 
 <!-- Sticky top bar -->
-<div class="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/70 shadow-sm">
     <div class="<?= $embed ? 'px-4' : 'max-w-5xl mx-auto px-4' ?> h-14 flex items-center justify-between gap-4">
         <div class="flex items-center gap-3">
             <?php if ($embed): ?>
@@ -322,13 +339,11 @@ function checked($v) { return $v ? 'checked' : ''; }
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="cfg-label">Config Version <span class="text-slate-400 font-normal normal-case">(auto-increments on save)</span></label>
-                        <input id="cfg-version" class="cfg-input" value="<?= e($json_data['meta']['version'] ?? '1.0') ?>"
-                               readonly style="opacity:0.6;cursor:default;background:#f8fafc">
+                        <input id="cfg-version" class="cfg-input" value="<?= e($json_data['meta']['version'] ?? '1.0') ?>" readonly>
                     </div>
                     <div>
                         <label class="cfg-label">Author</label>
-                        <input id="cfg-author" class="cfg-input" value="<?= e($json_data['meta']['author'] ?? '') ?>"
-                               readonly style="opacity:0.6;cursor:default;background:#f8fafc">
+                        <input id="cfg-author" class="cfg-input" value="<?= e($json_data['meta']['author'] ?? '') ?>" readonly>
                     </div>
                 </div>
             </div>

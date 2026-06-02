@@ -251,7 +251,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
 <?php endif; ?>
 
 <!-- ── Navbar ─────────────────────────────────────────────────────────── -->
-<nav class="border-b border-slate-800/60 shadow-lg" style="background:linear-gradient(180deg,#0f172a 0%,#1a2540 100%)">
+<nav class="border-b border-slate-200 dark:border-slate-800/60 shadow-sm dark:shadow-lg">
     <div class="max-w-screen-xl mx-auto px-4">
         <div class="flex items-center justify-between h-14">
 
@@ -259,137 +259,128 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
             <div class="flex items-center gap-3">
                 <?php if ($business_logo): ?>
                     <img src="<?= htmlspecialchars($business_logo) ?>" alt="Logo"
-                        class="bg-white rounded-lg px-2 py-1 max-h-9 object-contain">
+                        class="bg-white rounded-lg px-2 py-1 max-h-9 object-contain border border-slate-200 dark:border-transparent">
                 <?php endif; ?>
-                <div class="flex flex-col gap-0">
-                    <span class="text-white font-semibold text-base tracking-tight"><?= htmlspecialchars($business_name) ?></span>
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-slate-900 dark:text-white font-semibold text-base tracking-tight leading-none"><?= htmlspecialchars($business_name) ?></span>
                     <?php if ($sla_enabled): ?>
-                        <span class="text-xs text-emerald-300">SLA: <?= htmlspecialchars((string)$sla_target) ?>% Uptime</span>
+                        <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">SLA <?= htmlspecialchars((string)$sla_target) ?>%</span>
                     <?php endif; ?>
                 </div>
             </div>
 
             <!-- Desktop controls -->
-            <div class="hidden md:flex items-center gap-2">
+            <div class="hidden md:flex items-center gap-1.5">
 
                 <!-- Language -->
-                <div class="flex items-center bg-slate-800/80 border border-slate-700 rounded-lg h-8 overflow-hidden">
-                    <span class="px-2.5 text-xs text-slate-400 font-medium whitespace-nowrap border-r border-slate-700 h-full flex items-center">
-                        <?= $lang === 'es' ? 'Idioma' : 'Language' ?>
+                <div class="flex items-center bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg h-8 overflow-hidden">
+                    <span class="px-2.5 text-[11px] text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap border-r border-slate-200 dark:border-slate-700/60 h-full flex items-center">
+                        <?= $lang === 'es' ? 'Idioma' : 'Lang' ?>
                     </span>
-                    <select id="langSelect" class="bg-transparent text-slate-200 text-xs px-2 h-8 border-0 outline-none cursor-pointer appearance-none">
+                    <select id="langSelect" class="bg-transparent text-slate-700 dark:text-slate-300 text-[11px] px-2 h-8 border-0 outline-none cursor-pointer appearance-none">
                         <?php foreach ($supported_langs as $code => $label): ?>
-                            <option value="<?= $code ?>" <?= $lang === $code ? 'selected' : '' ?> class="bg-gray-900 text-white"><?= $label ?></option>
+                            <option value="<?= $code ?>" <?= $lang === $code ? 'selected' : '' ?> class="bg-white dark:bg-slate-900 text-slate-900 dark:text-white"><?= $label ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
                 <!-- Auto-refresh -->
-                <div class="flex items-center bg-slate-800/80 border border-slate-700 rounded-lg h-8 overflow-hidden">
-                    <label class="flex items-center gap-1.5 px-2.5 text-xs text-gray-400 font-medium border-r border-gray-700 h-full cursor-pointer whitespace-nowrap">
-                        <input type="checkbox" id="refreshToggle" checked class="accent-blue-500 w-3 h-3">
+                <div class="flex items-center bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg h-8 overflow-hidden">
+                    <label class="flex items-center gap-1.5 px-2.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium border-r border-slate-200 dark:border-slate-700/60 h-full cursor-pointer whitespace-nowrap">
+                        <input type="checkbox" id="refreshToggle" checked class="accent-indigo-500 w-3 h-3">
                         <?= $t['auto_refresh'] ?>
                     </label>
                     <div class="flex items-center px-2 gap-1">
                         <input type="number" id="refreshInterval" value="<?= (int)$refresh_rate ?>" min="3000" step="500"
-                            class="bg-transparent text-white text-xs w-16 text-right outline-none"
+                            class="bg-transparent text-slate-700 dark:text-slate-200 text-[11px] w-14 text-right outline-none"
                             title="<?= $t['interval'] ?>">
-                        <span class="text-gray-500 text-xs">ms</span>
+                        <span class="text-slate-400 dark:text-slate-600 text-[11px]">ms</span>
                     </div>
                 </div>
 
-                <!-- Dark mode -->
+                <!-- Theme toggle -->
                 <button id="darkModeToggle" type="button"
-                    class="flex items-center gap-1.5 h-8 px-3 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 hover:text-white text-xs font-medium transition-colors">
-                    <i class="fa-solid fa-moon text-xs"></i>
-                    <span class="dm-label hidden lg:inline"><?= $t['dark_mode'] ?></span>
-                </button>
-
-                <!-- Subscribe -->
-                <button type="button" onclick="openModal('subscribeModal')"
-                    class="flex items-center gap-1.5 h-8 px-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white text-xs font-medium transition-colors">
-                    <i class="fa-solid fa-envelope text-xs"></i>
-                    <span><?= $t['subscribe'] ?></span>
+                    class="flex items-center justify-center h-8 w-8 bg-slate-100 dark:bg-slate-800/70 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                    title="<?= $is_dark ? $t['light_mode'] : $t['dark_mode'] ?>">
+                    <i class="fa-solid fa-moon text-xs dm-icon"></i>
+                    <span class="dm-label sr-only"><?= $t['dark_mode'] ?></span>
                 </button>
 
                 <?php if ($is_admin): ?>
-                    <button type="button" onclick="openModal('createIncidentModal')"
-                        class="flex items-center gap-1.5 h-8 px-3 bg-amber-500 hover:bg-amber-600 rounded-lg text-white text-xs font-medium transition-colors">
-                        <i class="fa-solid fa-plus text-xs"></i>
-                        <span><?= $t['incidents'] ?></span>
-                    </button>
+                    <!-- Divider -->
+                    <div class="h-5 w-px bg-slate-200 dark:bg-slate-700/60 mx-0.5"></div>
                     <button type="button" onclick="openConfigModal()"
-                        class="flex items-center h-8 px-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-gray-300 hover:text-white text-xs transition-colors"
+                        class="flex items-center justify-center h-8 w-8 bg-slate-100 dark:bg-slate-800/70 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 text-xs transition-colors"
                         title="<?= $t['edit_config'] ?>">
                         <i class="fa-solid fa-gear"></i>
                     </button>
                     <?php if ($auth_required): ?>
                         <a href="?logout=1"
-                            class="flex items-center h-8 px-3 bg-red-700 hover:bg-red-600 rounded-lg text-white text-xs font-medium transition-colors">
-                            <?= $t['logout'] ?>
+                            class="flex items-center gap-1.5 h-8 px-3 bg-slate-100 dark:bg-slate-800/70 hover:bg-red-50 dark:hover:bg-red-900/30 border border-slate-200 dark:border-slate-700/60 hover:border-red-200 dark:hover:border-red-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 text-xs font-medium transition-colors">
+                            <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                            <span class="hidden lg:inline"><?= $t['logout'] ?></span>
                         </a>
                     <?php endif; ?>
                 <?php else: ?>
+                    <!-- Divider -->
+                    <div class="h-5 w-px bg-slate-200 dark:bg-slate-700/60 mx-0.5"></div>
                     <button type="button" onclick="openModal('loginModal')"
-                        class="flex items-center h-8 px-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-xs font-medium transition-colors">
-                        <?= $t['login'] ?>
+                        class="flex items-center gap-1.5 h-8 px-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white text-xs font-medium transition-colors shadow-sm">
+                        <i class="fa-solid fa-right-to-bracket text-xs"></i>
+                        <span><?= $t['login'] ?></span>
                     </button>
                 <?php endif; ?>
             </div>
 
             <!-- Mobile hamburger -->
             <button id="mobile-menu-btn" type="button"
-                class="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+                class="md:hidden p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <i class="fa-solid fa-bars"></i>
             </button>
         </div>
 
         <!-- Mobile menu -->
-        <div id="mobile-menu" class="hidden md:hidden pb-4 flex flex-col gap-2 border-t border-gray-800 pt-3">
+        <div id="mobile-menu" class="hidden md:hidden pb-4 flex flex-col gap-2.5 border-t border-slate-200 dark:border-slate-800 pt-3">
             <div class="flex items-center gap-2">
-                <label class="text-xs text-gray-400"><?= $lang === 'es' ? 'Idioma' : 'Language' ?></label>
+                <label class="text-xs text-slate-500 dark:text-slate-400 font-medium"><?= $lang === 'es' ? 'Idioma' : 'Language' ?></label>
                 <select id="langSelectMobile" onchange="document.getElementById('langSelect').value=this.value; document.getElementById('langSelect').dispatchEvent(new Event('change'));"
-                    class="bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1">
+                    class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs rounded-lg px-2 py-1.5">
                     <?php foreach ($supported_langs as $code => $label): ?>
                         <option value="<?= $code ?>" <?= $lang === $code ? 'selected' : '' ?>><?= $label ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="flex items-center gap-3">
-                <label class="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
-                    <input type="checkbox" id="refreshToggleMobile" checked class="accent-blue-500"
+            <div class="flex items-center gap-2">
+                <label class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 cursor-pointer font-medium">
+                    <input type="checkbox" id="refreshToggleMobile" checked class="accent-indigo-500"
                         onchange="document.getElementById('refreshToggle').checked=this.checked; document.getElementById('refreshToggle').dispatchEvent(new Event('change'));">
                     <?= $t['auto_refresh'] ?>
                 </label>
                 <input type="number" value="<?= (int)$refresh_rate ?>" min="3000" step="500"
-                    class="bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1 w-20"
+                    class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs rounded-lg px-2 py-1.5 w-20"
                     onchange="document.getElementById('refreshInterval').value=this.value; document.getElementById('refreshInterval').dispatchEvent(new Event('change'));">
-                <span class="text-gray-500 text-xs">ms</span>
+                <span class="text-slate-400 dark:text-slate-600 text-xs">ms</span>
             </div>
-            <div class="flex flex-wrap gap-2 pt-1">
+            <div class="flex flex-wrap gap-2 pt-0.5">
                 <button id="darkModeToggleMobile" type="button" onclick="document.getElementById('darkModeToggle').click();"
-                    class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/80 border border-slate-700 rounded-lg text-gray-300 text-xs font-medium">
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-medium">
                     <i class="fa-solid fa-moon text-xs"></i> <?= $t['dark_mode'] ?>
                 </button>
-                <button type="button" onclick="openModal('subscribeModal')"
-                    class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 rounded-lg text-white text-xs font-medium">
-                    <i class="fa-solid fa-envelope text-xs"></i> <?= $t['subscribe'] ?>
-                </button>
                 <?php if ($is_admin): ?>
-                    <button type="button" onclick="openModal('createIncidentModal')"
-                        class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 rounded-lg text-white text-xs font-medium">
-                        <i class="fa-solid fa-plus text-xs"></i> <?= $t['incidents'] ?>
-                    </button>
                     <button type="button" onclick="openConfigModal()"
-                        class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-gray-300 text-xs font-medium">
+                        class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-medium">
                         <i class="fa-solid fa-gear text-xs"></i> <?= $t['edit_config'] ?>
                     </button>
                     <?php if ($auth_required): ?>
-                        <a href="?logout=1" class="px-3 py-1.5 bg-red-700 rounded-lg text-white text-xs font-medium"><?= $t['logout'] ?></a>
+                        <a href="?logout=1" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-red-600 dark:text-red-400 text-xs font-medium">
+                            <i class="fa-solid fa-right-from-bracket text-xs"></i><?= $t['logout'] ?>
+                        </a>
                     <?php endif; ?>
                 <?php else: ?>
                     <button type="button" onclick="openModal('loginModal')"
-                        class="px-3 py-1.5 bg-blue-600 rounded-lg text-white text-xs font-medium"><?= $t['login'] ?></button>
+                        class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 rounded-lg text-white text-xs font-medium">
+                        <i class="fa-solid fa-right-to-bracket text-xs"></i><?= $t['login'] ?>
+                    </button>
                 <?php endif; ?>
             </div>
         </div>
@@ -499,6 +490,22 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
     </div>
 
 </main>
+
+<!-- ── Floating actions ──────────────────────────────────────────────── -->
+<div class="fixed bottom-5 right-5 z-30 flex flex-col items-end gap-2.5">
+    <?php if ($is_admin): ?>
+    <button type="button" onclick="openModal('createIncidentModal')"
+        class="flex items-center gap-2 pl-3 pr-4 py-2.5 bg-amber-500 hover:bg-amber-400 dark:bg-amber-600 dark:hover:bg-amber-500 shadow-lg hover:shadow-xl rounded-full text-white text-sm font-medium transition-all hover:-translate-y-0.5 active:translate-y-0">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span><?= $t['incidents'] ?></span>
+    </button>
+    <?php endif; ?>
+    <button type="button" onclick="openModal('subscribeModal')"
+        class="flex items-center gap-2 pl-3 pr-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-700 dark:hover:bg-emerald-600 shadow-lg hover:shadow-xl rounded-full text-white text-sm font-medium transition-all hover:-translate-y-0.5 active:translate-y-0">
+        <i class="fa-solid fa-bell"></i>
+        <span><?= $t['subscribe'] ?></span>
+    </button>
+</div>
 
 <!-- ── Footer ─────────────────────────────────────────────────────────── -->
 <footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-6 mt-6">

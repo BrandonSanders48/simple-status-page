@@ -321,8 +321,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.cookie = 'dark_mode=' + (isDark ? 'on' : 'off') + ';path=/;max-age=31536000';
         const icon = btn.querySelector('i');
         const lbl  = btn.querySelector('.dm-label');
-        if (icon) icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        if (icon) { icon.classList.toggle('fa-sun', isDark); icon.classList.toggle('fa-moon', !isDark); }
         if (lbl)  lbl.textContent = isDark ? lightMode : darkMode;
+        btn.title = isDark ? lightMode : darkMode;
     }
 
     btn.addEventListener('click', function() {
@@ -332,8 +333,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.documentElement.classList.contains('dark')) {
         const icon = btn.querySelector('i');
         const lbl  = btn.querySelector('.dm-label');
-        if (icon) icon.className = 'fa-solid fa-sun';
+        if (icon) { icon.classList.add('fa-sun'); icon.classList.remove('fa-moon'); }
         if (lbl)  lbl.textContent = lightMode;
+        btn.title = lightMode;
     }
 
     // Mobile menu toggle
