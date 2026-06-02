@@ -1,6 +1,6 @@
 # Simple Status Page
 
-A sleek, production-ready status page built with HTML/PHP/Tailwind CSS. Features real-time service monitoring, incident management, email subscriptions, RSS feed integration, and comprehensive branding customization.
+A sleek, production-ready status page built with PHP, Tailwind CSS, and vanilla JS. Real-time service monitoring, incident management, outage history, email subscriptions, RSS feed integration, and full branding customization — no database required.
 
 ## Screenshot
 
@@ -8,119 +8,186 @@ A sleek, production-ready status page built with HTML/PHP/Tailwind CSS. Features
 
 ## Features
 
-✅ **Real-time Monitoring** – Monitor internal services and network connectivity  
-✅ **Incident Management** – Create, track, and manage incidents with timestamps  
-✅ **Email Subscriptions** – Users can subscribe to service updates  
-✅ **RSS Feed Integration** – Display external status feeds (e.g., vendor status pages)  
-✅ **Customizable Branding** – Company logo, colors, footer, announcement banners  
-✅ **SLA Support** – Display uptime targets and SLA status  
-✅ **Multi-Language** – Built-in English/Spanish support  
-✅ **Dark Mode** – Beautiful dark theme with system preference detection  
-✅ **Responsive Design** – Works perfectly on mobile, tablet, and desktop  
-✅ **Docker Ready** – Includes Dockerfile and Docker Compose support  
-✅ **SMTP Email** – Send email notifications via configured SMTP server  
+**Monitoring**
+- Real-time TCP port and ICMP ping checks for internal services
+- Parallel checks via `curl_multi` for fast results
+- Local-area (gateway) and wide-area (public DNS) network status
+- Live pulsing **LIVE** indicator on the status banner
+- Service cards don't re-render unless status actually changes (no flicker on refresh)
 
-## Configuration Highlights
+**Service Cards**
+- Hover tooltip shows hostname, port number, last offline time, and outage duration
+- Live downtime counter on any card that is currently down (counts up in real time)
+- Automatic downtime tracking — no cron job required
 
-### Branding & Theme
-Customize the appearance of your status page:
+**Outage History**
+- Full log of every down→up cycle with service name, went-down time, recovered time, and duration
+- Filter by service name
+- Filter by time range: last hour, 8 hours, 24 hours, 7 days, 30 days
 
-```json
-{
-  "branding": {
-    "business_name": "Your Company",
-    "business_logo": "https://example.com/logo.png",
-    "company_url": "https://example.com",
-    "support_email": "support@example.com",
-    "support_phone": "+1-555-0123",
-    "footer_message": "© 2026 Your Company. All rights reserved.",
-    "announcement_banner": "Scheduled maintenance on Sunday 2-4 PM EST",
-    "announcement_type": "info"
-  },
-  "theme": {
-    "primary_color": "#4f46e5",
-    "accent_color": "#06b6d4",
-    "success_color": "#059669",
-    "warning_color": "#d97706",
-    "error_color": "#dc2626"
-  }
-}
+**Incident Management**
+- Create incidents with title, description, severity, start time, and optional end time
+- Severity levels: Degraded / Outage / Maintenance / Resolved
+- Ongoing badge for incidents without an end time
+- Admin-only create/remove; visible to all
+
+**Notifications**
+- Email subscriptions — users subscribe per service
+- SMTP notifications via PHPMailer when a service changes state
+- Optional browser push notifications and alert sound on status change
+
+**Configuration (UI)**
+- In-browser config editor with tabs: General, Services, RSS Feeds, Network, Notifications
+- Drag-and-drop row reordering for services and RSS feeds
+- Live row counter with caps: 20 services max, 10 RSS feeds max
+- One-click config backup download
+- Theme color pickers, announcement banner, SLA settings
+
+**Other**
+- RSS / Atom feed integration (displays latest item from external status feeds)
+- Multi-language: English / Español
+- Dark mode (cookie-persisted, toggle in navbar)
+- Fully responsive — mobile, tablet, desktop
+- CSRF protection on all forms
+- Rate limiting on login (5 attempts / 5 min) and incident creation (10 / 10 min)
+- Docker ready
+
+## Default Login
+
+**Username:** `admin`  
+**Password:** `changeme`
+
+Set via environment variables or change in `include/configuration.json`.
+
+## Quick Start
+
+### Option 1: Docker (recommended)
+
+```bash
+docker run -d \
+  --name simple-status-page \
+  -p 8080:80 \
+  -e APP_USERNAME="admin" \
+  -e APP_PASSWORD="changeme" \
+  -e APP_AUTH_REQUIRED="true" \
+  brandonsanders/simple-status-page
 ```
 
-### SLA Configuration
-Display uptime targets:
+Open [http://localhost:8080](http://localhost:8080).
 
-```json
-{
-  "sla": {
-    "enabled": true,
-    "uptime_target": 99.9,
-    "reporting_period": "monthly"
-  }
-}
+### Option 2: Build from source
+
+```bash
+git clone https://github.com/BrandonSanders48/simple-status-page.git
+cd simple-status-page
+docker build -t simple-status-page .
+docker run -d -p 8080:80 \
+  -e APP_USERNAME="admin" \
+  -e APP_PASSWORD="changeme" \
+  simple-status-page
 ```
 
-### Service Monitoring
-Monitor internal services with flexible status types:
+### Option 3: Plain PHP
+
+```bash
+php -S localhost:8080
+```
+
+Requires PHP 8.0+ with `curl` and `exec` available.
+
+## Configuration
+
+All settings live in `include/configuration.json` and can be edited through the in-browser UI at `/config.php`.
+
+### Services
 
 ```json
 {
   "internal_hosts": [
     {
-      "host": "192.168.1.1",
+      "name": "Web Server",
+      "host": "192.168.1.10",
       "port": 443,
       "type": "HTTPS",
-      "name": "Web Server",
       "description": "Main web server"
     },
     {
-      "host": "8.8.8.8",
-      "port": 53,
-      "type": "DNS",
-      "name": "Public DNS",
-      "description": "Google DNS connectivity check"
+      "name": "Gateway",
+      "host": "192.168.1.1",
+      "port": null,
+      "type": "PING",
+      "description": "Default gateway — ICMP ping (port null)"
     }
   ]
 }
 ```
 
-## Default Login
+Set `port` to `null` for ICMP ping instead of a TCP check. Maximum 20 services.
 
-**Username:** `admin`  
-**Password:** `changeme`  
+### RSS Feeds
 
-> You can change these credentials in `include/configuration.json` or via the JSON editor in the UI.
-
-## Usage
-
-### Option 1: Build from source
-
-1. Clone or download the repository.  
-2. Make sure Docker is installed.  
-3. Build the Docker image:  
-    ```bash
-    docker build -t simple-status-page .
-    ```
-4. Run the container:
-    ```bash
-    docker run -d -p 8080:80 -e APP_USERNAME="admin" -e APP_PASSWORD="changeme" -e APP_AUTH_REQUIRED="true" simple-status-page
-    ```
-    Your status page will be accessible at [http://localhost:8080](http://localhost:8080).
-
-### Option 2: Use the ready-made image
-
-Pull and run the pre-built image from Docker Hub:
-
-```bash
-docker run -d \
-    --name simple-status-page \
-    -p 8080:80 \
-    -v ${PWD}:/usr/share/nginx/html \
-    -e APP_USERNAME="admin" \
-    -e APP_PASSWORD="changeme" \
-    -e APP_AUTH_REQUIRED="true" \
-    brandonsanders/simple-status-page
+```json
+{
+  "RSS": [
+    {
+      "name": "AWS",
+      "host": "https://status.aws.amazon.com/rss/all.rss",
+      "tag": "item",
+      "description": "AWS service health"
+    }
+  ]
+}
 ```
 
-This will start the status page immediately. You can mount your own JSON config to customize it.
+`tag` is `"item"` for RSS or `"entry"` for Atom. Maximum 10 feeds.
 
+### Branding & Theme
+
+```json
+{
+  "branding": {
+    "business_name": "Your Company",
+    "business_logo": "images/logo.webp",
+    "company_url": "https://example.com",
+    "support_email": "support@example.com",
+    "footer_message": "© 2026 Your Company",
+    "announcement_banner": "Scheduled maintenance Sunday 2–4 PM",
+    "announcement_type": "info"
+  },
+  "theme": {
+    "primary_color": "#6366f1",
+    "accent_color": "#06b6d4",
+    "success_color": "#10b981",
+    "warning_color": "#f59e0b",
+    "error_color": "#ef4444"
+  }
+}
+```
+
+### Email Notifications (SMTP)
+
+```json
+{
+  "email": {
+    "from": "noreply@example.com",
+    "reply_to": "support@example.com",
+    "smtp": {
+      "host": "smtp.example.com",
+      "port": 587,
+      "secure": "tls",
+      "username": "you@example.com",
+      "password": "secret"
+    }
+  }
+}
+```
+
+To send notifications on status change, run `include/cron/status_check_and_notify.php` on a cron schedule. The main status page tracks downtime automatically without cron.
+
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `APP_USERNAME` | `admin` | Admin login username |
+| `APP_PASSWORD` | `changeme` | Admin login password |
+| `APP_AUTH_REQUIRED` | `true` | Set `false` to disable login requirement |
