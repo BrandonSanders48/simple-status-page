@@ -41,11 +41,11 @@
     }
   },
   "sla": {
-    "enabled": true,
+    "enabled": false,
     "uptime_target": 99.9,
     "reporting_period": "monthly"
   },
-  "refresh_rate": 30000,
+  "refresh_rate": 12000,
   "alert_sound": false,
   "browser_notify": true,
   "maintenance_windows": [],
@@ -106,6 +106,20 @@
       "description": "Server 3 HTTPS check."
     },
     {
+      "host": "google.com",
+      "port": 443,
+      "type": "HTTPS",
+      "name": "server3",
+      "description": "Server 3 HTTPS check."
+    },
+    {
+      "host": "google.com",
+      "port": 443,
+      "type": "HTTPS",
+      "name": "server3",
+      "description": "Server 3 HTTPS check."
+    },
+    {
       "host": "8.8.8.8",
       "port": null,
       "type": "Ping",
@@ -114,12 +128,6 @@
     }
   ],
   "RSS": [
-    {
-      "host": "https://status.athenahealth.com/rss",
-      "name": "Athena Health",
-      "tag": "item",
-      "description": "Athena Health status feed."
-    },
     {
       "host": "https://status.goto.com/history.rss",
       "name": "GoTo Connect",
@@ -154,5 +162,5 @@
   "business_name": "Sample",
   "business_logo": "images/logo.png",
   "footer_message": "For IT Department Use Only",
-  "require_auth": false
+  "require_auth": true
 }
