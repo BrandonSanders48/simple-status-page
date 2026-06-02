@@ -19,6 +19,7 @@ const serviceText           = document.body.dataset.service               || 'Se
 const alertSoundEnabled     = document.body.dataset.alertSound === 'true';
 
 let lastServiceStates = {};
+let _lastServicesSig = '';
 let _statusLoading = false, _incidentsLoading = false, _rssLoading = false;
 var _lastUpdated = 0;
 
@@ -221,7 +222,14 @@ function loadStatus() {
                 ${downTimer}
             </div>`;
         });
-        _html('services_placeholder', html);
+        var _sig = (data.services || []).map(function(s) {
+            var up = /check/.test(s.status_icon) ? 1 : 0;
+            return s.title + ':' + up + ':' + (s.went_down_at||0) + ':' + (s.last_down_at||0) + ':' + (s.last_down_duration_s||0);
+        }).join('|');
+        if (_sig !== _lastServicesSig) {
+            _html('services_placeholder', html);
+            _lastServicesSig = _sig;
+        }
 
         var ok = data.local_ok && data.wide_ok && (data.errors || 0) === 0;
         var banner = document.getElementById('all_status');
