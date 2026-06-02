@@ -108,14 +108,22 @@ function loadIncidents() {
             return;
         }
         _removeClass('incidents_container', 'hidden');
+        var severityMap = {
+            degraded:    { bg:'rgba(245,158,11,0.10)',  border:'rgba(245,158,11,0.35)',  icon:'fa-circle-minus',       iconColor:'#f59e0b', badge:'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',    label:'Degraded' },
+            outage:      { bg:'rgba(239,68,68,0.10)',   border:'rgba(239,68,68,0.35)',   icon:'fa-circle-xmark',       iconColor:'#ef4444', badge:'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',            label:'Outage' },
+            maintenance: { bg:'rgba(99,102,241,0.10)',  border:'rgba(99,102,241,0.35)',  icon:'fa-wrench',             iconColor:'#6366f1', badge:'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300', label:'Maintenance' },
+            resolved:    { bg:'rgba(16,185,129,0.10)',  border:'rgba(16,185,129,0.35)',  icon:'fa-circle-check',       iconColor:'#10b981', badge:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300', label:'Resolved' }
+        };
         var html = '';
         data.forEach(function(incident, idx) {
+            var sev = severityMap[incident.severity] || severityMap.outage;
             html += `
-            <div class="rounded-xl p-4 mb-3 shadow-sm" style="background:rgba(251,191,36,0.12);border:1px solid rgba(245,158,11,0.35)">
-                <div class="flex justify-between items-start gap-2 mb-1">
+            <div class="rounded-xl p-4 mb-3" style="background:${sev.bg};border:1px solid ${sev.border}">
+                <div class="flex justify-between items-start gap-2 mb-1.5">
                     <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-circle-exclamation" style="color:#f59e0b"></i>
+                        <i class="fa-solid ${sev.icon} text-sm" style="color:${sev.iconColor}"></i>
                         <span class="font-semibold text-sm text-slate-900 dark:text-slate-100">${escapeHtml(incident.title)}</span>
+                        <span class="text-xs font-medium px-2 py-0.5 rounded-full ${sev.badge}">${sev.label}</span>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <span class="text-xs text-slate-400">${escapeHtml(incident.time || '')}</span>
@@ -168,16 +176,17 @@ function loadStatus() {
             if (service.host) tipParts.push(service.host);
             if (service.port) tipParts.push(service.port === 'ping' ? 'ICMP ping' : 'port ' + service.port);
             var tip = tipParts.join('  ·  ');
+            var statusDot = isUp
+                ? '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>Up</span>'
+                : '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 dark:text-red-400"><span class="w-1.5 h-1.5 rounded-full bg-red-500 dark:bg-red-400"></span>Down</span>';
             html += `
-            <div class="service-card" style="border-left:3px solid ${isUp ? '#10b981' : '#ef4444'}"${tip ? ` data-tooltip="${escapeHtml(tip)}"` : ''}>
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="text-2xl leading-none">${service.status_icon}</span>
-                    <h5 class="font-semibold text-sm text-slate-800 dark:text-slate-100 leading-tight">${escapeHtml(title)}</h5>
+            <div class="service-card"${tip ? ` data-tooltip="${escapeHtml(tip)}"` : ''}>
+                <div class="flex items-start justify-between gap-1.5 mb-2">
+                    <h5 class="font-semibold text-xs text-slate-800 dark:text-slate-100 leading-tight">${escapeHtml(title)}</h5>
+                    ${statusDot}
                 </div>
-                <div class="mb-2">
-                    <span class="service-badge">${escapeHtml(type)} ${serviceText}</span>
-                </div>
-                ${desc ? `<p class="text-xs text-slate-400 dark:text-slate-500 leading-snug mt-auto">${escapeHtml(desc)}</p>` : ''}
+                <span class="service-badge self-start">${escapeHtml(type)}</span>
+                ${desc ? `<p class="text-[11px] text-slate-400 dark:text-slate-500 leading-snug mt-2">${escapeHtml(desc)}</p>` : ''}
             </div>`;
         });
         _html('services_placeholder', html);
@@ -225,40 +234,50 @@ function loadStatus() {
 }
 
 // --- RSS Notices ---
+var _rssMedium = ["unavailable","inaccessible","difficulty","difficulties","slow","slowness","trouble","degraded","delay","delays","partial","unstable","intermittent"];
+var _rssHigh   = ["error","errors","problem","problems","issue","issues","outage","outages","critical","fault","down","failure","failures","disruption","disruptions","major"];
+
+function _rssCardColors(itemText) {
+    var lower = (itemText || '').toLowerCase();
+    var isDark = document.documentElement.classList.contains('dark');
+    var bg, color;
+    if (isDark) {
+        bg = '#0c1a2e'; color = '#7c8fa8';
+        if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = '#1c1400'; color = '#d97706'; }
+        if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = '#1e0a0a'; color = '#f87171'; }
+    } else {
+        bg = '#f1f5f9'; color = '#475569';
+        if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = '#fffbeb'; color = '#78350f'; }
+        if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = '#fff1f2'; color = '#881337'; }
+    }
+    return { bg: bg, color: color };
+}
+
+function renderRSSCards(data) {
+    var html = '';
+    (data || []).forEach(function(feed, idx) {
+        var item       = (feed.item || '').toString();
+        var item_short = item.length > 75 ? item.substring(0, 72) + '...' : item;
+        var c = _rssCardColors(item_short);
+        html += `
+        <div class="rss-feed-box p-3 text-center flex flex-col justify-center gap-1" data-feed-idx="${idx}"
+             style="background:${c.bg};color:${c.color};min-height:80px">
+            <h5 class="font-semibold text-xs leading-tight">${escapeHtml(feed.name || '')}</h5>
+            <p class="text-xs leading-snug opacity-90" title="${escapeHtml(feed.item || '')}">${escapeHtml(item_short)}</p>
+            ${feed.desc ? `<p class="text-[10px] opacity-55 leading-tight">${escapeHtml(feed.desc)}</p>` : ''}
+        </div>`;
+    });
+    _html('rss_area', html);
+}
+
 function loadRSS() {
     if (_rssLoading) return;
     _rssLoading = true;
-    var medium = ["unavailable","inaccessible","difficulty","difficulties","slow","slowness","trouble","degraded","delay","delays","partial","unstable","intermittent"];
-    var high   = ["error","errors","problem","problems","issue","issues","outage","outages","critical","fault","down","failure","failures","disruption","disruptions","major"];
     _log('loadRSS: fired');
-    var isDark = document.documentElement.classList.contains('dark');
     _get(cacheBust('include/rss_ajax.php'), function(data) {
         _log('loadRSS: success, feeds=' + (data ? data.length : 'null'));
-        var html = '';
-        (data || []).forEach(function(feed, idx) {
-            var item       = (feed.item || '').toString();
-            var item_short = item.length > 75 ? item.substring(0, 72) + '...' : item;
-            var lower      = item_short.toLowerCase();
-            var bg, color;
-            if (isDark) {
-                bg = '#0c1a2e'; color = '#7c8fa8';
-                if (medium.some(function(w) { return lower.includes(w); })) { bg = '#1c1400'; color = '#d97706'; }
-                if (high.some(function(w)   { return lower.includes(w); })) { bg = '#1e0a0a'; color = '#f87171'; }
-            } else {
-                bg = '#f1f5f9'; color = '#475569';
-                if (medium.some(function(w) { return lower.includes(w); })) { bg = '#fffbeb'; color = '#78350f'; }
-                if (high.some(function(w)   { return lower.includes(w); })) { bg = '#fff1f2'; color = '#881337'; }
-            }
-            html += `
-            <div class="rss-feed-box p-3 text-center h-28 flex flex-col justify-center" data-feed-idx="${idx}"
-                 style="background:${bg};color:${color}">
-                <h5 class="font-semibold text-sm mb-1 leading-tight">${escapeHtml(feed.name || '')}</h5>
-                <p class="text-sm leading-snug" title="${escapeHtml(feed.item || '')}">${escapeHtml(item_short)}</p>
-                ${feed.desc ? `<p class="text-xs opacity-60 mt-1">${escapeHtml(feed.desc)}</p>` : ''}
-            </div>`;
-        });
-        _html('rss_area', html);
         window._allRssFeeds = data || [];
+        renderRSSCards(data);
     }, function(e) {
         _log('loadRSS: FAIL — ' + (e && e.message || e));
         _html('rss_area', '<p class="text-sm text-red-500 col-span-3">Unable to load notices.</p>');
@@ -324,6 +343,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (icon) { icon.classList.toggle('fa-sun', isDark); icon.classList.toggle('fa-moon', !isDark); }
         if (lbl)  lbl.textContent = isDark ? lightMode : darkMode;
         btn.title = isDark ? lightMode : darkMode;
+        if (window._allRssFeeds && window._allRssFeeds.length) renderRSSCards(window._allRssFeeds);
     }
 
     btn.addEventListener('click', function() {

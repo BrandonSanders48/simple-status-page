@@ -6,9 +6,10 @@ $json = @file_get_contents($configPath);
 $json_data = json_decode($json, true);
 $rss_feeds = $json_data['RSS'] ?? [];
 
-// --- Cache (5 minutes) ---
-$cacheFile = sys_get_temp_dir() . '/rss_cache.json';
-$cacheTTL = 300;
+// --- Cache (5 minutes, keyed by feed config so additions/removals invalidate immediately) ---
+$cacheKey  = md5(json_encode($rss_feeds));
+$cacheFile = sys_get_temp_dir() . '/rss_cache_' . $cacheKey . '.json';
+$cacheTTL  = 300;
 if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTTL) {
     echo file_get_contents($cacheFile);
     exit;

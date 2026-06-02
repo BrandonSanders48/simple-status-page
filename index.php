@@ -459,15 +459,15 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
         <h5 class="flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-200 mb-4">
             <i class="fa-solid fa-server text-indigo-500"></i> <?= $t['internally_hosted'] ?>
         </h5>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4" id="services_placeholder">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3" id="services_placeholder">
             <?php for ($i = 0; $i < 4; $i++): ?>
-            <div class="service-card" style="border-left:3px solid #e2e8f0">
-                <div class="flex items-center gap-2 mb-3">
-                    <div class="skeleton w-7 h-7 rounded-full flex-shrink-0"></div>
-                    <div class="skeleton h-4 rounded w-3/4"></div>
+            <div class="service-card">
+                <div class="flex items-start justify-between gap-1.5 mb-2">
+                    <div class="skeleton h-3 rounded w-3/4"></div>
+                    <div class="skeleton h-3 rounded-full w-12 flex-shrink-0"></div>
                 </div>
-                <div class="skeleton h-5 rounded-full w-16 mb-3"></div>
-                <div class="skeleton h-3 rounded w-full mt-auto"></div>
+                <div class="skeleton h-4 rounded-full w-10"></div>
+                <div class="skeleton h-2.5 rounded w-full mt-2"></div>
             </div>
             <?php endfor; ?>
         </div>
@@ -478,12 +478,12 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
         <h5 class="flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-200 mb-4">
             <i class="fa-solid fa-circle-exclamation text-amber-500"></i> <?= $t['notices'] ?>
         </h5>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" id="rss_area">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3" id="rss_area">
             <?php for ($i = 0; $i < 3; $i++): ?>
-            <div class="rss-feed-box p-4 h-28 flex flex-col justify-center pointer-events-none" style="background:#f1f5f9">
-                <div class="skeleton h-4 rounded w-1/2 mx-auto mb-3"></div>
-                <div class="skeleton h-3 rounded w-full mb-1.5"></div>
-                <div class="skeleton h-3 rounded w-3/4 mx-auto"></div>
+            <div class="rss-feed-box p-3 flex flex-col justify-center gap-1.5 pointer-events-none" style="background:#f1f5f9;min-height:80px">
+                <div class="skeleton h-3 rounded w-1/2 mx-auto"></div>
+                <div class="skeleton h-2.5 rounded w-full"></div>
+                <div class="skeleton h-2.5 rounded w-3/4 mx-auto"></div>
             </div>
             <?php endfor; ?>
         </div>
@@ -565,7 +565,7 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
 <!-- Subscribe Modal -->
 <div id="subscribeModal" class="sp-modal hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
      onclick="if(event.target===this)closeModal('subscribeModal')">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700/50">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg border border-slate-200 dark:border-slate-700/50">
         <div class="flex items-start justify-between px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-700/60">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -590,7 +590,7 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                         <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide"><?= $t['select_service'] ?></label>
                         <button type="button" id="selectAllSvcs" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium"><?= $lang === 'es' ? 'Todo' : 'Select all' ?></button>
                     </div>
-                    <div class="max-h-48 overflow-y-auto modal-scroll rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40">
+                    <div class="max-h-[360px] overflow-y-auto modal-scroll rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40">
                         <?php foreach ($internal_hosts as $service): ?>
                         <label class="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40 cursor-pointer transition-colors">
                             <input type="checkbox" name="service[]" value="<?= htmlspecialchars($service['name']) ?>"
@@ -752,33 +752,59 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
 <!-- Create Incident Modal -->
 <div id="createIncidentModal" class="sp-modal hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
      onclick="if(event.target===this)closeModal('createIncidentModal')">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-            <h5 class="text-base font-semibold flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> <?= $t['incidents'] ?>
-            </h5>
-            <button onclick="closeModal('createIncidentModal')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none">&times;</button>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700/50">
+        <div class="flex items-start justify-between px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-700/60">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i>
+                </div>
+                <div>
+                    <h5 class="font-semibold text-slate-900 dark:text-white text-sm"><?= $lang === 'es' ? 'Crear Incidente' : 'Create Incident' ?></h5>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"><?= $lang === 'es' ? 'Publicar una alerta de servicio' : 'Post a service alert to the status page' ?></p>
+                </div>
+            </div>
+            <button onclick="closeModal('createIncidentModal')" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-lg leading-none mt-0.5">&times;</button>
         </div>
         <div class="px-6 py-5">
-            <form id="createIncidentForm" class="space-y-4">
+            <form id="createIncidentForm" class="space-y-3">
                 <div>
-                    <label for="incidentTitle" class="<?= $label_cls ?>"><?= $lang === 'es' ? 'Título' : 'Title' ?></label>
-                    <input type="text" id="incidentTitle" name="title" required class="<?= $input_cls ?>">
+                    <label for="incidentTitle" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $lang === 'es' ? 'Título' : 'Title' ?></label>
+                    <input type="text" id="incidentTitle" name="title" required placeholder="<?= $lang === 'es' ? 'Ej. Interrupción del servicio de correo' : 'e.g. Email service outage' ?>"
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm transition">
                 </div>
                 <div>
-                    <label for="incidentDescription" class="<?= $label_cls ?>"><?= $lang === 'es' ? 'Descripción' : 'Description' ?></label>
-                    <textarea id="incidentDescription" name="description" rows="3" required class="<?= $input_cls ?>"></textarea>
+                    <label for="incidentSeverity" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $lang === 'es' ? 'Severidad' : 'Severity' ?></label>
+                    <select id="incidentSeverity" name="severity"
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm transition">
+                        <option value="degraded"><?= $lang === 'es' ? 'Degradado' : 'Degraded Performance' ?></option>
+                        <option value="outage"><?= $lang === 'es' ? 'Interrupción' : 'Outage' ?></option>
+                        <option value="maintenance"><?= $lang === 'es' ? 'Mantenimiento' : 'Scheduled Maintenance' ?></option>
+                        <option value="resolved"><?= $lang === 'es' ? 'Resuelto' : 'Resolved' ?></option>
+                    </select>
                 </div>
                 <div>
-                    <label for="incidentTime" class="<?= $label_cls ?>"><?= $lang === 'es' ? 'Hora' : 'Time' ?></label>
-                    <input type="text" id="incidentTime" name="time" value="<?= date('Y-m-d H:i') ?>" required class="<?= $input_cls ?>">
-                    <p class="text-xs text-gray-400 mt-1"><?= $lang === 'es' ? 'Edite si es necesario' : 'Edit if needed (e.g. "2025-11-19 14:00")' ?></p>
+                    <label for="incidentDescription" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $lang === 'es' ? 'Descripción' : 'Description' ?></label>
+                    <textarea id="incidentDescription" name="description" rows="3" required placeholder="<?= $lang === 'es' ? 'Describe el problema...' : 'Describe what is happening and affected services...' ?>"
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm transition resize-none"></textarea>
                 </div>
-                <div class="flex justify-end pt-1">
-                    <button type="submit" class="<?= $btn_warning ?>"><?= $lang === 'es' ? 'Crear' : 'Create' ?></button>
+                <div>
+                    <label for="incidentTime" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $lang === 'es' ? 'Hora' : 'Time' ?></label>
+                    <input type="text" id="incidentTime" name="time" value="<?= date('Y-m-d H:i') ?>" required
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm font-mono transition">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('createIncidentModal')"
+                        class="px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                        <?= $lang === 'es' ? 'Cancelar' : 'Cancel' ?>
+                    </button>
+                    <button type="submit"
+                        class="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-exclamation text-xs"></i>
+                        <?= $lang === 'es' ? 'Publicar' : 'Post Incident' ?>
+                    </button>
                 </div>
             </form>
-            <div id="createIncidentMsg" class="mt-3"></div>
+            <div id="createIncidentMsg" class="mt-3 text-sm"></div>
         </div>
     </div>
 </div>
@@ -786,25 +812,24 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
 <!-- Remove Incident Confirmation Modal -->
 <div id="removeIncidentModal" class="sp-modal hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
      onclick="if(event.target===this)closeModal('removeIncidentModal')">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-            <h5 class="text-base font-semibold flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                <i class="fa-solid fa-trash text-red-500"></i> <?= $lang === 'es' ? 'Eliminar Incidente' : 'Remove Incident' ?>
-            </h5>
-            <button onclick="closeModal('removeIncidentModal')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none">&times;</button>
-        </div>
-        <div class="px-6 py-5">
-            <p class="text-sm text-gray-600 dark:text-gray-300 mb-5">
-                <?= $lang === 'es' ? '¿Está seguro de que desea eliminar este incidente?' : 'Are you sure you want to remove this incident?' ?>
-            </p>
-            <div class="flex justify-end gap-2">
-                <button type="button" onclick="closeModal('removeIncidentModal')" class="<?= $btn_secondary ?>">
-                    <?= $lang === 'es' ? 'Cancelar' : 'Cancel' ?>
-                </button>
-                <button type="button" id="confirmRemoveIncident" class="<?= $btn_danger ?>">
-                    <?= $lang === 'es' ? 'Eliminar' : 'Remove' ?>
-                </button>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-200 dark:border-slate-700/50">
+        <div class="px-6 pt-6 pb-4 text-center">
+            <div class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-trash text-red-600 dark:text-red-400 text-lg"></i>
             </div>
+            <h5 class="text-lg font-bold text-slate-900 dark:text-white"><?= $lang === 'es' ? 'Eliminar Incidente' : 'Remove Incident' ?></h5>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1"><?= $lang === 'es' ? 'Esta acción no se puede deshacer.' : 'This cannot be undone.' ?></p>
+        </div>
+        <div class="px-6 pb-6 flex flex-col gap-2">
+            <button type="button" id="confirmRemoveIncident"
+                class="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2">
+                <i class="fa-solid fa-trash text-xs"></i>
+                <?= $lang === 'es' ? 'Sí, eliminar' : 'Yes, Remove' ?>
+            </button>
+            <button type="button" onclick="closeModal('removeIncidentModal')"
+                class="w-full py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                <?= $lang === 'es' ? 'Cancelar' : 'Cancel' ?>
+            </button>
         </div>
     </div>
 </div>

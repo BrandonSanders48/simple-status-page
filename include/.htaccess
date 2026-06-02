@@ -1,0 +1,23 @@
+# Block direct browser access to all files in this directory
+# PHP files are still accessible via include/require from parent scripts
+
+Order deny,allow
+Deny from all
+
+# Allow .php files to be executed server-side (not browsed directly)
+<Files "*.php">
+    Order deny,allow
+    Deny from all
+</Files>
+
+# Specifically block the JSON data files
+<Files "*.json">
+    Order deny,allow
+    Deny from all
+</Files>
+
+# Block CSV subscription data
+<Files "*.csv">
+    Order deny,allow
+    Deny from all
+</Files>

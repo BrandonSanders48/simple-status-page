@@ -46,6 +46,9 @@ if (empty($_POST['title']) || empty($_POST['description']) || empty($_POST['time
     exit('Missing fields');
 }
 
+$allowed_severities = ['degraded', 'outage', 'maintenance', 'resolved'];
+$severity = in_array($_POST['severity'] ?? '', $allowed_severities) ? $_POST['severity'] : 'outage';
+
 $incidentsFile = __DIR__ . '/incidents.json';
 $incidents = [];
 if (file_exists($incidentsFile)) {
@@ -53,9 +56,10 @@ if (file_exists($incidentsFile)) {
     if (!is_array($incidents)) $incidents = [];
 }
 $incidents[] = [
-    'title' => strip_tags($_POST['title']),
+    'title'       => strip_tags($_POST['title']),
     'description' => strip_tags($_POST['description']),
-    'time' => strip_tags($_POST['time'])
+    'time'        => strip_tags($_POST['time']),
+    'severity'    => $severity
 ];
 file_put_contents($incidentsFile, json_encode($incidents, JSON_PRETTY_PRINT));
 echo 'OK';

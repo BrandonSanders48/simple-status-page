@@ -122,6 +122,13 @@ function checked($v) { return $v ? 'checked' : ''; }
         .add-row-btn:hover { opacity:1; }
         .dark .add-row-btn { color:#818cf8; }
 
+        /* ── Drag-and-drop rows ── */
+        .drag-handle { cursor:grab; display:flex; align-items:center; justify-content:center; height:28px; color:rgba(148,163,184,.4); transition:color .15s; }
+        .drag-handle:hover { color:#94a3b8; }
+        .drag-handle:active { cursor:grabbing; }
+        tr.sp-dragging { opacity:.35; }
+        tr.sp-drag-over td { box-shadow:inset 0 2px 0 0 #6366f1; }
+
         /* ── Section cards ── */
         .section-card { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:22px 24px; margin-bottom:16px; }
         .dark .section-card { background:linear-gradient(150deg, #0d1e38 0%, #111c2e 100%); border-color:rgba(148,163,184,.08); box-shadow:0 1px 0 rgba(255,255,255,.02) inset; }
@@ -209,17 +216,19 @@ function checked($v) { return $v ? 'checked' : ''; }
             <table id="hosts-table">
                 <thead>
                     <tr>
-                        <th style="width:15%">Name</th>
-                        <th style="width:20%">Host / IP</th>
-                        <th style="width:8%">Port</th>
-                        <th style="width:10%">Type</th>
-                        <th style="width:40%">Description</th>
+                        <th style="width:3%"></th>
+                        <th style="width:14%">Name</th>
+                        <th style="width:19%">Host / IP</th>
+                        <th style="width:7%">Port</th>
+                        <th style="width:9%">Type</th>
+                        <th style="width:41%">Description</th>
                         <th style="width:7%"></th>
                     </tr>
                 </thead>
                 <tbody id="hosts-tbody">
                 <?php foreach ($json_data['internal_hosts'] ?? [] as $i => $h): ?>
-                <tr data-row="<?= $i ?>">
+                <tr data-row="<?= $i ?>" draggable="true">
+                    <td><div class="drag-handle" title="Drag to reorder"><i class="fa-solid fa-grip-vertical text-xs"></i></div></td>
                     <td><input class="tbl-input" data-field="name"        value="<?= e($h['name'] ?? '') ?>"></td>
                     <td><input class="tbl-input" data-field="host"        value="<?= e($h['host'] ?? '') ?>"></td>
                     <td><input class="tbl-input" data-field="port" type="text" placeholder="ping" value="<?= $h['port'] !== null ? e($h['port']) : '' ?>"></td>
@@ -247,16 +256,18 @@ function checked($v) { return $v ? 'checked' : ''; }
             <table id="rss-table">
                 <thead>
                     <tr>
-                        <th style="width:18%">Name</th>
-                        <th style="width:40%">Feed URL</th>
-                        <th style="width:9%">Format</th>
-                        <th style="width:26%">Description</th>
+                        <th style="width:3%"></th>
+                        <th style="width:16%">Name</th>
+                        <th style="width:38%">Feed URL</th>
+                        <th style="width:8%">Format</th>
+                        <th style="width:28%">Description</th>
                         <th style="width:7%"></th>
                     </tr>
                 </thead>
                 <tbody id="rss-tbody">
                 <?php foreach ($json_data['RSS'] ?? [] as $i => $f): ?>
-                <tr data-row="<?= $i ?>">
+                <tr data-row="<?= $i ?>" draggable="true">
+                    <td><div class="drag-handle" title="Drag to reorder"><i class="fa-solid fa-grip-vertical text-xs"></i></div></td>
                     <td><input class="tbl-input" data-field="name"        value="<?= e($f['name'] ?? '') ?>"></td>
                     <td><input class="tbl-input" data-field="host"        value="<?= e($f['host'] ?? '') ?>" placeholder="https://..."></td>
                     <td>
@@ -518,6 +529,21 @@ function checked($v) { return $v ? 'checked' : ''; }
                             <option value="none" <?= $smtpSecure === 'none' ? 'selected' : '' ?>>None</option>
                         </select>
                     </div>
+                    <div>
+                        <label class="cfg-label">SMTP Username</label>
+                        <input id="cfg-smtp-username" class="cfg-input" type="text" value="<?= e($json_data['email']['smtp']['username'] ?? '') ?>" placeholder="you@example.com">
+                    </div>
+                    <div>
+                        <label class="cfg-label">SMTP Password</label>
+                        <div class="relative">
+                            <input id="cfg-smtp-password" class="cfg-input pr-10" type="password" value="<?= e($json_data['email']['smtp']['password'] ?? '') ?>" placeholder="••••••••">
+                            <button type="button" tabindex="-1"
+                                onclick="var i=document.getElementById('cfg-smtp-password');i.type=i.type==='password'?'text':'password';this.querySelector('i').className=i.type==='password'?'fa-solid fa-eye text-xs':'fa-solid fa-eye-slash text-xs'"
+                                class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                                <i class="fa-solid fa-eye text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -552,7 +578,9 @@ var _rssIdx  = <?= count($json_data['RSS'] ?? []) ?>;
 
 function addHostRow() {
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td><input class="tbl-input" data-field="name" placeholder="My Service"></td>'
+    tr.setAttribute('draggable', 'true');
+    tr.innerHTML = '<td><div class="drag-handle" title="Drag to reorder"><i class="fa-solid fa-grip-vertical text-xs"></i></div></td>'
+        + '<td><input class="tbl-input" data-field="name" placeholder="My Service"></td>'
         + '<td><input class="tbl-input" data-field="host" placeholder="hostname or IP"></td>'
         + '<td><input class="tbl-input" data-field="port" placeholder="ping"></td>'
         + '<td><input class="tbl-input" data-field="type" placeholder="PING"></td>'
@@ -564,7 +592,9 @@ function addHostRow() {
 
 function addRssRow() {
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td><input class="tbl-input" data-field="name" placeholder="Service Name"></td>'
+    tr.setAttribute('draggable', 'true');
+    tr.innerHTML = '<td><div class="drag-handle" title="Drag to reorder"><i class="fa-solid fa-grip-vertical text-xs"></i></div></td>'
+        + '<td><input class="tbl-input" data-field="name" placeholder="Service Name"></td>'
         + '<td><input class="tbl-input" data-field="host" placeholder="https://status.example.com/rss"></td>'
         + '<td><select class="tbl-input" data-field="tag"><option value="item">RSS</option><option value="entry">Atom</option></select></td>'
         + '<td><input class="tbl-input" data-field="description"></td>'
@@ -667,9 +697,11 @@ function buildConfig() {
         from:     v('cfg-email-from'),
         reply_to: v('cfg-email-replyto'),
         smtp: Object.assign(((cfg.email || {}).smtp) || {}, {
-            host:   v('cfg-smtp-host'),
-            port:   parseInt(v('cfg-smtp-port')) || 587,
-            secure: v('cfg-smtp-secure')
+            host:     v('cfg-smtp-host'),
+            port:     parseInt(v('cfg-smtp-port')) || 587,
+            secure:   v('cfg-smtp-secure'),
+            username: v('cfg-smtp-username'),
+            password: v('cfg-smtp-password')
         })
     });
     cfg.network = Object.assign(cfg.network || {}, {
@@ -686,6 +718,50 @@ function buildConfig() {
     cfg.RSS            = buildRss();
     return cfg;
 }
+
+// ── Drag-and-drop row reordering ────────────────────────────────────
+function initDragSort(tbodyId) {
+    var tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    var dragging = null;
+
+    tbody.addEventListener('dragstart', function(e) {
+        dragging = e.target.closest('tr');
+        if (!dragging) return;
+        e.dataTransfer.effectAllowed = 'move';
+        setTimeout(function() { if (dragging) dragging.classList.add('sp-dragging'); }, 0);
+    });
+    tbody.addEventListener('dragend', function() {
+        if (dragging) dragging.classList.remove('sp-dragging');
+        tbody.querySelectorAll('.sp-drag-over').forEach(function(r) { r.classList.remove('sp-drag-over'); });
+        dragging = null;
+    });
+    tbody.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        var over = e.target.closest('tr');
+        tbody.querySelectorAll('.sp-drag-over').forEach(function(r) { r.classList.remove('sp-drag-over'); });
+        if (over && over !== dragging) over.classList.add('sp-drag-over');
+    });
+    tbody.addEventListener('dragleave', function(e) {
+        var over = e.target.closest('tr');
+        if (over) over.classList.remove('sp-drag-over');
+    });
+    tbody.addEventListener('drop', function(e) {
+        e.preventDefault();
+        var over = e.target.closest('tr');
+        tbody.querySelectorAll('.sp-drag-over').forEach(function(r) { r.classList.remove('sp-drag-over'); });
+        if (!over || over === dragging || !dragging) return;
+        var rect = over.getBoundingClientRect();
+        if (e.clientY < rect.top + rect.height / 2) {
+            tbody.insertBefore(dragging, over);
+        } else {
+            tbody.insertBefore(dragging, over.nextSibling);
+        }
+    });
+}
+initDragSort('hosts-tbody');
+initDragSort('rss-tbody');
 
 // ── Save ────────────────────────────────────────────────────────────
 document.getElementById('saveBtn').addEventListener('click', function() {
