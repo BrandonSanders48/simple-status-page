@@ -39,7 +39,8 @@ COPY . /var/www/html
 
 # Save include/ and images/ outside the webroot so the entrypoint can seed
 # brand-new empty volume mounts on first start
-RUN cp -r /var/www/html/include /var/www/defaults/include \
+RUN mkdir -p /var/www/defaults \
+    && cp -r /var/www/html/include /var/www/defaults/include \
     && cp -r /var/www/html/images  /var/www/defaults/images
 
 # Set permissions
