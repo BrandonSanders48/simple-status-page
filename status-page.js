@@ -20,6 +20,7 @@ const alertSoundEnabled     = document.body.dataset.alertSound === 'true';
 
 let lastServiceStates = {};
 let _lastServicesSig = '';
+let _servicesExpanded = false;
 let _statusLoading = false, _incidentsLoading = false, _rssLoading = false;
 var _lastUpdated = 0;
 
@@ -229,7 +230,9 @@ function loadStatus() {
         if (_sig !== _lastServicesSig) {
             _html('services_placeholder', html);
             _lastServicesSig = _sig;
+            _servicesExpanded = false;
         }
+        _applyServicesLimit();
 
         var ok = data.local_ok && data.wide_ok && (data.errors || 0) === 0;
         var banner = document.getElementById('all_status');
@@ -688,6 +691,29 @@ function showServiceNotification(serviceName, isUp) {
         }
     });
 })();
+
+// --- Services show more/less ---
+function _applyServicesLimit() {
+    var limit = parseInt(document.body.dataset.servicesVisible || '10', 10);
+    var cards = document.querySelectorAll('#services_placeholder .service-card');
+    var btn   = document.getElementById('services_show_more');
+    if (!btn || cards.length <= limit) {
+        if (btn) btn.innerHTML = '';
+        cards.forEach(function(c) { c.style.display = ''; });
+        return;
+    }
+    var hidden = cards.length - limit;
+    cards.forEach(function(c, i) {
+        c.style.display = (_servicesExpanded || i < limit) ? '' : 'none';
+    });
+    btn.innerHTML = _servicesExpanded
+        ? '<button class="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 flex items-center gap-1.5 mx-auto" id="svc-toggle-btn"><i class="fa-solid fa-chevron-up text-[10px]"></i> Show less</button>'
+        : '<button class="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 flex items-center gap-1.5 mx-auto" id="svc-toggle-btn"><i class="fa-solid fa-chevron-down text-[10px]"></i> Show ' + hidden + ' more</button>';
+    document.getElementById('svc-toggle-btn').addEventListener('click', function() {
+        _servicesExpanded = !_servicesExpanded;
+        _applyServicesLimit();
+    });
+}
 
 // --- Outage History ---
 var _outageData = [];

@@ -210,7 +210,16 @@ function checked($v) { return $v ? 'checked' : ''; }
         <div class="section-card">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="font-semibold text-slate-700 dark:text-slate-300">Monitored Services</h2>
-                <span class="text-xs text-slate-400">Leave Port blank for ICMP ping</span>
+                <div class="flex items-center gap-3">
+                    <label class="text-xs text-slate-400">Show by default</label>
+                    <select id="cfg-services-visible" class="cfg-input" style="width:auto">
+                        <?php $sv = (int)($json_data['services_visible'] ?? 10); ?>
+                        <?php foreach ([5,10,15,20] as $n): ?>
+                        <option value="<?= $n ?>" <?= $sv === $n ? 'selected' : '' ?>><?= $n ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="text-xs text-slate-400">Leave Port blank for ICMP ping</span>
+                </div>
             </div>
             <div class="overflow-x-auto">
             <table id="hosts-table">
@@ -309,10 +318,18 @@ function checked($v) { return $v ? 'checked' : ''; }
                     </div>
                     <div>
                         <label class="cfg-label">Logo Path or URL</label>
-                        <input id="cfg-business-logo" class="cfg-input" value="<?= e($json_data['branding']['business_logo'] ?? $json_data['business_logo'] ?? '') ?>" placeholder="images/logo.webp">
-                        <?php $_logo = $json_data['branding']['business_logo'] ?? $json_data['business_logo'] ?? ''; if (!empty($_logo)): ?>
-                        <img src="<?= e($_logo) ?>" alt="Logo preview" class="mt-2 max-h-12 rounded bg-white p-1 border border-slate-200">
-                        <?php endif; ?>
+                        <div class="flex gap-2">
+                            <input id="cfg-business-logo" class="cfg-input" value="<?= e($json_data['branding']['business_logo'] ?? $json_data['business_logo'] ?? '') ?>" placeholder="images/logo.webp">
+                            <label for="logo-file-input" id="logo-upload-btn"
+                                class="cursor-pointer flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-lg border border-indigo-200 dark:border-indigo-700/50 transition-colors whitespace-nowrap select-none">
+                                <i class="fa-solid fa-upload text-[11px]"></i> Upload
+                            </label>
+                            <input type="file" id="logo-file-input" accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml" class="hidden">
+                        </div>
+                        <div id="logo-upload-status" class="text-xs mt-1 hidden"></div>
+                        <?php $_logo = $json_data['branding']['business_logo'] ?? $json_data['business_logo'] ?? ''; ?>
+                        <img id="logo-preview" src="<?= e($_logo) ?>" alt="Logo preview"
+                            class="mt-2 max-h-12 rounded bg-white p-1 border border-slate-200<?= empty($_logo) ? ' hidden' : '' ?>">
                     </div>
                     <div>
                         <label class="cfg-label">Company URL</label>
@@ -732,8 +749,9 @@ function buildConfig() {
     cfg.alert_sound    = chk('cfg-alert-sound');
     cfg.browser_notify = chk('cfg-browser-notify');
     cfg.require_auth   = chk('cfg-require-auth');
-    cfg.internal_hosts = buildHosts();
-    cfg.RSS            = buildRss();
+    cfg.internal_hosts     = buildHosts();
+    cfg.RSS                = buildRss();
+    cfg.services_visible   = parseInt(v('cfg-services-visible'), 10) || 10;
     return cfg;
 }
 
@@ -800,6 +818,59 @@ function showStatus(msg, ok) {
     el.classList.remove('hidden');
     setTimeout(function() { el.classList.add('hidden'); }, 3000);
 }
+
+// ── Logo upload ──────────────────────────────────────────────────────
+document.getElementById('logo-file-input').addEventListener('change', function() {
+    if (!this.files[0]) return;
+    var status  = document.getElementById('logo-upload-status');
+    var btn     = document.getElementById('logo-upload-btn');
+    var preview = document.getElementById('logo-preview');
+    status.textContent = 'Uploading…';
+    status.className   = 'text-xs mt-1 text-slate-400';
+    btn.style.opacity  = '0.5';
+    btn.style.pointerEvents = 'none';
+
+    var fd = new FormData();
+    fd.append('logo', this.files[0]);
+    fd.append('csrf_token', '<?= e($_SESSION['csrf_token']) ?>');
+
+    fetch('include/upload_logo.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.style.opacity = '';
+            btn.style.pointerEvents = '';
+            if (data.path) {
+                document.getElementById('cfg-business-logo').value = data.path;
+                preview.src = data.path;
+                preview.classList.remove('hidden');
+                status.textContent = 'Uploaded!';
+                status.className   = 'text-xs mt-1 text-emerald-600';
+                setTimeout(function() { status.classList.add('hidden'); }, 3000);
+            } else {
+                status.textContent = data.error || 'Upload failed.';
+                status.className   = 'text-xs mt-1 text-red-500';
+            }
+        })
+        .catch(function() {
+            btn.style.opacity = '';
+            btn.style.pointerEvents = '';
+            status.textContent = 'Upload failed.';
+            status.className   = 'text-xs mt-1 text-red-500';
+        });
+
+    this.value = ''; // reset so same file can be re-selected
+});
+
+// Update preview when path is typed manually
+document.getElementById('cfg-business-logo').addEventListener('input', function() {
+    var preview = document.getElementById('logo-preview');
+    if (this.value.trim()) {
+        preview.src = this.value.trim();
+        preview.classList.remove('hidden');
+    } else {
+        preview.classList.add('hidden');
+    }
+});
 
 // ── Keyboard shortcut: Ctrl+S ────────────────────────────────────────
 document.addEventListener('keydown', function(e) {

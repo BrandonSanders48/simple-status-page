@@ -236,7 +236,8 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
     data-loading="<?= htmlspecialchars($t['loading']) ?>"
     data-service="<?= htmlspecialchars($t['service']) ?>"
     data-alert-sound="<?= $alert_sound ? 'true' : 'false' ?>"
-    data-browser-notify="<?= !empty($json_data['browser_notify']) ? 'true' : 'false' ?>">
+    data-browser-notify="<?= !empty($json_data['browser_notify']) ? 'true' : 'false' ?>"
+    data-services-visible="<?= (int)($json_data['services_visible'] ?? 10) ?>">
 
 <?php if (!$hide_navbar): ?>
 
@@ -475,6 +476,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
             </div>
             <?php endfor; ?>
         </div>
+        <div id="services_show_more" class="mt-3 text-center"></div>
     </div>
 
     <!-- Notices / RSS (skeleton) -->
