@@ -1,13 +1,32 @@
 FROM php:8.5-apache
 
-# Install cron
-RUN apt-get update && apt-get install -y cron && rm -rf /var/lib/apt/lists/*
-
-# Install necessary utilities
-RUN apt-get update && apt-get install -y curl \
+# Install cron, curl, ping, openssl
+RUN apt-get update && apt-get install -y \
+    cron curl iputils-ping openssl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y iputils-ping
+# Enable Apache SSL and rewrite modules
+RUN a2enmod ssl rewrite
+
+# Generate self-signed certificate
+RUN openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+    -keyout /etc/ssl/private/apache-selfsigned.key \
+    -out /etc/ssl/certs/apache-selfsigned.crt \
+    -subj "/C=US/ST=State/L=City/O=StatusPage/CN=localhost"
+
+# Apache SSL virtual host
+RUN echo '<VirtualHost *:443>\n\
+    DocumentRoot /var/www/html\n\
+    SSLEngine on\n\
+    SSLCertificateFile /etc/ssl/certs/apache-selfsigned.crt\n\
+    SSLCertificateKeyFile /etc/ssl/private/apache-selfsigned.key\n\
+    <Directory /var/www/html>\n\
+        AllowOverride All\n\
+        Require all granted\n\
+    </Directory>\n\
+</VirtualHost>' > /etc/apache2/sites-available/ssl.conf
+
+RUN a2ensite ssl
 
 # Remove default Apache page (optional)
 RUN rm -rf /var/www/html/*
@@ -42,4 +61,4 @@ RUN touch /var/log/cron.log
 # Start cron + Apache
 CMD cron && apache2-foreground
 
-EXPOSE 80
+EXPOSE 80 443
