@@ -103,6 +103,18 @@ function escapeHtml(s) {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+function blendHex(hexA, hexB, weightA) {
+    var p = function(h) {
+        h = h.replace('#','').trim();
+        if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+        return [parseInt(h.slice(0,2),16)||0, parseInt(h.slice(2,4),16)||0, parseInt(h.slice(4,6),16)||0];
+    };
+    var a = p(hexA), b = p(hexB), w = Math.max(0, Math.min(1, weightA));
+    return '#' + [0,1,2].map(function(i) {
+        return Math.round(a[i]*w + b[i]*(1-w)).toString(16).padStart(2,'0');
+    }).join('');
+}
+
 function formatDuration(seconds) {
     seconds = Math.max(0, Math.floor(seconds));
     if (seconds < 60)   return seconds + 's';
@@ -328,15 +340,18 @@ var _rssHigh   = ["error","errors","problem","problems","issue","issues","outage
 function _rssCardColors(itemText) {
     var lower = (itemText || '').toLowerCase();
     var isDark = document.documentElement.classList.contains('dark');
+    var cs = getComputedStyle(document.documentElement);
+    var warn = (cs.getPropertyValue('--warning-color') || '#f59e0b').trim();
+    var err  = (cs.getPropertyValue('--error-color')   || '#ef4444').trim();
     var bg, color;
     if (isDark) {
         bg = '#0c1a2e'; color = '#7c8fa8';
-        if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = 'color-mix(in srgb, var(--warning-color) 14%, #0c1a2e)'; color = 'var(--warning-color)'; }
-        if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = 'color-mix(in srgb, var(--error-color) 14%, #0c1a2e)';   color = 'color-mix(in srgb, var(--error-color) 80%, white)'; }
+        if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = blendHex(warn, '#0c1a2e', 0.14); color = warn; }
+        if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = blendHex(err,  '#0c1a2e', 0.14); color = blendHex(err, '#ffffff', 0.80); }
     } else {
         bg = '#f1f5f9'; color = '#475569';
-        if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = 'color-mix(in srgb, var(--warning-color) 12%, white)'; color = 'color-mix(in srgb, var(--warning-color) 60%, #000)'; }
-        if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = 'color-mix(in srgb, var(--error-color) 10%, white)';   color = 'color-mix(in srgb, var(--error-color) 60%, #000)'; }
+        if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = blendHex(warn, '#ffffff', 0.12); color = blendHex(warn, '#000000', 0.60); }
+        if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = blendHex(err,  '#ffffff', 0.10); color = blendHex(err,  '#000000', 0.60); }
     }
     return { bg: bg, color: color };
 }

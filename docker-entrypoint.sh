@@ -5,21 +5,26 @@ set -e
 if [ ! -f "/var/www/html/include/status_ajax.php" ]; then
     echo "[entrypoint] Fresh include/ volume — seeding application files..."
     cp -rn /var/www/defaults/include/. /var/www/html/include/
-    chown -R www-data:www-data /var/www/html/include
 fi
 
 # Seed images/ on a fresh volume (favicon missing = first start)
 if [ ! -f "/var/www/html/images/favicon.ico" ]; then
     echo "[entrypoint] Fresh images/ volume — seeding default images..."
     cp -rn /var/www/defaults/images/. /var/www/html/images/
-    chown -R www-data:www-data /var/www/html/images
 fi
 
-# Ensure runtime subdirectories exist with correct permissions
-mkdir -p /var/www/html/include/cron
-chown -R www-data:www-data /var/www/html/include/cron
-mkdir -p /var/www/html/ssl
-chown -R www-data:www-data /var/www/html/ssl
+# Always ensure runtime directories exist and are writable by www-data
+# (runs as root so chown always works regardless of host mount permissions)
+mkdir -p \
+    /var/www/html/include/cron \
+    /var/www/html/include/uploads \
+    /var/www/html/ssl \
+    /var/www/html/images
+
+chown -R www-data:www-data \
+    /var/www/html/include \
+    /var/www/html/images \
+    /var/www/html/ssl
 
 # Apply custom SSL certificate if uploaded via the settings page
 if [ -f "/var/www/html/ssl/cert.pem" ] && [ -f "/var/www/html/ssl/key.pem" ]; then
