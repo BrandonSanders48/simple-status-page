@@ -37,10 +37,10 @@ RUN rm -rf /var/www/html/*
 # Copy your website into Apache's web root
 COPY . /var/www/html
 
-# Save default config outside the webroot so the entrypoint can
-# restore it into a brand-new empty volume mount on first start
-RUN mkdir -p /var/www/defaults \
-    && cp /var/www/html/include/configuration.json /var/www/defaults/configuration.json
+# Save include/ and images/ outside the webroot so the entrypoint can seed
+# brand-new empty volume mounts on first start
+RUN cp -r /var/www/html/include /var/www/defaults/include \
+    && cp -r /var/www/html/images  /var/www/defaults/images
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \

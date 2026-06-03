@@ -209,17 +209,20 @@ foreach ($internal_hosts as $i => $value) {
         ? '<i style="font-size:28px;color:#10b981" class="fa-solid fa-circle-check"></i>'
         : '<i style="font-size:28px;color:#ef4444" class="fa-solid fa-circle-xmark"></i>';
     if (!$ok) $errors++;
-    $services[] = [
-        'status_icon'          => $status,
-        'title'                => $name,
-        'type'                 => htmlspecialchars($value['type'] ?? ''),
-        'desc'                 => !empty($value['description']) ? htmlspecialchars($value['description']) : '',
-        'host'                 => htmlspecialchars($value['host'] ?? ''),
-        'port'                 => $svcPort === null ? 'ping' : (string)$svcPort,
-        'last_down_at'         => $hist['last_down_at'],
-        'last_down_duration_s' => $hist['last_down_duration_s'],
-        'went_down_at'         => $hist['went_down_at'],
-    ];
+    $visible = $value['visible'] ?? true;
+    if ($visible) {
+        $services[] = [
+            'status_icon'          => $status,
+            'title'                => $name,
+            'type'                 => htmlspecialchars($value['type'] ?? ''),
+            'desc'                 => !empty($value['description']) ? htmlspecialchars($value['description']) : '',
+            'host'                 => htmlspecialchars($value['host'] ?? ''),
+            'port'                 => $svcPort === null ? 'ping' : (string)$svcPort,
+            'last_down_at'         => $hist['last_down_at'],
+            'last_down_duration_s' => $hist['last_down_duration_s'],
+            'went_down_at'         => $hist['went_down_at'],
+        ];
+    }
 }
 
 // Persist downtime history so tooltip data survives across cache refreshes

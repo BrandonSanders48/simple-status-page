@@ -223,11 +223,6 @@ function checked($v) { return $v ? 'checked' : ''; }
             <div class="flex items-center justify-between mb-4">
                 <h2 class="font-semibold text-slate-700 dark:text-slate-300">Monitored Services</h2>
                 <div class="flex items-center gap-4">
-                    <label class="flex items-center gap-2 cursor-pointer" title="Hide the services panel on the status page while keeping monitoring and alerts active">
-                        <input type="checkbox" id="cfg-show-services" class="w-4 h-4 accent-indigo-600"
-                            <?= ($json_data['show_services'] ?? true) ? 'checked' : '' ?>>
-                        <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Show on page</span>
-                    </label>
                     <label class="text-xs text-slate-400">Show by default</label>
                     <select id="cfg-services-visible" class="cfg-input" style="width:auto">
                         <?php $sv = (int)($json_data['services_visible'] ?? 10); ?>
@@ -243,12 +238,13 @@ function checked($v) { return $v ? 'checked' : ''; }
                 <thead>
                     <tr>
                         <th style="width:3%"></th>
-                        <th style="width:14%">Name</th>
-                        <th style="width:19%">Host / IP</th>
+                        <th style="width:13%">Name</th>
+                        <th style="width:18%">Host / IP</th>
                         <th style="width:7%">Port</th>
-                        <th style="width:9%">Type</th>
-                        <th style="width:41%">Description</th>
-                        <th style="width:7%"></th>
+                        <th style="width:8%">Type</th>
+                        <th style="width:36%">Description</th>
+                        <th style="width:6%" title="Show on status page">Show</th>
+                        <th style="width:9%"></th>
                     </tr>
                 </thead>
                 <tbody id="hosts-tbody">
@@ -260,6 +256,7 @@ function checked($v) { return $v ? 'checked' : ''; }
                     <td><input class="tbl-input" data-field="port" type="text" placeholder="ping" value="<?= $h['port'] !== null ? e($h['port']) : '' ?>"></td>
                     <td><input class="tbl-input" data-field="type"        value="<?= e($h['type'] ?? '') ?>"></td>
                     <td><input class="tbl-input" data-field="description" value="<?= e($h['description'] ?? '') ?>"></td>
+                    <td style="text-align:center"><input type="checkbox" data-field="visible" class="w-4 h-4 accent-indigo-600" <?= ($h['visible'] ?? true) ? 'checked' : '' ?>></td>
                     <td><button type="button" class="del-btn" onclick="this.closest('tr').remove()" title="Remove"><i class="fa fa-trash text-xs"></i></button></td>
                 </tr>
                 <?php endforeach; ?>
@@ -651,7 +648,7 @@ function checked($v) { return $v ? 'checked' : ''; }
                 </ol>
                 <div class="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-lg text-xs text-amber-700 dark:text-amber-400">
                     <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                    Certificate files are stored in <code class="font-mono">ssl/</code> inside the container volume and are excluded from git.
+                    Certificate files are stored in <code class="font-mono">ssl/</code> inside the container volume.
                 </div>
             </div>
 
@@ -704,6 +701,7 @@ function addHostRow() {
         + '<td><input class="tbl-input" data-field="port" placeholder="ping"></td>'
         + '<td><input class="tbl-input" data-field="type" placeholder="PING"></td>'
         + '<td><input class="tbl-input" data-field="description"></td>'
+        + '<td style="text-align:center"><input type="checkbox" data-field="visible" class="w-4 h-4 accent-indigo-600" checked></td>'
         + '<td><button type="button" class="del-btn" onclick="this.closest(\'tr\').remove()"><i class="fa fa-trash text-xs"></i></button></td>';
     document.getElementById('hosts-tbody').appendChild(tr);
     tr.querySelector('input').focus();
@@ -742,12 +740,14 @@ function buildHosts() {
         var host = tr.querySelector('[data-field="host"]').value.trim();
         if (!host) return;
         var portVal = tr.querySelector('[data-field="port"]').value.trim();
+        var visibleEl = tr.querySelector('[data-field="visible"]');
         rows.push({
-            name: tr.querySelector('[data-field="name"]').value.trim(),
-            host: host,
-            port: (portVal === '' || portVal.toLowerCase() === 'ping') ? null : parseInt(portVal) || null,
-            type: tr.querySelector('[data-field="type"]').value.trim().toUpperCase() || 'PING',
-            description: tr.querySelector('[data-field="description"]').value.trim()
+            name:        tr.querySelector('[data-field="name"]').value.trim(),
+            host:        host,
+            port:        (portVal === '' || portVal.toLowerCase() === 'ping') ? null : parseInt(portVal) || null,
+            type:        tr.querySelector('[data-field="type"]').value.trim().toUpperCase() || 'PING',
+            description: tr.querySelector('[data-field="description"]').value.trim(),
+            visible:     visibleEl ? visibleEl.checked : true
         });
     });
     return rows;
@@ -837,7 +837,6 @@ function buildConfig() {
     cfg.internal_hosts     = buildHosts();
     cfg.RSS                = buildRss();
     cfg.services_visible   = parseInt(v('cfg-services-visible'), 10) || 10;
-    cfg.show_services      = chk('cfg-show-services');
     return cfg;
 }
 

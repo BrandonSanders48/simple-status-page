@@ -60,7 +60,6 @@ $refresh_rate   = $json_data['refresh_rate']   ?? 30000;
 $alert_sound    = $json_data['alert_sound']    ?? false;
 $internal_hosts = $json_data['internal_hosts'] ?? [];
 $rss_feeds      = $json_data['RSS']            ?? [];
-$show_services  = $json_data['show_services']  ?? true;
 
 // Branding (support both old and new config structure)
 $branding       = $json_data['branding']       ?? [];
@@ -454,7 +453,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
     </div>
 
     <!-- Services (skeleton) -->
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5 mb-5 sp-panel"<?= $show_services ? '' : ' style="display:none"' ?>>
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5 mb-5 sp-panel">
         <div class="flex items-center justify-between mb-4">
             <h5 class="flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-200">
                 <i class="fa-solid fa-server text-indigo-500"></i> <?= $t['internally_hosted'] ?>
