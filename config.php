@@ -184,6 +184,9 @@ function checked($v) { return $v ? 'checked' : ''; }
         <button class="tab-btn" data-tab="notifications">
             <i class="fa-solid fa-bell mr-1.5 text-violet-500"></i>Notifications
         </button>
+        <button class="tab-btn" data-tab="ssl">
+            <i class="fa-solid fa-lock mr-1.5 text-emerald-500"></i>SSL
+        </button>
     </div>
 </div>
 
@@ -210,7 +213,12 @@ function checked($v) { return $v ? 'checked' : ''; }
         <div class="section-card">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="font-semibold text-slate-700 dark:text-slate-300">Monitored Services</h2>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer" title="Hide the services panel on the status page while keeping monitoring and alerts active">
+                        <input type="checkbox" id="cfg-show-services" class="w-4 h-4 accent-indigo-600"
+                            <?= ($json_data['show_services'] ?? true) ? 'checked' : '' ?>>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Show on page</span>
+                    </label>
                     <label class="text-xs text-slate-400">Show by default</label>
                     <select id="cfg-services-visible" class="cfg-input" style="width:auto">
                         <?php $sv = (int)($json_data['services_visible'] ?? 10); ?>
@@ -573,6 +581,74 @@ function checked($v) { return $v ? 'checked' : ''; }
         </div>
     </div>
 
+    <!-- ── SSL tab ───────────────────────────────────────────────────── -->
+    <div id="tab-ssl" class="tab-panel hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div class="section-card">
+                <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-1">SSL Certificate</h2>
+                <p class="text-xs text-slate-400 mb-4">Upload your own certificate and private key. The container applies them automatically on next restart.</p>
+
+                <?php
+                $certExists = file_exists(__DIR__ . '/ssl/cert.pem');
+                $keyExists  = file_exists(__DIR__ . '/ssl/key.pem');
+                ?>
+                <div class="flex items-center gap-2 mb-5 text-sm <?= ($certExists && $keyExists) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500' ?>">
+                    <i class="fa-solid <?= ($certExists && $keyExists) ? 'fa-circle-check' : 'fa-circle-exclamation' ?> text-base"></i>
+                    <?php if ($certExists && $keyExists): ?>
+                        Custom certificate uploaded — restart the container to apply.
+                    <?php elseif ($certExists): ?>
+                        Certificate uploaded but private key is missing.
+                    <?php elseif ($keyExists): ?>
+                        Private key uploaded but certificate is missing.
+                    <?php else: ?>
+                        Using self-signed certificate (no custom cert uploaded).
+                    <?php endif; ?>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="cfg-label">Certificate <span class="normal-case font-normal text-slate-400">(.pem / .crt)</span></label>
+                        <div class="flex gap-2 items-center">
+                            <span class="text-xs text-slate-400 flex-1"><?= $certExists ? '<span class="text-emerald-600 dark:text-emerald-400">✓ ssl/cert.pem</span>' : 'Not uploaded' ?></span>
+                            <label for="ssl-cert-input" class="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-lg border border-indigo-200 dark:border-indigo-700/50 transition-colors whitespace-nowrap select-none">
+                                <i class="fa-solid fa-upload text-[11px]"></i> Upload
+                            </label>
+                            <input type="file" id="ssl-cert-input" accept=".pem,.crt" class="hidden">
+                        </div>
+                        <div id="ssl-cert-status" class="text-xs mt-1 hidden"></div>
+                    </div>
+
+                    <div>
+                        <label class="cfg-label">Private Key <span class="normal-case font-normal text-slate-400">(.pem / .key)</span></label>
+                        <div class="flex gap-2 items-center">
+                            <span class="text-xs text-slate-400 flex-1"><?= $keyExists ? '<span class="text-emerald-600 dark:text-emerald-400">✓ ssl/key.pem</span>' : 'Not uploaded' ?></span>
+                            <label for="ssl-key-input" class="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-lg border border-indigo-200 dark:border-indigo-700/50 transition-colors whitespace-nowrap select-none">
+                                <i class="fa-solid fa-upload text-[11px]"></i> Upload
+                            </label>
+                            <input type="file" id="ssl-key-input" accept=".pem,.key" class="hidden">
+                        </div>
+                        <div id="ssl-key-status" class="text-xs mt-1 hidden"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">How It Works</h2>
+                <ol class="space-y-3 text-sm text-slate-500 dark:text-slate-400">
+                    <li class="flex gap-2"><span class="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center">1</span>Upload your certificate and private key above.</li>
+                    <li class="flex gap-2"><span class="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center">2</span>Restart the Docker container: <code class="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-xs font-mono">docker restart simple-status-page</code></li>
+                    <li class="flex gap-2"><span class="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center">3</span>The container automatically applies your certificate on startup.</li>
+                </ol>
+                <div class="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-lg text-xs text-amber-700 dark:text-amber-400">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                    Certificate files are stored in <code class="font-mono">ssl/</code> inside the container volume and are excluded from git.
+                </div>
+            </div>
+
+        </div>
+    </div>
+
 </div><!-- /max-w-5xl -->
 
 <!-- Hidden save form -->
@@ -752,6 +828,7 @@ function buildConfig() {
     cfg.internal_hosts     = buildHosts();
     cfg.RSS                = buildRss();
     cfg.services_visible   = parseInt(v('cfg-services-visible'), 10) || 10;
+    cfg.show_services      = chk('cfg-show-services');
     return cfg;
 }
 
@@ -871,6 +948,39 @@ document.getElementById('cfg-business-logo').addEventListener('input', function(
         preview.classList.add('hidden');
     }
 });
+
+// ── SSL upload ───────────────────────────────────────────────────────
+function _sslUpload(inputId, statusId, type) {
+    var input  = document.getElementById(inputId);
+    var status = document.getElementById(statusId);
+    if (!input || !input.files[0]) return;
+    status.textContent = 'Uploading…';
+    status.className   = 'text-xs mt-1 text-slate-400';
+    var fd = new FormData();
+    fd.append('file', input.files[0]);
+    fd.append('type', type);
+    fd.append('csrf_token', '<?= e($_SESSION['csrf_token']) ?>');
+    fetch('include/upload_ssl.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                status.textContent = 'Saved! Restart the container to apply.';
+                status.className   = 'text-xs mt-1 text-emerald-600';
+            } else {
+                status.textContent = data.error || 'Upload failed.';
+                status.className   = 'text-xs mt-1 text-red-500';
+            }
+            input.value = '';
+        })
+        .catch(function() {
+            status.textContent = 'Upload failed.';
+            status.className   = 'text-xs mt-1 text-red-500';
+        });
+}
+var _sslCertInput = document.getElementById('ssl-cert-input');
+var _sslKeyInput  = document.getElementById('ssl-key-input');
+if (_sslCertInput) _sslCertInput.addEventListener('change', function() { _sslUpload('ssl-cert-input', 'ssl-cert-status', 'cert'); });
+if (_sslKeyInput)  _sslKeyInput.addEventListener('change',  function() { _sslUpload('ssl-key-input',  'ssl-key-status',  'key');  });
 
 // ── Keyboard shortcut: Ctrl+S ────────────────────────────────────────
 document.addEventListener('keydown', function(e) {

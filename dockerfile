@@ -14,7 +14,7 @@ RUN openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
     -out /etc/ssl/certs/apache-selfsigned.crt \
     -subj "/C=US/ST=State/L=City/O=StatusPage/CN=localhost"
 
-# Apache SSL virtual host
+# Apache SSL virtual host (deny direct access to ssl/ cert directory)
 RUN echo '<VirtualHost *:443>\n\
     DocumentRoot /var/www/html\n\
     SSLEngine on\n\
@@ -23,6 +23,9 @@ RUN echo '<VirtualHost *:443>\n\
     <Directory /var/www/html>\n\
         AllowOverride All\n\
         Require all granted\n\
+    </Directory>\n\
+    <Directory /var/www/html/ssl>\n\
+        Require all denied\n\
     </Directory>\n\
 </VirtualHost>' > /etc/apache2/sites-available/ssl.conf
 
@@ -58,7 +61,9 @@ RUN crontab /etc/cron.d/app-cron
 # Create cron log file
 RUN touch /var/log/cron.log
 
-# Start cron + Apache
-CMD cron && apache2-foreground
+# Entrypoint applies custom SSL cert if uploaded, then starts cron + Apache
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+CMD ["/docker-entrypoint.sh"]
 
 EXPOSE 80 443

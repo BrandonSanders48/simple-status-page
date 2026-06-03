@@ -1,2 +1,7 @@
 .claude/
 .vscode/
+
+# SSL certificates — never commit private keys
+ssl/*.pem
+ssl/*.crt
+ssl/*.key
