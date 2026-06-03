@@ -156,6 +156,15 @@ function checked($v) { return $v ? 'checked' : ''; }
         </div>
         <div class="flex items-center gap-2">
             <span id="save-status" class="text-sm hidden"></span>
+            <button id="exportBtn" type="button"
+                class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700">
+                <i class="fa-solid fa-file-export text-xs"></i> Export
+            </button>
+            <label for="import-file-input"
+                class="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700 select-none">
+                <i class="fa-solid fa-file-import text-xs"></i> Import
+            </label>
+            <input type="file" id="import-file-input" accept=".json,application/json" class="hidden">
             <button id="saveBtn" class="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
                 <i class="fa-solid fa-floppy-disk text-xs"></i> Save
             </button>
@@ -881,6 +890,38 @@ new MutationObserver(updateHostCount).observe(document.getElementById('hosts-tbo
 new MutationObserver(updateRssCount).observe(document.getElementById('rss-tbody'),  { childList: true });
 updateHostCount();
 updateRssCount();
+
+// ── Export ───────────────────────────────────────────────────────────
+document.getElementById('exportBtn').addEventListener('click', function() {
+    var json = JSON.stringify(buildConfig(), null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href   = url;
+    a.download = 'status-page-config.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+});
+
+// ── Import ───────────────────────────────────────────────────────────
+document.getElementById('import-file-input').addEventListener('change', function() {
+    if (!this.files[0]) return;
+    var file = this.files[0];
+    this.value = '';
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var parsed;
+        try { parsed = JSON.parse(e.target.result); } catch(err) {
+            alert('Invalid JSON file: ' + err.message); return;
+        }
+        if (!confirm('Replace the current configuration with the imported file?\n\nThis will save immediately.')) return;
+        document.getElementById('save-json-input').value = JSON.stringify(parsed, null, 2);
+        document.getElementById('save-form').submit();
+    };
+    reader.readAsText(file);
+});
 
 // ── Save ────────────────────────────────────────────────────────────
 document.getElementById('saveBtn').addEventListener('click', function() {
