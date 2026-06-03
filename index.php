@@ -124,7 +124,27 @@ $lang_strings = [
         'issues_detected' => 'Issues Detected In Your Environment',
         'notices' => 'Notices', 'internally_hosted' => 'Internally Hosted Services',
         'local_area' => 'Local-Area Network', 'wide_area' => 'Wide-Area Network',
-        'service' => 'Service', 'loading' => 'Loading...'
+        'service' => 'Service', 'loading' => 'Loading...',
+        // Severity labels
+        'sev_degraded' => 'Degraded', 'sev_outage' => 'Outage',
+        'sev_maintenance' => 'Maintenance', 'sev_resolved' => 'Resolved', 'ongoing' => 'Ongoing',
+        // Service card
+        'status_up' => 'Up', 'status_down' => 'Down',
+        'last_offline' => 'Last offline:', 'duration' => 'Duration:',
+        // Outage log
+        'no_outages_yet' => 'No outages recorded yet.',
+        'no_outages_filter' => 'No outages match the selected filters.',
+        'fail_load_outage' => 'Failed to load outage history.',
+        'all_services_opt' => 'All services', 'all_time_opt' => 'All time',
+        'last_1h' => 'Last hour', 'last_8h' => 'Last 8 hours',
+        'last_24h' => 'Last 24 hours', 'last_7d' => 'Last 7 days', 'last_30d' => 'Last 30 days',
+        'col_went_down' => 'Went Down', 'col_recovered' => 'Recovered', 'col_duration' => 'Duration',
+        // Show more/less
+        'show_more' => 'Show {n} more', 'show_less' => 'Show less',
+        // Subscribe
+        'please_select_svc' => 'Please select at least one service.',
+        'select_all' => 'Select all', 'deselect_all' => 'Deselect all',
+        'no_active_subs' => 'No active subscriptions found.', 'btn_unsubscribe' => 'Unsubscribe',
     ],
     'es' => [
         'status_page' => 'Página de Estado', 'login' => 'Iniciar sesión', 'logout' => 'Cerrar sesión',
@@ -139,7 +159,27 @@ $lang_strings = [
         'issues_detected' => 'Problemas detectados en su entorno',
         'notices' => 'Avisos', 'internally_hosted' => 'Servicios Internos',
         'local_area' => 'Red de Área Local', 'wide_area' => 'Red de Área Amplia',
-        'service' => 'Servicio', 'loading' => 'Cargando...'
+        'service' => 'Servicio', 'loading' => 'Cargando...',
+        // Severity labels
+        'sev_degraded' => 'Degradado', 'sev_outage' => 'Interrupción',
+        'sev_maintenance' => 'Mantenimiento', 'sev_resolved' => 'Resuelto', 'ongoing' => 'En curso',
+        // Service card
+        'status_up' => 'Activo', 'status_down' => 'Caído',
+        'last_offline' => 'Última caída:', 'duration' => 'Duración:',
+        // Outage log
+        'no_outages_yet' => 'Sin interrupciones registradas.',
+        'no_outages_filter' => 'Ninguna interrupción coincide con los filtros.',
+        'fail_load_outage' => 'Error al cargar el historial.',
+        'all_services_opt' => 'Todos los servicios', 'all_time_opt' => 'Todo el tiempo',
+        'last_1h' => 'Última hora', 'last_8h' => 'Últimas 8 horas',
+        'last_24h' => 'Últimas 24 horas', 'last_7d' => 'Últimos 7 días', 'last_30d' => 'Últimos 30 días',
+        'col_went_down' => 'Caída', 'col_recovered' => 'Recuperado', 'col_duration' => 'Duración',
+        // Show more/less
+        'show_more' => 'Mostrar {n} más', 'show_less' => 'Mostrar menos',
+        // Subscribe
+        'please_select_svc' => 'Por favor seleccione al menos un servicio.',
+        'select_all' => 'Seleccionar todo', 'deselect_all' => 'Deseleccionar todo',
+        'no_active_subs' => 'No se encontraron suscripciones activas.', 'btn_unsubscribe' => 'Cancelar',
     ]
 ];
 $t = $lang_strings[$lang];
@@ -237,7 +277,36 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
     data-service="<?= htmlspecialchars($t['service']) ?>"
     data-alert-sound="<?= $alert_sound ? 'true' : 'false' ?>"
     data-browser-notify="<?= !empty($json_data['browser_notify']) ? 'true' : 'false' ?>"
-    data-services-visible="<?= (int)($json_data['services_visible'] ?? 10) ?>">
+    data-services-visible="<?= (int)($json_data['services_visible'] ?? 10) ?>"
+    data-sev-degraded="<?= htmlspecialchars($t['sev_degraded']) ?>"
+    data-sev-outage="<?= htmlspecialchars($t['sev_outage']) ?>"
+    data-sev-maintenance="<?= htmlspecialchars($t['sev_maintenance']) ?>"
+    data-sev-resolved="<?= htmlspecialchars($t['sev_resolved']) ?>"
+    data-ongoing="<?= htmlspecialchars($t['ongoing']) ?>"
+    data-status-up="<?= htmlspecialchars($t['status_up']) ?>"
+    data-status-down="<?= htmlspecialchars($t['status_down']) ?>"
+    data-last-offline="<?= htmlspecialchars($t['last_offline']) ?>"
+    data-duration="<?= htmlspecialchars($t['duration']) ?>"
+    data-no-outages-yet="<?= htmlspecialchars($t['no_outages_yet']) ?>"
+    data-no-outages-filter="<?= htmlspecialchars($t['no_outages_filter']) ?>"
+    data-fail-load-outage="<?= htmlspecialchars($t['fail_load_outage']) ?>"
+    data-all-services-opt="<?= htmlspecialchars($t['all_services_opt']) ?>"
+    data-all-time-opt="<?= htmlspecialchars($t['all_time_opt']) ?>"
+    data-last-1h="<?= htmlspecialchars($t['last_1h']) ?>"
+    data-last-8h="<?= htmlspecialchars($t['last_8h']) ?>"
+    data-last-24h="<?= htmlspecialchars($t['last_24h']) ?>"
+    data-last-7d="<?= htmlspecialchars($t['last_7d']) ?>"
+    data-last-30d="<?= htmlspecialchars($t['last_30d']) ?>"
+    data-col-went-down="<?= htmlspecialchars($t['col_went_down']) ?>"
+    data-col-recovered="<?= htmlspecialchars($t['col_recovered']) ?>"
+    data-col-duration="<?= htmlspecialchars($t['col_duration']) ?>"
+    data-show-more="<?= htmlspecialchars($t['show_more']) ?>"
+    data-show-less="<?= htmlspecialchars($t['show_less']) ?>"
+    data-please-select-svc="<?= htmlspecialchars($t['please_select_svc']) ?>"
+    data-select-all="<?= htmlspecialchars($t['select_all']) ?>"
+    data-deselect-all="<?= htmlspecialchars($t['deselect_all']) ?>"
+    data-no-active-subs="<?= htmlspecialchars($t['no_active_subs']) ?>"
+    data-btn-unsubscribe="<?= htmlspecialchars($t['btn_unsubscribe']) ?>">
 
 <?php if (!$hide_navbar): ?>
 

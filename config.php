@@ -156,6 +156,7 @@ function checked($v) { return $v ? 'checked' : ''; }
         </div>
         <div class="flex items-center gap-2">
             <span id="save-status" class="text-sm hidden"></span>
+            <?php if ($auth_required): ?>
             <button id="exportBtn" type="button"
                 class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700">
                 <i class="fa-solid fa-file-export text-xs"></i> Export
@@ -165,6 +166,7 @@ function checked($v) { return $v ? 'checked' : ''; }
                 <i class="fa-solid fa-file-import text-xs"></i> Import
             </label>
             <input type="file" id="import-file-input" accept=".json,application/json" class="hidden">
+            <?php endif; ?>
             <button id="saveBtn" class="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
                 <i class="fa-solid fa-floppy-disk text-xs"></i> Save
             </button>
@@ -454,6 +456,25 @@ function checked($v) { return $v ? 'checked' : ''; }
                 </div>
             </div>
 
+            <!-- Behaviour card -->
+            <div class="section-card">
+                <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">Behaviour</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="cfg-label">Auto-Refresh Interval (ms)</label>
+                        <input id="cfg-refresh-rate" class="cfg-input" type="number" min="3000" step="500"
+                               value="<?= (int)($json_data['refresh_rate'] ?? 30000) ?>">
+                        <p class="text-xs text-slate-400 mt-1">3000 = 3 seconds. Minimum 3000.</p>
+                    </div>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input id="cfg-require-auth" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['require_auth'] ?? true) ?>>
+                        <span class="text-sm font-medium">Require login for admin features
+                            <span class="block text-xs text-slate-400 font-normal">Uncheck to allow config access without logging in</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -510,29 +531,15 @@ function checked($v) { return $v ? 'checked' : ''; }
             <!-- Display & Behaviour card -->
             <div class="section-card">
                 <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">Display &amp; Behaviour</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label class="cfg-label">Auto-Refresh Interval (ms)</label>
-                        <input id="cfg-refresh-rate" class="cfg-input" type="number" min="3000" step="500"
-                               value="<?= (int)($json_data['refresh_rate'] ?? 30000) ?>">
-                        <p class="text-xs text-slate-400 mt-1">3000 = 3 seconds. Minimum 3000.</p>
-                    </div>
-                    <div class="flex flex-col gap-3 pt-1">
-                        <label class="flex items-center gap-3 cursor-pointer">
-                            <input id="cfg-alert-sound" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['alert_sound'] ?? false) ?>>
-                            <span class="text-sm font-medium">Play alert sound on status change</span>
-                        </label>
-                        <label class="flex items-center gap-3 cursor-pointer">
-                            <input id="cfg-browser-notify" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['browser_notify'] ?? false) ?>>
-                            <span class="text-sm font-medium">Enable browser notifications</span>
-                        </label>
-                        <label class="flex items-center gap-3 cursor-pointer">
-                            <input id="cfg-require-auth" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['require_auth'] ?? true) ?>>
-                            <span class="text-sm font-medium">Require login for admin features
-                                <span class="block text-xs text-slate-400 font-normal">Uncheck to allow config access without logging in</span>
-                            </span>
-                        </label>
-                    </div>
+                <div class="flex flex-col gap-3">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input id="cfg-alert-sound" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['alert_sound'] ?? false) ?>>
+                        <span class="text-sm font-medium">Play alert sound on status change</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input id="cfg-browser-notify" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['browser_notify'] ?? false) ?>>
+                        <span class="text-sm font-medium">Enable browser notifications</span>
+                    </label>
                 </div>
             </div>
 

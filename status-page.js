@@ -18,6 +18,40 @@ const loadingText           = document.body.dataset.loading               || 'Lo
 const serviceText           = document.body.dataset.service               || 'Service';
 const alertSoundEnabled     = document.body.dataset.alertSound === 'true';
 
+// Translated strings
+const _t = {
+    sevDegraded:     document.body.dataset.sevDegraded    || 'Degraded',
+    sevOutage:       document.body.dataset.sevOutage      || 'Outage',
+    sevMaintenance:  document.body.dataset.sevMaintenance || 'Maintenance',
+    sevResolved:     document.body.dataset.sevResolved    || 'Resolved',
+    ongoing:         document.body.dataset.ongoing        || 'Ongoing',
+    statusUp:        document.body.dataset.statusUp       || 'Up',
+    statusDown:      document.body.dataset.statusDown     || 'Down',
+    lastOffline:     document.body.dataset.lastOffline    || 'Last offline:',
+    duration:        document.body.dataset.duration       || 'Duration:',
+    noOutagesYet:    document.body.dataset.noOutagesYet   || 'No outages recorded yet.',
+    noOutagesFilter: document.body.dataset.noOutagesFilter|| 'No outages match the selected filters.',
+    failLoadOutage:  document.body.dataset.failLoadOutage || 'Failed to load outage history.',
+    allServicesOpt:  document.body.dataset.allServicesOpt || 'All services',
+    allTimeOpt:      document.body.dataset.allTimeOpt     || 'All time',
+    last1h:          document.body.dataset.last1h         || 'Last hour',
+    last8h:          document.body.dataset.last8h         || 'Last 8 hours',
+    last24h:         document.body.dataset.last24h        || 'Last 24 hours',
+    last7d:          document.body.dataset.last7d         || 'Last 7 days',
+    last30d:         document.body.dataset.last30d        || 'Last 30 days',
+    colWentDown:     document.body.dataset.colWentDown    || 'Went Down',
+    colRecovered:    document.body.dataset.colRecovered   || 'Recovered',
+    colDuration:     document.body.dataset.colDuration    || 'Duration',
+    showMore:        document.body.dataset.showMore       || 'Show {n} more',
+    showLess:        document.body.dataset.showLess       || 'Show less',
+    pleaseSelectSvc: document.body.dataset.pleaseSelectSvc|| 'Please select at least one service.',
+    selectAll:       document.body.dataset.selectAll      || 'Select all',
+    deselectAll:     document.body.dataset.deselectAll    || 'Deselect all',
+    noActiveSubs:    document.body.dataset.noActiveSubs   || 'No active subscriptions found.',
+    btnUnsubscribe:  document.body.dataset.btnUnsubscribe || 'Unsubscribe',
+    service:         document.body.dataset.service        || 'Service',
+};
+
 let lastServiceStates = {};
 let _lastServicesSig = '';
 let _servicesExpanded = false;
@@ -120,10 +154,10 @@ function loadIncidents() {
         }
         _removeClass('incidents_container', 'hidden');
         var severityMap = {
-            degraded:    { bg:'rgba(245,158,11,0.10)',  border:'rgba(245,158,11,0.35)',  icon:'fa-circle-minus',       iconColor:'#f59e0b', badge:'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',    label:'Degraded' },
-            outage:      { bg:'rgba(239,68,68,0.10)',   border:'rgba(239,68,68,0.35)',   icon:'fa-circle-xmark',       iconColor:'#ef4444', badge:'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',            label:'Outage' },
-            maintenance: { bg:'rgba(99,102,241,0.10)',  border:'rgba(99,102,241,0.35)',  icon:'fa-wrench',             iconColor:'#6366f1', badge:'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300', label:'Maintenance' },
-            resolved:    { bg:'rgba(16,185,129,0.10)',  border:'rgba(16,185,129,0.35)',  icon:'fa-circle-check',       iconColor:'#10b981', badge:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300', label:'Resolved' }
+            degraded:    { bg:'rgba(245,158,11,0.10)',  border:'rgba(245,158,11,0.35)',  icon:'fa-circle-minus',  iconColor:'#f59e0b', badge:'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',       label:_t.sevDegraded },
+            outage:      { bg:'rgba(239,68,68,0.10)',   border:'rgba(239,68,68,0.35)',   icon:'fa-circle-xmark', iconColor:'#ef4444', badge:'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',                label:_t.sevOutage },
+            maintenance: { bg:'rgba(99,102,241,0.10)',  border:'rgba(99,102,241,0.35)',  icon:'fa-wrench',        iconColor:'#6366f1', badge:'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300',    label:_t.sevMaintenance },
+            resolved:    { bg:'rgba(16,185,129,0.10)',  border:'rgba(16,185,129,0.35)',  icon:'fa-circle-check', iconColor:'#10b981', badge:'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300', label:_t.sevResolved }
         };
         var html = '';
         data.forEach(function(incident, idx) {
@@ -138,7 +172,7 @@ function loadIncidents() {
             var timeRange = startFmt
                 ? (endFmt
                     ? `${startFmt} <span class="opacity-50 mx-0.5">→</span> ${endFmt}`
-                    : `${startFmt} <span class="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-200/60 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">Ongoing</span>`)
+                    : `${startFmt} <span class="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-200/60 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">${_t.ongoing}</span>`)
                 : '';
             html += `
             <div class="rounded-xl p-4 mb-3" style="background:${sev.bg};border:1px solid ${sev.border}">
@@ -201,14 +235,14 @@ function loadStatus() {
             if (connStr) tipLines.push(connStr);
             if (service.last_down_at) {
                 var d = new Date(service.last_down_at * 1000);
-                tipLines.push('Last offline: ' + d.toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}));
-                if (service.last_down_duration_s) tipLines.push('Duration: ' + formatDuration(service.last_down_duration_s));
+                tipLines.push(_t.lastOffline + ' ' + d.toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}));
+                if (service.last_down_duration_s) tipLines.push(_t.duration + ' ' + formatDuration(service.last_down_duration_s));
             }
             var tip = tipLines.join('\n');
             var wentDownAt = (!isUp && service.went_down_at) ? parseInt(service.went_down_at, 10) : 0;
             var statusDot = isUp
-                ? '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold" style="color:var(--success-color)"><span class="w-1.5 h-1.5 rounded-full" style="background:var(--success-color)"></span>Up</span>'
-                : '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold" style="color:var(--error-color)"><span class="w-1.5 h-1.5 rounded-full" style="background:var(--error-color)"></span>Down</span>';
+                ? '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold" style="color:var(--success-color)"><span class="w-1.5 h-1.5 rounded-full" style="background:var(--success-color)"></span>' + _t.statusUp + '</span>'
+                : '<span class="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold" style="color:var(--error-color)"><span class="w-1.5 h-1.5 rounded-full" style="background:var(--error-color)"></span>' + _t.statusDown + '</span>';
             var downTimer = (!isUp && wentDownAt)
                 ? `<p class="text-[10px] font-mono mt-1.5" style="color:var(--error-color)" data-down-since="${wentDownAt}">${formatDuration(Math.floor(Date.now()/1000) - wentDownAt)}</p>`
                 : '';
@@ -432,14 +466,14 @@ $('#subscribeForm').on('submit', function(e) {
     e.preventDefault();
     var formData = $(this).serializeArray();
     if (!formData.some(function(f) { return f.name === 'service[]'; })) {
-        $('#subscribeMsg').html('<p class="text-amber-500">Please select at least one service.</p>');
+        $('#subscribeMsg').html('<p class="text-amber-500">' + escapeHtml(_t.pleaseSelectSvc) + '</p>');
         return;
     }
     formData.push({name: 'csrf_token', value: csrfToken});
     $.post('include/subscriptions.php', $.param(formData), function(response) {
         $('#subscribeMsg').html('<p class="text-emerald-600 dark:text-emerald-400 font-medium">' + escapeHtml(response.message || 'Subscribed!') + '</p>');
         $('#subscribeForm')[0].reset();
-        $('#selectAllSvcs').text('Select all');
+        $('#selectAllSvcs').text(_t.selectAll);
     }, 'json').fail(function(xhr) {
         const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to subscribe.';
         $('#subscribeMsg').html('<p class="text-red-500">' + escapeHtml(msg) + '</p>');
@@ -450,7 +484,7 @@ $(document).on('click', '#selectAllSvcs', function() {
     var $cbs = $('#subscribeForm input[type="checkbox"]');
     var allChecked = $cbs.length > 0 && $cbs.length === $cbs.filter(':checked').length;
     $cbs.prop('checked', !allChecked);
-    $(this).text(allChecked ? 'Select all' : 'Deselect all');
+    $(this).text(allChecked ? _t.selectAll : _t.deselectAll);
 });
 
 // --- Manage Subscription ---
@@ -458,14 +492,14 @@ function renderManageSubList(subscriptions) {
     var $list = $('#manageSubList');
     $list.empty();
     if (!subscriptions || subscriptions.length === 0) {
-        $list.append('<li class="px-3 py-3 text-sm text-slate-500 dark:text-slate-400 text-center">No active subscriptions found.</li>');
+        $list.append('<li class="px-3 py-3 text-sm text-slate-500 dark:text-slate-400 text-center">' + escapeHtml(_t.noActiveSubs) + '</li>');
         $('#manageSubUnsubAll').addClass('hidden');
     } else {
         subscriptions.forEach(function(sub) {
             $list.append(
                 '<li class="flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">' +
                 '<span class="text-sm text-slate-800 dark:text-slate-200 font-medium">' + escapeHtml(sub) + '</span>' +
-                '<button class="unsubscribe-service-btn text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-md font-medium transition-colors" data-service="' + encodeURIComponent(sub) + '">Unsubscribe</button>' +
+                '<button class="unsubscribe-service-btn text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-md font-medium transition-colors" data-service="' + encodeURIComponent(sub) + '">' + escapeHtml(_t.btnUnsubscribe) + '</button>' +
                 '</li>'
             );
         });
@@ -706,9 +740,10 @@ function _applyServicesLimit() {
     cards.forEach(function(c, i) {
         c.style.display = (_servicesExpanded || i < limit) ? '' : 'none';
     });
+    var showMoreLabel = _t.showMore.replace('{n}', hidden);
     btn.innerHTML = _servicesExpanded
-        ? '<button class="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 flex items-center gap-1.5 mx-auto" id="svc-toggle-btn"><i class="fa-solid fa-chevron-up text-[10px]"></i> Show less</button>'
-        : '<button class="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 flex items-center gap-1.5 mx-auto" id="svc-toggle-btn"><i class="fa-solid fa-chevron-down text-[10px]"></i> Show ' + hidden + ' more</button>';
+        ? '<button class="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 flex items-center gap-1.5 mx-auto" id="svc-toggle-btn"><i class="fa-solid fa-chevron-up text-[10px]"></i> ' + escapeHtml(_t.showLess) + '</button>'
+        : '<button class="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 flex items-center gap-1.5 mx-auto" id="svc-toggle-btn"><i class="fa-solid fa-chevron-down text-[10px]"></i> ' + escapeHtml(showMoreLabel) + '</button>';
     document.getElementById('svc-toggle-btn').addEventListener('click', function() {
         _servicesExpanded = !_servicesExpanded;
         _applyServicesLimit();
@@ -740,7 +775,7 @@ function openOutageLog() {
         if (!el) return;
         _outageData = data || [];
         if (!_outageData.length) {
-            el.innerHTML = '<p class="text-sm text-slate-400 dark:text-slate-500 text-center py-8">No outages recorded yet.</p>';
+            el.innerHTML = '<p class="text-sm text-slate-400 dark:text-slate-500 text-center py-8">' + escapeHtml(_t.noOutagesYet) + '</p>';
             return;
         }
         var fmt = function(ts) {
@@ -766,34 +801,34 @@ function openOutageLog() {
         el.innerHTML = `
             <div class="flex flex-wrap items-center gap-2 mb-4">
                 <select id="outageFilterSvc" class="${inputCls}">
-                    <option value="">All services</option>${svcOpts}
+                    <option value="">${escapeHtml(_t.allServicesOpt)}</option>${svcOpts}
                 </select>
                 <select id="outageFilterTime" class="${inputCls}">
-                    <option value="">All time</option>
-                    <option value="1">Last hour</option>
-                    <option value="8">Last 8 hours</option>
-                    <option value="24">Last 24 hours</option>
-                    <option value="168">Last 7 days</option>
-                    <option value="720">Last 30 days</option>
+                    <option value="">${escapeHtml(_t.allTimeOpt)}</option>
+                    <option value="1">${escapeHtml(_t.last1h)}</option>
+                    <option value="8">${escapeHtml(_t.last8h)}</option>
+                    <option value="24">${escapeHtml(_t.last24h)}</option>
+                    <option value="168">${escapeHtml(_t.last7d)}</option>
+                    <option value="720">${escapeHtml(_t.last30d)}</option>
                 </select>
             </div>
             <table class="w-full text-left">
                 <thead>
                     <tr class="border-b border-slate-200 dark:border-slate-700">
-                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Service</th>
-                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Went Down</th>
-                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Recovered</th>
-                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Duration</th>
+                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">${escapeHtml(_t.service)}</th>
+                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">${escapeHtml(_t.colWentDown)}</th>
+                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">${escapeHtml(_t.colRecovered)}</th>
+                        <th class="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">${escapeHtml(_t.colDuration)}</th>
                     </tr>
                 </thead>
                 <tbody>${rows}</tbody>
             </table>
-            <p id="outageLogEmpty" style="display:none" class="text-sm text-slate-400 dark:text-slate-500 text-center py-6">No outages match the selected filters.</p>`;
+            <p id="outageLogEmpty" style="display:none" class="text-sm text-slate-400 dark:text-slate-500 text-center py-6">${escapeHtml(_t.noOutagesFilter)}</p>`;
         document.getElementById('outageFilterSvc').addEventListener('change',  _applyOutageFilters);
         document.getElementById('outageFilterTime').addEventListener('change', _applyOutageFilters);
     }, function() {
         var el = document.getElementById('outageLogBody');
-        if (el) el.innerHTML = '<p class="text-sm text-red-500 text-center py-6">Failed to load outage history.</p>';
+        if (el) el.innerHTML = '<p class="text-sm text-red-500 text-center py-6">' + escapeHtml(_t.failLoadOutage) + '</p>';
     });
 }
 
