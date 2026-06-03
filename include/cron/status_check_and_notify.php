@@ -29,7 +29,25 @@ $email_from = $json_data['email']['from'] ?? 'status@yourdomain.com';
 $email_reply = $json_data['email']['reply_to'] ?? $email_from;
 $smtp = $json_data['email']['smtp'] ?? null;
 
-$statusFile = __DIR__ . '/service_status.json';
+$statusFile  = __DIR__ . '/service_status.json';
+$tokensFile  = __DIR__ . '/email_tokens.json';
+
+function generate_action_tokens($service, $tokensFile, $page_url) {
+    $tokens = file_exists($tokensFile) ? (json_decode(file_get_contents($tokensFile), true) ?: []) : [];
+    $now    = time();
+    // Prune expired tokens
+    $tokens = array_filter($tokens, fn($t) => $t['exp'] > $now);
+    $exp    = $now + 48 * 3600;
+    $base   = rtrim($page_url, '/') . '/include/email_action.php?token=';
+    $urls   = [];
+    foreach (['wip', 'resolved'] as $type) {
+        $token = bin2hex(random_bytes(16));
+        $tokens[$token] = ['service' => $service, 'type' => $type, 'exp' => $exp];
+        $urls[$type] = $base . $token;
+    }
+    @file_put_contents($tokensFile, json_encode($tokens, JSON_PRETTY_PRINT));
+    return $urls;
+}
 $prevData = file_exists($statusFile) ? json_decode(file_get_contents($statusFile), true) : [];
 if (!is_array($prevData)) $prevData = [];
 // Normalize old "up"/"down" string format to rich object format
@@ -147,6 +165,26 @@ foreach ($internal_hosts as $service) {
         foreach ($emails as $email) {
             error_log("Preparing to email subscriber: $email\n", 3, $logFile);
             $subject = "Service '{$name}' is now " . strtoupper($curStr);
+            $accentColor = $curStr === 'up' ? '#28a745' : '#dc3545';
+            $actionButtons = '';
+            if ($curStr === 'down' && !empty($page_url)) {
+                $actionUrls = generate_action_tokens($name, $tokensFile, $page_url);
+                $actionButtons = '
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid #e0e0e0;">
+      <p style="font-size:13px;color:#666;margin:0 0 12px;text-align:center;">Post an incident update to the status page:</p>
+      <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+        <tr>
+          <td style="padding-right:8px;">
+            <a href="' . htmlspecialchars($actionUrls['wip']) . '" style="display:inline-block;padding:10px 20px;background:#f59e0b;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">⚙&nbsp; Work in Progress</a>
+          </td>
+          <td>
+            <a href="' . htmlspecialchars($actionUrls['resolved']) . '" style="display:inline-block;padding:10px 20px;background:#10b981;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">✓&nbsp; Mark as Resolved</a>
+          </td>
+        </tr>
+      </table>
+      <p style="font-size:11px;color:#aaa;margin:10px 0 0;text-align:center;">Links expire in 48 hours. Clicking opens a confirmation page.</p>
+    </div>';
+            }
             $message = '
 <html>
 <head>
@@ -161,72 +199,30 @@ foreach ($internal_hosts as $service) {
       padding: 32px 24px;
       border: 1px solid #e0e0e0;
     }
-    .status-header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 18px;
-    }
-    .status-icon {
-      font-size: 32px;
-      margin-right: 14px;
-      color: ' . ($curStr === 'up' ? '#28a745' : '#dc3545') . ';
-    }
-    .status-title {
-      font-size: 22px;
-      font-weight: bold;
-      color: #23272b;
-    }
-    .status-state {
-      font-size: 18px;
-      font-weight: bold;
-      color: ' . ($curStr === 'up' ? '#28a745' : '#dc3545') . ';
-      margin-bottom: 10px;
-    }
-    .status-details {
-      font-size: 15px;
-      color: #555;
-      margin-bottom: 18px;
-    }
-    .footer {
-      font-size: 12px;
-      color: #888;
-      margin-top: 24px;
-      text-align: center;
-    }
-    a.button {
-      display: inline-block;
-      padding: 8px 18px;
-      background: #007bff;
-      color: #fff !important;
-      border-radius: 6px;
-      text-decoration: none;
-      font-size: 15px;
-      margin-top: 10px;
-    }
+    .status-header { display: flex; align-items: center; margin-bottom: 18px; }
+    .status-icon { font-size: 32px; margin-right: 14px; color: ' . $accentColor . '; }
+    .status-title { font-size: 22px; font-weight: bold; color: #23272b; }
+    .status-state { font-size: 18px; font-weight: bold; color: ' . $accentColor . '; margin-bottom: 10px; }
+    .status-details { font-size: 15px; color: #555; margin-bottom: 18px; }
+    .footer { font-size: 12px; color: #888; margin-top: 24px; text-align: center; }
+    a.button { display: inline-block; padding: 8px 18px; background: #007bff; color: #fff !important; border-radius: 6px; text-decoration: none; font-size: 15px; margin-top: 10px; }
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 </head>
 <body>
   <div class="status-container">
     <div class="status-header">
-      <span class="status-icon">' .
-        ($curStr === 'up'
-          ? '<i class="fa-solid fa-circle-check"></i>'
-          : '<i class="fa-solid fa-circle-exclamation"></i>') .
-      '</span>
+      <span class="status-icon">' . ($curStr === 'up' ? '&#9989;' : '&#128721;') . '</span>
       <span class="status-title">' . htmlspecialchars($name) . '</span>
     </div>
-    <div class="status-state">
-      Status: ' . strtoupper($curStr) . '
-    </div>
+    <div class="status-state">Status: ' . strtoupper($curStr) . '</div>
     <div class="status-details">
-      The service <b>' . htmlspecialchars($name) . '</b> has changed status and is now <b style="color:' . ($curStr === 'up' ? '#28a745' : '#dc3545') . ';">' . strtoupper($curStr) . '</b>.<br>
+      The service <b>' . htmlspecialchars($name) . '</b> is now <b style="color:' . $accentColor . ';">' . strtoupper($curStr) . '</b>.<br>
       <small>Checked at: ' . date('Y-m-d H:i:s') . '</small>
     </div>
     <a class="button" href="' . htmlspecialchars($page_url) . '" target="_blank">View Status Page</a>
-    <div class="footer">
-      &mdash; simple-status-page
-    </div>
+    ' . $actionButtons . '
+    <div class="footer">&mdash; simple-status-page</div>
   </div>
 </body>
 </html>

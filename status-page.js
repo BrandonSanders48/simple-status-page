@@ -146,6 +146,17 @@ function loadIncidents() {
     _incidentsLoading = true;
     _log('loadIncidents: fired');
     _get(cacheBust('include/incidents.json'), function(data) {
+        // Filter resolved incidents older than 24 hours
+        if (data && data.length) {
+            var cutoff = Date.now() - 24 * 3600 * 1000;
+            data = data.filter(function(inc) {
+                if (inc.severity !== 'resolved') return true;
+                var ts = inc.end_time || inc.start_time || inc.time || '';
+                if (!ts) return true;
+                var d = new Date(ts.replace('T', ' '));
+                return isNaN(d) || d.getTime() > cutoff;
+            });
+        }
         _log('loadIncidents: success, items=' + (data ? data.length : 'null'));
         if (!data || !data.length) {
             _addClass('incidents_container', 'hidden');
