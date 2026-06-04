@@ -1,17 +1,11 @@
 #!/bin/bash
 set -e
 
-# Seed include/ on a fresh volume (PHP files missing = first start)
-if [ ! -f "/var/www/html/include/status_ajax.php" ]; then
-    echo "[entrypoint] Fresh include/ volume — seeding application files..."
-    cp -rn /var/www/defaults/include/. /var/www/html/include/
-fi
-
-# Seed images/ on a fresh volume (favicon missing = first start)
-if [ ! -f "/var/www/html/images/favicon.ico" ]; then
-    echo "[entrypoint] Fresh images/ volume — seeding default images..."
-    cp -rn /var/www/defaults/images/. /var/www/html/images/
-fi
+# Always copy new files from the image into the volume without overwriting existing ones.
+# -n (no-clobber) preserves user data (config.json, outage_log.json, uploads, etc.)
+# while ensuring new PHP files added in updates are deployed automatically.
+cp -rn /var/www/defaults/include/. /var/www/html/include/
+cp -rn /var/www/defaults/images/.  /var/www/html/images/
 
 # Always ensure runtime directories exist and are writable by www-data
 # (runs as root so chown always works regardless of host mount permissions)
