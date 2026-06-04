@@ -334,13 +334,15 @@ function loadStatus() {
 }
 
 // --- RSS Notices ---
-var _rssMedium = ["unavailable","inaccessible","difficulty","difficulties","slow","slowness","trouble","degraded","delay","delays","partial","unstable","intermittent"];
+var _rssGood   = ["fixed","resolved","restored","recovery","recovered","operational","normal","stable"];
+var _rssMedium = ["maintenance","unavailable","inaccessible","difficulty","difficulties","slow","slowness","trouble","degraded","delay","delays","partial","unstable","intermittent"];
 var _rssHigh   = ["error","errors","problem","problems","issue","issues","outage","outages","critical","fault","down","failure","failures","disruption","disruptions","major"];
 
 function _rssCardColors(itemText) {
     var lower = (itemText || '').toLowerCase();
     var isDark = document.documentElement.classList.contains('dark');
     var cs = getComputedStyle(document.documentElement);
+    var ok   = (cs.getPropertyValue('--success-color') || '#10b981').trim();
     var warn = (cs.getPropertyValue('--warning-color') || '#f59e0b').trim();
     var err  = (cs.getPropertyValue('--error-color')   || '#ef4444').trim();
     var bg, color;
@@ -348,10 +350,12 @@ function _rssCardColors(itemText) {
         bg = '#0c1a2e'; color = '#7c8fa8';
         if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = blendHex(warn, '#0c1a2e', 0.14); color = warn; }
         if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = blendHex(err,  '#0c1a2e', 0.14); color = blendHex(err, '#ffffff', 0.80); }
+        if (_rssGood.some(function(w)   { return lower.includes(w); })) { bg = blendHex(ok,   '#0c1a2e', 0.14); color = blendHex(ok,  '#ffffff', 0.80); }
     } else {
         bg = '#f1f5f9'; color = '#475569';
         if (_rssMedium.some(function(w) { return lower.includes(w); })) { bg = blendHex(warn, '#ffffff', 0.12); color = blendHex(warn, '#000000', 0.60); }
         if (_rssHigh.some(function(w)   { return lower.includes(w); })) { bg = blendHex(err,  '#ffffff', 0.10); color = blendHex(err,  '#000000', 0.60); }
+        if (_rssGood.some(function(w)   { return lower.includes(w); })) { bg = blendHex(ok,   '#ffffff', 0.10); color = blendHex(ok,  '#000000', 0.55); }
     }
     return { bg: bg, color: color };
 }
