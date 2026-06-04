@@ -21,8 +21,10 @@ $json = @file_get_contents($configPath);
 $json_data = json_decode($json, true);
 $internal_hosts = $json_data['internal_hosts'] ?? [];
 $domain = $json_data['network']['domain'] ?? '';
-// Change this line to pull page_url from meta if not at root:
-$page_url = $json_data['page_url'] ?? ($json_data['meta']['page_url'] ?? '');
+$page_url = $json_data['page_url']
+    ?? ($json_data['meta']['page_url']
+    ?? ($json_data['branding']['company_url']
+    ?? ($json_data['company_url'] ?? '')));
 
 // --- Email settings from config ---
 $email_from = $json_data['email']['from'] ?? 'status@yourdomain.com';
@@ -153,6 +155,17 @@ foreach ($internal_hosts as $service) {
     } elseif ($curStr === 'up' && $prevStr === 'down' && !empty($prev['went_down_at'])) {
         $entry['last_down_duration_s'] = time() - (int)$prev['went_down_at'];
         $entry['went_down_at']         = null;
+        // Persist to outage log
+        $_logFile = __DIR__ . '/outage_log.json';
+        $_log = file_exists($_logFile) ? (json_decode(file_get_contents($_logFile), true) ?: []) : [];
+        array_unshift($_log, [
+            'service'      => $name,
+            'went_down_at' => (int)$prev['went_down_at'],
+            'came_up_at'   => time(),
+            'duration_s'   => $entry['last_down_duration_s'],
+        ]);
+        if (count($_log) > 200) $_log = array_slice($_log, 0, 200);
+        @file_put_contents($_logFile, json_encode($_log, JSON_PRETTY_PRINT));
     }
 
     $currentStatus[$name] = $entry;

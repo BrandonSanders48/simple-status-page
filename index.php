@@ -106,83 +106,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_SESSION['authenticated'] ?? fals
     }
 }
 
-$supported_langs = ['en' => 'English', 'es' => 'Español'];
-$lang = $_GET['lang'] ?? ($_COOKIE['lang'] ?? 'en');
-if (!array_key_exists($lang, $supported_langs)) $lang = 'en';
-setcookie('lang', $lang, time() + 3600 * 24 * 30, '/');
-$lang_strings = [
-    'en' => [
-        'status_page' => 'Status Page', 'login' => 'Login', 'logout' => 'Logout',
-        'username' => 'Username', 'password' => 'Password',
-        'edit_config' => 'Edit Configuration', 'backup_config' => 'Backup Configuration',
-        'save_changes' => 'Save Changes', 'close' => 'Close',
-        'auto_refresh' => 'Auto-Refresh', 'interval' => 'Interval (ms)',
-        'dark_mode' => 'Dark Mode', 'light_mode' => 'Light Mode',
-        'incidents' => 'Incidents', 'subscribe' => 'Subscribe', 'email' => 'Email',
-        'subscribe_service' => 'Subscribe to Service Updates', 'select_service' => 'Select Services',
-        'submit' => 'Submit', 'all_systems_operational' => 'All Systems Operational',
-        'issues_detected' => 'Issues Detected In Your Environment',
-        'notices' => 'Notices', 'internally_hosted' => 'Internally Hosted Services',
-        'local_area' => 'Local-Area Network', 'wide_area' => 'Wide-Area Network',
-        'service' => 'Service', 'loading' => 'Loading...',
-        // Severity labels
-        'sev_degraded' => 'Degraded', 'sev_outage' => 'Outage',
-        'sev_maintenance' => 'Maintenance', 'sev_resolved' => 'Resolved', 'ongoing' => 'Ongoing',
-        // Service card
-        'status_up' => 'Up', 'status_down' => 'Down',
-        'last_offline' => 'Last offline:', 'duration' => 'Duration:',
-        // Outage log
-        'no_outages_yet' => 'No outages recorded yet.',
-        'no_outages_filter' => 'No outages match the selected filters.',
-        'fail_load_outage' => 'Failed to load outage history.',
-        'all_services_opt' => 'All services', 'all_time_opt' => 'All time',
-        'last_1h' => 'Last hour', 'last_8h' => 'Last 8 hours',
-        'last_24h' => 'Last 24 hours', 'last_7d' => 'Last 7 days', 'last_30d' => 'Last 30 days',
-        'col_went_down' => 'Went Down', 'col_recovered' => 'Recovered', 'col_duration' => 'Duration',
-        // Show more/less
-        'show_more' => 'Show {n} more', 'show_less' => 'Show less',
-        // Subscribe
-        'please_select_svc' => 'Please select at least one service.',
-        'select_all' => 'Select all', 'deselect_all' => 'Deselect all',
-        'no_active_subs' => 'No active subscriptions found.', 'btn_unsubscribe' => 'Unsubscribe',
-    ],
-    'es' => [
-        'status_page' => 'Página de Estado', 'login' => 'Iniciar sesión', 'logout' => 'Cerrar sesión',
-        'username' => 'Usuario', 'password' => 'Contraseña',
-        'edit_config' => 'Editar Configuración', 'backup_config' => 'Respaldar Configuración',
-        'save_changes' => 'Guardar Cambios', 'close' => 'Cerrar',
-        'auto_refresh' => 'Auto-Actualizar', 'interval' => 'Intervalo (ms)',
-        'dark_mode' => 'Modo Oscuro', 'light_mode' => 'Modo Claro',
-        'incidents' => 'Incidentes', 'subscribe' => 'Suscribirse', 'email' => 'Correo electrónico',
-        'subscribe_service' => 'Suscribirse a Actualizaciones', 'select_service' => 'Seleccionar Servicios',
-        'submit' => 'Enviar', 'all_systems_operational' => 'Todos los sistemas operativos',
-        'issues_detected' => 'Problemas detectados en su entorno',
-        'notices' => 'Avisos', 'internally_hosted' => 'Servicios Internos',
-        'local_area' => 'Red de Área Local', 'wide_area' => 'Red de Área Amplia',
-        'service' => 'Servicio', 'loading' => 'Cargando...',
-        // Severity labels
-        'sev_degraded' => 'Degradado', 'sev_outage' => 'Interrupción',
-        'sev_maintenance' => 'Mantenimiento', 'sev_resolved' => 'Resuelto', 'ongoing' => 'En curso',
-        // Service card
-        'status_up' => 'Activo', 'status_down' => 'Caído',
-        'last_offline' => 'Última caída:', 'duration' => 'Duración:',
-        // Outage log
-        'no_outages_yet' => 'Sin interrupciones registradas.',
-        'no_outages_filter' => 'Ninguna interrupción coincide con los filtros.',
-        'fail_load_outage' => 'Error al cargar el historial.',
-        'all_services_opt' => 'Todos los servicios', 'all_time_opt' => 'Todo el tiempo',
-        'last_1h' => 'Última hora', 'last_8h' => 'Últimas 8 horas',
-        'last_24h' => 'Últimas 24 horas', 'last_7d' => 'Últimos 7 días', 'last_30d' => 'Últimos 30 días',
-        'col_went_down' => 'Caída', 'col_recovered' => 'Recuperado', 'col_duration' => 'Duración',
-        // Show more/less
-        'show_more' => 'Mostrar {n} más', 'show_less' => 'Mostrar menos',
-        // Subscribe
-        'please_select_svc' => 'Por favor seleccione al menos un servicio.',
-        'select_all' => 'Seleccionar todo', 'deselect_all' => 'Deseleccionar todo',
-        'no_active_subs' => 'No se encontraron suscripciones activas.', 'btn_unsubscribe' => 'Cancelar',
-    ]
-];
-$t = $lang_strings[$lang];
 
 // Dark mode: ?dark=1 forces on, ?dark=0 forces off, otherwise use cookie
 if (isset($_GET['dark'])) {
@@ -228,10 +151,10 @@ $local_fa = file_exists(__DIR__ . '/assets/fontawesome/css/all.min.css');
 $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
 ?>
 <!DOCTYPE html>
-<html lang="<?= htmlspecialchars($lang) ?>"<?= $is_dark ? ' class="dark"' : '' ?>>
+<html lang="en"<?= $is_dark ? ' class="dark"' : '' ?>>
 <head>
     <meta charset="UTF-8">
-    <title><?= htmlspecialchars($business_name) ?> | <?= $t['status_page'] ?></title>
+    <title><?= htmlspecialchars($business_name) ?> | Status Page</title>
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <?php if (!$local_tw && !$local_fa && !$local_jq): ?>
@@ -266,47 +189,47 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
 </head>
 <body class="bg-slate-50 text-slate-900 dark:text-slate-100 font-sans antialiased"
     data-csrf="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"
-    data-all-systems-operational="<?= htmlspecialchars($t['all_systems_operational']) ?>"
-    data-issues-detected="<?= htmlspecialchars($t['issues_detected']) ?>"
-    data-light-mode="<?= htmlspecialchars($t['light_mode']) ?>"
-    data-dark-mode="<?= htmlspecialchars($t['dark_mode']) ?>"
+    data-all-systems-operational="All Systems Operational"
+    data-issues-detected="Issues Detected In Your Environment"
+    data-light-mode="Light Mode"
+    data-dark-mode="Dark Mode"
     data-admin="<?= $is_admin ? 'true' : 'false' ?>"
-    data-local-area="<?= htmlspecialchars($t['local_area']) ?>"
-    data-wide-area="<?= htmlspecialchars($t['wide_area']) ?>"
-    data-loading="<?= htmlspecialchars($t['loading']) ?>"
-    data-service="<?= htmlspecialchars($t['service']) ?>"
+    data-local-area="Local-Area Network"
+    data-wide-area="Wide-Area Network"
+    data-loading="Loading..."
+    data-service="Service"
     data-alert-sound="<?= $alert_sound ? 'true' : 'false' ?>"
     data-browser-notify="<?= !empty($json_data['browser_notify']) ? 'true' : 'false' ?>"
     data-services-visible="<?= (int)($json_data['services_visible'] ?? 10) ?>"
-    data-sev-degraded="<?= htmlspecialchars($t['sev_degraded']) ?>"
-    data-sev-outage="<?= htmlspecialchars($t['sev_outage']) ?>"
-    data-sev-maintenance="<?= htmlspecialchars($t['sev_maintenance']) ?>"
-    data-sev-resolved="<?= htmlspecialchars($t['sev_resolved']) ?>"
-    data-ongoing="<?= htmlspecialchars($t['ongoing']) ?>"
-    data-status-up="<?= htmlspecialchars($t['status_up']) ?>"
-    data-status-down="<?= htmlspecialchars($t['status_down']) ?>"
-    data-last-offline="<?= htmlspecialchars($t['last_offline']) ?>"
-    data-duration="<?= htmlspecialchars($t['duration']) ?>"
-    data-no-outages-yet="<?= htmlspecialchars($t['no_outages_yet']) ?>"
-    data-no-outages-filter="<?= htmlspecialchars($t['no_outages_filter']) ?>"
-    data-fail-load-outage="<?= htmlspecialchars($t['fail_load_outage']) ?>"
-    data-all-services-opt="<?= htmlspecialchars($t['all_services_opt']) ?>"
-    data-all-time-opt="<?= htmlspecialchars($t['all_time_opt']) ?>"
-    data-last-1h="<?= htmlspecialchars($t['last_1h']) ?>"
-    data-last-8h="<?= htmlspecialchars($t['last_8h']) ?>"
-    data-last-24h="<?= htmlspecialchars($t['last_24h']) ?>"
-    data-last-7d="<?= htmlspecialchars($t['last_7d']) ?>"
-    data-last-30d="<?= htmlspecialchars($t['last_30d']) ?>"
-    data-col-went-down="<?= htmlspecialchars($t['col_went_down']) ?>"
-    data-col-recovered="<?= htmlspecialchars($t['col_recovered']) ?>"
-    data-col-duration="<?= htmlspecialchars($t['col_duration']) ?>"
-    data-show-more="<?= htmlspecialchars($t['show_more']) ?>"
-    data-show-less="<?= htmlspecialchars($t['show_less']) ?>"
-    data-please-select-svc="<?= htmlspecialchars($t['please_select_svc']) ?>"
-    data-select-all="<?= htmlspecialchars($t['select_all']) ?>"
-    data-deselect-all="<?= htmlspecialchars($t['deselect_all']) ?>"
-    data-no-active-subs="<?= htmlspecialchars($t['no_active_subs']) ?>"
-    data-btn-unsubscribe="<?= htmlspecialchars($t['btn_unsubscribe']) ?>">
+    data-sev-degraded="Degraded"
+    data-sev-outage="Outage"
+    data-sev-maintenance="Maintenance"
+    data-sev-resolved="Resolved"
+    data-ongoing="Ongoing"
+    data-status-up="Up"
+    data-status-down="Down"
+    data-last-offline="Last offline:"
+    data-duration="Duration:"
+    data-no-outages-yet="No outages recorded yet."
+    data-no-outages-filter="No outages match the selected filters."
+    data-fail-load-outage="Failed to load outage history."
+    data-all-services-opt="All services"
+    data-all-time-opt="All time"
+    data-last-1h="Last hour"
+    data-last-8h="Last 8 hours"
+    data-last-24h="Last 24 hours"
+    data-last-7d="Last 7 days"
+    data-last-30d="Last 30 days"
+    data-col-went-down="Went Down"
+    data-col-recovered="Recovered"
+    data-col-duration="Duration"
+    data-show-more="Show {n} more"
+    data-show-less="Show less"
+    data-please-select-svc="Please select at least one service."
+    data-select-all="Select all"
+    data-deselect-all="Deselect all"
+    data-no-active-subs="No active subscriptions found."
+    data-btn-unsubscribe="Unsubscribe"
 
 <?php if (!$hide_navbar): ?>
 
@@ -342,28 +265,16 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
             <!-- Desktop controls -->
             <div class="hidden md:flex items-center gap-1.5">
 
-                <!-- Language -->
-                <div class="flex items-center bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg h-8 overflow-hidden">
-                    <span class="px-2.5 text-[11px] text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap border-r border-slate-200 dark:border-slate-700/60 h-full flex items-center">
-                        <?= $lang === 'es' ? 'Idioma' : 'Lang' ?>
-                    </span>
-                    <select id="langSelect" class="bg-transparent text-slate-700 dark:text-slate-300 text-[11px] px-2 h-8 border-0 outline-none cursor-pointer appearance-none">
-                        <?php foreach ($supported_langs as $code => $label): ?>
-                            <option value="<?= $code ?>" <?= $lang === $code ? 'selected' : '' ?> class="bg-white dark:bg-slate-900 text-slate-900 dark:text-white"><?= $label ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
                 <!-- Auto-refresh -->
                 <div class="flex items-center bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg h-8 overflow-hidden">
                     <label class="flex items-center gap-1.5 px-2.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium border-r border-slate-200 dark:border-slate-700/60 h-full cursor-pointer whitespace-nowrap">
                         <input type="checkbox" id="refreshToggle" checked class="accent-indigo-500 w-3 h-3">
-                        <?= $t['auto_refresh'] ?>
+                        Auto-Refresh
                     </label>
                     <div class="flex items-center px-2 gap-1">
                         <input type="number" id="refreshInterval" value="<?= (int)$refresh_rate ?>" min="3000" step="500"
                             class="bg-transparent text-slate-700 dark:text-slate-200 text-[11px] w-14 text-right outline-none"
-                            title="<?= $t['interval'] ?>">
+                            title="Interval (ms)">
                         <span class="text-slate-400 dark:text-slate-600 text-[11px]">ms</span>
                     </div>
                 </div>
@@ -371,9 +282,9 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
                 <!-- Theme toggle -->
                 <button id="darkModeToggle" type="button"
                     class="flex items-center justify-center h-8 w-8 bg-slate-100 dark:bg-slate-800/70 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-                    title="<?= $is_dark ? $t['light_mode'] : $t['dark_mode'] ?>">
+                    title="<?= $is_dark ? 'Light Mode' : 'Dark Mode' ?>">
                     <i class="fa-solid fa-moon text-xs dm-icon"></i>
-                    <span class="dm-label sr-only"><?= $t['dark_mode'] ?></span>
+                    <span class="dm-label sr-only">Dark Mode</span>
                 </button>
 
                 <?php if ($is_admin): ?>
@@ -381,14 +292,14 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
                     <div class="h-5 w-px bg-slate-200 dark:bg-slate-700/60 mx-0.5"></div>
                     <button type="button" onclick="openConfigModal()"
                         class="flex items-center justify-center h-8 w-8 bg-slate-100 dark:bg-slate-800/70 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 text-xs transition-colors"
-                        title="<?= $t['edit_config'] ?>">
+                        title="Edit Configuration">
                         <i class="fa-solid fa-gear"></i>
                     </button>
                     <?php if ($auth_required): ?>
                         <a href="?logout=1"
                             class="flex items-center gap-1.5 h-8 px-3 bg-slate-100 dark:bg-slate-800/70 hover:bg-red-50 dark:hover:bg-red-900/30 border border-slate-200 dark:border-slate-700/60 hover:border-red-200 dark:hover:border-red-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 text-xs font-medium transition-colors">
                             <i class="fa-solid fa-right-from-bracket text-xs"></i>
-                            <span class="hidden lg:inline"><?= $t['logout'] ?></span>
+                            <span class="hidden lg:inline">Logout</span>
                         </a>
                     <?php endif; ?>
                 <?php else: ?>
@@ -397,7 +308,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
                     <button type="button" onclick="openModal('loginModal')"
                         class="flex items-center gap-1.5 h-8 px-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white text-xs font-medium transition-colors shadow-sm">
                         <i class="fa-solid fa-right-to-bracket text-xs"></i>
-                        <span><?= $t['login'] ?></span>
+                        <span>Login</span>
                     </button>
                 <?php endif; ?>
             </div>
@@ -412,19 +323,10 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
         <!-- Mobile menu -->
         <div id="mobile-menu" class="hidden md:hidden pb-4 flex flex-col gap-2.5 border-t border-slate-200 dark:border-slate-800 pt-3">
             <div class="flex items-center gap-2">
-                <label class="text-xs text-slate-500 dark:text-slate-400 font-medium"><?= $lang === 'es' ? 'Idioma' : 'Language' ?></label>
-                <select id="langSelectMobile" onchange="document.getElementById('langSelect').value=this.value; document.getElementById('langSelect').dispatchEvent(new Event('change'));"
-                    class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs rounded-lg px-2 py-1.5">
-                    <?php foreach ($supported_langs as $code => $label): ?>
-                        <option value="<?= $code ?>" <?= $lang === $code ? 'selected' : '' ?>><?= $label ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="flex items-center gap-2">
                 <label class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 cursor-pointer font-medium">
                     <input type="checkbox" id="refreshToggleMobile" checked class="accent-indigo-500"
                         onchange="document.getElementById('refreshToggle').checked=this.checked; document.getElementById('refreshToggle').dispatchEvent(new Event('change'));">
-                    <?= $t['auto_refresh'] ?>
+                    Auto-Refresh
                 </label>
                 <input type="number" value="<?= (int)$refresh_rate ?>" min="3000" step="500"
                     class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs rounded-lg px-2 py-1.5 w-20"
@@ -434,22 +336,22 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
             <div class="flex flex-wrap gap-2 pt-0.5">
                 <button id="darkModeToggleMobile" type="button" onclick="document.getElementById('darkModeToggle').click();"
                     class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-medium">
-                    <i class="fa-solid fa-moon text-xs"></i> <?= $t['dark_mode'] ?>
+                    <i class="fa-solid fa-moon text-xs"></i> Dark Mode
                 </button>
                 <?php if ($is_admin): ?>
                     <button type="button" onclick="openConfigModal()"
                         class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-medium">
-                        <i class="fa-solid fa-gear text-xs"></i> <?= $t['edit_config'] ?>
+                        <i class="fa-solid fa-gear text-xs"></i> Edit Configuration
                     </button>
                     <?php if ($auth_required): ?>
                         <a href="?logout=1" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-red-600 dark:text-red-400 text-xs font-medium">
-                            <i class="fa-solid fa-right-from-bracket text-xs"></i><?= $t['logout'] ?>
+                            <i class="fa-solid fa-right-from-bracket text-xs"></i>Logout
                         </a>
                     <?php endif; ?>
                 <?php else: ?>
                     <button type="button" onclick="openModal('loginModal')"
                         class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 rounded-lg text-white text-xs font-medium">
-                        <i class="fa-solid fa-right-to-bracket text-xs"></i><?= $t['login'] ?>
+                        <i class="fa-solid fa-right-to-bracket text-xs"></i>Login
                     </button>
                 <?php endif; ?>
             </div>
@@ -483,7 +385,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
         class="rounded-2xl p-6 mb-2 text-center text-2xl font-bold flex items-center justify-center gap-3 shadow-md text-white"
         style="position:relative">
         <span id="statusIcon" class="text-3xl" style="display:none;"></span>
-        <span id="webTicker"><b><?= $t['loading'] ?></b></span>
+        <span id="webTicker"><b>Loading...</b></span>
         <span id="live-indicator" style="display:none;position:absolute;right:1rem;top:50%;transform:translateY(-50%)"
               class="flex items-center gap-1.5 text-xs font-semibold tracking-widest opacity-80">
             <span class="sp-ping-dot"></span>
@@ -502,7 +404,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
     <!-- Incidents (hidden when empty) -->
     <div id="incidents_container" class="hidden rounded-2xl p-5 mb-5" style="background:linear-gradient(135deg,rgba(251,146,60,0.12) 0%,rgba(239,68,68,0.08) 100%);border:1px solid rgba(251,146,60,0.4);box-shadow:0 4px 20px rgba(251,146,60,0.12)">
         <h5 class="flex items-center gap-2 text-base font-semibold mb-3" style="color:#c2410c">
-            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> <?= $t['incidents'] ?>
+            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Incidents
         </h5>
         <div id="incidents_area"></div>
     </div>
@@ -525,12 +427,12 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5 mb-5 sp-panel">
         <div class="flex items-center justify-between mb-4">
             <h5 class="flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-200">
-                <i class="fa-solid fa-server text-indigo-500"></i> <?= $t['internally_hosted'] ?>
+                <i class="fa-solid fa-server text-indigo-500"></i> Internally Hosted Services
             </h5>
             <button type="button" onclick="openOutageLog()"
                 class="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50">
                 <i class="fa-solid fa-clock-rotate-left text-[11px]"></i>
-                <?= $lang === 'es' ? 'Historial' : 'Outage History' ?>
+                Outage History
             </button>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3" id="services_placeholder">
@@ -551,7 +453,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
     <!-- Notices / RSS (skeleton) -->
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5 sp-panel">
         <h5 class="flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-200 mb-4">
-            <i class="fa-solid fa-circle-exclamation text-amber-500"></i> <?= $t['notices'] ?>
+            <i class="fa-solid fa-circle-exclamation text-amber-500"></i> Notices
         </h5>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3" id="rss_area">
             <?php for ($i = 0; $i < 3; $i++): ?>
@@ -572,13 +474,13 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
     <button type="button" onclick="openModal('createIncidentModal')"
         class="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-400 dark:bg-amber-600 dark:hover:bg-amber-500 shadow-lg hover:shadow-xl rounded-xl text-white text-sm font-medium transition-all hover:-translate-y-0.5 active:translate-y-0">
         <i class="fa-solid fa-triangle-exclamation"></i>
-        <span><?= $t['incidents'] ?></span>
+        <span>Incidents</span>
     </button>
     <?php endif; ?>
     <button type="button" onclick="openModal('subscribeModal')"
         class="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-700 dark:hover:bg-emerald-600 shadow-lg hover:shadow-xl rounded-xl text-white text-sm font-medium transition-all hover:-translate-y-0.5 active:translate-y-0">
         <i class="fa-solid fa-bell"></i>
-        <span><?= $t['subscribe'] ?></span>
+        <span>Subscribe</span>
     </button>
 </div>
 
@@ -647,8 +549,8 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                     <i class="fa-solid fa-bell text-emerald-600 dark:text-emerald-400"></i>
                 </div>
                 <div>
-                    <h5 class="font-semibold text-slate-900 dark:text-white text-sm"><?= $lang === 'es' ? 'Suscribirse a alertas' : 'Subscribe to Alerts' ?></h5>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"><?= $lang === 'es' ? 'Notificaciones por correo' : 'Get emailed when services go down' ?></p>
+                    <h5 class="font-semibold text-slate-900 dark:text-white text-sm">Subscribe to Alerts</h5>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Get emailed when services go down</p>
                 </div>
             </div>
             <button onclick="closeModal('subscribeModal')" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-lg leading-none mt-0.5">&times;</button>
@@ -656,14 +558,14 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
         <div class="px-6 py-5">
             <form id="subscribeForm" class="space-y-4">
                 <div>
-                    <label for="subscribeEmail" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $t['email'] ?></label>
+                    <label for="subscribeEmail" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Email</label>
                     <input type="email" id="subscribeEmail" name="email" placeholder="you@example.com" required
                         class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm transition">
                 </div>
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide"><?= $t['select_service'] ?></label>
-                        <button type="button" id="selectAllSvcs" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium"><?= $lang === 'es' ? 'Todo' : 'Select all' ?></button>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Select Services</label>
+                        <button type="button" id="selectAllSvcs" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium">Select all</button>
                     </div>
                     <div class="max-h-[360px] overflow-y-auto modal-scroll rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40">
                         <?php foreach ($internal_hosts as $service): ?>
@@ -681,10 +583,10 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                 <div class="flex items-center justify-between pt-1">
                     <button type="button" onclick="closeModal('subscribeModal');openModal('manageSubModal')"
                         class="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-1.5 transition-colors">
-                        <i class="fa-solid fa-gear text-xs"></i> <?= $lang === 'es' ? 'Administrar' : 'Manage' ?>
+                        <i class="fa-solid fa-gear text-xs"></i> Manage
                     </button>
                     <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
-                        <?= $t['subscribe'] ?>
+                        Subscribe
                     </button>
                 </div>
             </form>
@@ -703,27 +605,27 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                 <i class="fa-solid fa-bell-slash text-red-500 dark:text-red-400"></i>
             </div>
             <div class="flex-1">
-                <h5 class="font-semibold text-slate-900 dark:text-white text-sm"><?= $lang === 'es' ? 'Administrar Suscripciones' : 'Manage Subscriptions' ?></h5>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"><?= $lang === 'es' ? 'Busca y administra tus alertas' : 'Look up and manage your alerts' ?></p>
+                <h5 class="font-semibold text-slate-900 dark:text-white text-sm">Manage Subscriptions</h5>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Look up and manage your alerts</p>
             </div>
             <button onclick="closeModal('manageSubModal')" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-lg leading-none mt-0.5">&times;</button>
         </div>
         <!-- Body -->
         <div class="px-6 py-5 space-y-4">
             <div>
-                <label for="manageEmail" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $t['email'] ?></label>
+                <label for="manageEmail" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Email</label>
                 <div class="flex gap-2">
                     <input type="email" id="manageEmail" name="email" placeholder="you@example.com" required
                         class="flex-1 px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition">
                     <button type="button" id="manageSubLookup"
                         class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm whitespace-nowrap">
-                        <i class="fa-solid fa-magnifying-glass mr-1.5"></i><?= $lang === 'es' ? 'Buscar' : 'Look Up' ?>
+                        <i class="fa-solid fa-magnifying-glass mr-1.5"></i>Look Up
                     </button>
                 </div>
             </div>
             <div id="manageSubMsg"></div>
             <div id="manageSubResults" class="hidden">
-                <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2"><?= $lang === 'es' ? 'Suscripciones activas' : 'Active subscriptions' ?></div>
+                <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Active subscriptions</div>
                 <ul id="manageSubList" class="space-y-2 max-h-56 overflow-y-auto modal-scroll rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40"></ul>
             </div>
         </div>
@@ -731,12 +633,12 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
         <div class="flex items-center justify-between px-6 pb-5 pt-1 gap-2">
             <button type="button" id="manageSubUnsubAll"
                 class="hidden px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
-                <i class="fa-solid fa-trash-can mr-1.5"></i><?= $lang === 'es' ? 'Darse de baja de todas' : 'Unsubscribe from All' ?>
+                <i class="fa-solid fa-trash-can mr-1.5"></i>Unsubscribe from All
             </button>
             <span class="flex-1"></span>
             <button type="button" onclick="closeModal('manageSubModal');openModal('subscribeModal')"
                 class="<?= $btn_secondary ?>">
-                <i class="fa-solid fa-arrow-left mr-1"></i><?= $lang === 'es' ? 'Atrás' : 'Back' ?>
+                <i class="fa-solid fa-arrow-left mr-1"></i>Back
             </button>
         </div>
     </div>
@@ -750,8 +652,8 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
             <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/40 rounded-xl flex items-center justify-center mx-auto mb-3">
                 <i class="fa-solid fa-lock text-indigo-600 dark:text-indigo-400 text-lg"></i>
             </div>
-            <h5 class="text-lg font-bold text-slate-900 dark:text-white"><?= $t['login'] ?></h5>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5"><?= $lang === 'es' ? 'Se requiere acceso de administrador' : 'Admin access required' ?></p>
+            <h5 class="text-lg font-bold text-slate-900 dark:text-white">Login</h5>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Admin access required</p>
         </div>
         <div class="px-6 pb-6">
             <?php if (isset($login_error)): ?>
@@ -761,7 +663,7 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
             <?php endif; ?>
             <form method="post" autocomplete="off" class="space-y-3">
                 <div>
-                    <label for="loginUsername" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $t['username'] ?></label>
+                    <label for="loginUsername" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Username</label>
                     <div class="relative">
                         <i class="fa-solid fa-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
                         <input type="text" id="loginUsername" name="username" required autocomplete="username"
@@ -769,7 +671,7 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                     </div>
                 </div>
                 <div>
-                    <label for="loginPassword" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $t['password'] ?></label>
+                    <label for="loginPassword" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Password</label>
                     <div class="relative">
                         <i class="fa-solid fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
                         <input type="password" id="loginPassword" name="password" required autocomplete="current-password"
@@ -785,12 +687,12 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                     <button type="submit" name="login"
                         class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2">
                         <i class="fa-solid fa-right-to-bracket text-xs"></i>
-                        <?= $t['login'] ?>
+                        Login
                     </button>
                 </div>
             </form>
             <button onclick="closeModal('loginModal')" class="w-full mt-2 py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-                <?= $lang === 'es' ? 'Cancelar' : 'Cancel' ?>
+                Cancel
             </button>
         </div>
     </div>
@@ -802,7 +704,7 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
             <h5 class="text-base font-semibold flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                <i class="fa-solid fa-gear text-blue-500"></i> <?= $t['edit_config'] ?>
+                <i class="fa-solid fa-gear text-blue-500"></i> Edit Configuration
             </h5>
             <button onclick="closeModal('addModal')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none">&times;</button>
         </div>
@@ -813,10 +715,10 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                 <textarea id="configJson" name="json" spellcheck="false"><?= htmlspecialchars($json) ?></textarea>
                 <div class="flex justify-end gap-2 mt-4">
                     <button type="submit" name="backup" value="1" class="<?= $btn_secondary ?>">
-                        <i class="fa-solid fa-download mr-1"></i><?= $t['backup_config'] ?>
+                        <i class="fa-solid fa-download mr-1"></i>Backup Configuration
                     </button>
                     <button type="submit" class="<?= $btn_primary ?>">
-                        <i class="fa-solid fa-floppy-disk mr-1"></i><?= $t['save_changes'] ?>
+                        <i class="fa-solid fa-floppy-disk mr-1"></i>Save Changes
                     </button>
                 </div>
             </form>
@@ -834,8 +736,8 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                     <i class="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i>
                 </div>
                 <div>
-                    <h5 class="font-semibold text-slate-900 dark:text-white text-sm"><?= $lang === 'es' ? 'Crear Incidente' : 'Create Incident' ?></h5>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"><?= $lang === 'es' ? 'Publicar una alerta de servicio' : 'Post a service alert to the status page' ?></p>
+                    <h5 class="font-semibold text-slate-900 dark:text-white text-sm">Create Incident</h5>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Post a service alert to the status page</p>
                 </div>
             </div>
             <button onclick="closeModal('createIncidentModal')" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-lg leading-none mt-0.5">&times;</button>
@@ -843,34 +745,34 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
         <div class="px-6 py-5">
             <form id="createIncidentForm" class="space-y-3">
                 <div>
-                    <label for="incidentTitle" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $lang === 'es' ? 'Título' : 'Title' ?></label>
-                    <input type="text" id="incidentTitle" name="title" required placeholder="<?= $lang === 'es' ? 'Ej. Interrupción del servicio de correo' : 'e.g. Email service outage' ?>"
+                    <label for="incidentTitle" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Title</label>
+                    <input type="text" id="incidentTitle" name="title" required placeholder="e.g. Email service outage"
                         class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm transition">
                 </div>
                 <div>
-                    <label for="incidentSeverity" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $lang === 'es' ? 'Severidad' : 'Severity' ?></label>
+                    <label for="incidentSeverity" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Severity</label>
                     <select id="incidentSeverity" name="severity"
                         class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm transition">
-                        <option value="degraded"><?= $lang === 'es' ? 'Degradado' : 'Degraded Performance' ?></option>
-                        <option value="outage"><?= $lang === 'es' ? 'Interrupción' : 'Outage' ?></option>
-                        <option value="maintenance"><?= $lang === 'es' ? 'Mantenimiento' : 'Scheduled Maintenance' ?></option>
-                        <option value="resolved"><?= $lang === 'es' ? 'Resuelto' : 'Resolved' ?></option>
+                        <option value="degraded">Degraded Performance</option>
+                        <option value="outage">Outage</option>
+                        <option value="maintenance">Scheduled Maintenance</option>
+                        <option value="resolved">Resolved</option>
                     </select>
                 </div>
                 <div>
-                    <label for="incidentDescription" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $lang === 'es' ? 'Descripción' : 'Description' ?></label>
-                    <textarea id="incidentDescription" name="description" rows="3" required placeholder="<?= $lang === 'es' ? 'Describe el problema...' : 'Describe what is happening and affected services...' ?>"
+                    <label for="incidentDescription" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Description</label>
+                    <textarea id="incidentDescription" name="description" rows="3" required placeholder="Describe what is happening and affected services..."
                         class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm transition resize-none"></textarea>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label for="incidentStartTime" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5"><?= $lang === 'es' ? 'Inicio' : 'Start Time' ?></label>
+                        <label for="incidentStartTime" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Start Time</label>
                         <input type="datetime-local" id="incidentStartTime" name="start_time" value="<?= date('Y-m-d\TH:i') ?>" required
                             class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm transition dark:[color-scheme:dark]">
                     </div>
                     <div>
                         <label for="incidentEndTime" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
-                            <?= $lang === 'es' ? 'Fin' : 'End Time' ?> <span class="normal-case font-normal text-slate-400">(<?= $lang === 'es' ? 'opcional' : 'optional' ?>)</span>
+                            End Time <span class="normal-case font-normal text-slate-400">(optional)</span>
                         </label>
                         <input type="datetime-local" id="incidentEndTime" name="end_time"
                             class="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600/70 bg-white dark:bg-slate-700/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm transition dark:[color-scheme:dark]">
@@ -879,12 +781,12 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" onclick="closeModal('createIncidentModal')"
                         class="px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
-                        <?= $lang === 'es' ? 'Cancelar' : 'Cancel' ?>
+                        Cancel
                     </button>
                     <button type="submit"
                         class="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
                         <i class="fa-solid fa-circle-exclamation text-xs"></i>
-                        <?= $lang === 'es' ? 'Publicar' : 'Post Incident' ?>
+                        Post Incident
                     </button>
                 </div>
             </form>
@@ -901,18 +803,18 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
             <div class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center mx-auto mb-3">
                 <i class="fa-solid fa-trash text-red-600 dark:text-red-400 text-lg"></i>
             </div>
-            <h5 class="text-lg font-bold text-slate-900 dark:text-white"><?= $lang === 'es' ? 'Eliminar Incidente' : 'Remove Incident' ?></h5>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1"><?= $lang === 'es' ? 'Esta acción no se puede deshacer.' : 'This cannot be undone.' ?></p>
+            <h5 class="text-lg font-bold text-slate-900 dark:text-white">Remove Incident</h5>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">This cannot be undone.</p>
         </div>
         <div class="px-6 pb-6 flex flex-col gap-2">
             <button type="button" id="confirmRemoveIncident"
                 class="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2">
                 <i class="fa-solid fa-trash text-xs"></i>
-                <?= $lang === 'es' ? 'Sí, eliminar' : 'Yes, Remove' ?>
+                Yes, Remove
             </button>
             <button type="button" onclick="closeModal('removeIncidentModal')"
                 class="w-full py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
-                <?= $lang === 'es' ? 'Cancelar' : 'Cancel' ?>
+                Cancel
             </button>
         </div>
     </div>
@@ -927,13 +829,13 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
                 <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
                     <i class="fa-solid fa-clock-rotate-left text-indigo-600 dark:text-indigo-400 text-sm"></i>
                 </div>
-                <h5 class="font-bold text-slate-900 dark:text-white"><?= $lang === 'es' ? 'Historial de Interrupciones' : 'Outage History' ?></h5>
+                <h5 class="font-bold text-slate-900 dark:text-white">Outage History</h5>
             </div>
             <button onclick="closeModal('outageLogModal')" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-lg leading-none">&times;</button>
         </div>
         <div class="overflow-y-auto flex-1 px-6 py-4">
             <div id="outageLogBody">
-                <p class="text-sm text-slate-400 text-center py-6"><?= $lang === 'es' ? 'Cargando...' : 'Loading...' ?></p>
+                <p class="text-sm text-slate-400 text-center py-6">Loading...</p>
             </div>
         </div>
     </div>
@@ -946,7 +848,7 @@ function closeModal(id){const e=document.getElementById(id);if(e)e.classList.add
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
             <h5 class="text-base font-semibold flex items-center gap-2 text-slate-800 dark:text-slate-100">
                 <i class="fa-solid fa-rss text-orange-500"></i>
-                <span id="rssFeedModalTitle"><?= $lang === 'es' ? 'Fuente RSS' : 'RSS Feed' ?></span>
+                <span id="rssFeedModalTitle">RSS Feed</span>
             </h5>
             <button onclick="closeModal('rssFeedModal')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none">&times;</button>
         </div>

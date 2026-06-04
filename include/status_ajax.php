@@ -5,13 +5,8 @@ $configPath = __DIR__ . '/configuration.json';
 $json = @file_get_contents($configPath);
 $json_data = json_decode($json, true);
 
-// --- Language Support ---
-$supported_langs = ['en', 'es'];
-$lang = $_GET['lang'] ?? ($_COOKIE['lang'] ?? 'en');
-if (!in_array($lang, $supported_langs)) $lang = 'en';
-
-// --- Cache (30 seconds, per language) ---
-$cacheFile = sys_get_temp_dir() . '/status_cache_v4_' . $lang . '.json';
+// --- Cache (30 seconds) ---
+$cacheFile = sys_get_temp_dir() . '/status_cache_v4.json';
 $cacheTTL = 30;
 if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTTL) {
     echo file_get_contents($cacheFile);
@@ -34,21 +29,6 @@ if (is_array($_histRaw)) {
     }
 }
 
-$lang_strings = [
-    'en' => [
-        'failure' => 'Failure',
-        'unknown_isp' => 'Unknown ISP',
-        'operational' => 'Operational',
-        'ip_unavailable' => 'IP Unavailable'
-    ],
-    'es' => [
-        'failure' => 'Fallo',
-        'unknown_isp' => 'ISP desconocido',
-        'operational' => 'Operativo',
-        'ip_unavailable' => 'IP no disponible'
-    ]
-];
-$t = $lang_strings[$lang];
 
 // Helper: Check TCP port (non-blocking connect via curl for parallelism),
 // or ICMP ping if port is null.
@@ -155,13 +135,13 @@ if (!empty($isp_map) && is_array($isp_map)) {
 $local_result = !empty($gateway)    ? check_service($gateway, null)  : null;
 $wide_result  = !empty($public_dns) ? check_service($public_dns, 53) : null;
 
-$local_text  = $local_result === null ? 'Not configured' : ($local_result ? $t['operational'] : $t['failure']);
+$local_text  = $local_result === null ? 'Not configured' : ($local_result ? 'Operational' : 'Failure');
 $local_color = $local_result === null ? '#94a3b8' : ($local_result ? '#10b981' : '#ef4444');
 $wide_text   = $wide_result === null
     ? 'Not configured'
     : (($public_ip
-        ? ($isp_found ? "$isp_name ($public_ip)" : "{$t['unknown_isp']} ($public_ip)")
-        : $t['ip_unavailable']) . ': ' . ($wide_result ? $t['operational'] : $t['failure']));
+        ? ($isp_found ? "$isp_name ($public_ip)" : "Unknown ISP ($public_ip)")
+        : 'IP Unavailable') . ': ' . ($wide_result ? 'Operational' : 'Failure'));
 $wide_color  = $wide_result === null ? '#94a3b8' : ($wide_result ? '#10b981' : '#ef4444');
 
 // Services — parallel TCP checks

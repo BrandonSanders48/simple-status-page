@@ -22,7 +22,7 @@ if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_to
 $tmpDir  = sys_get_temp_dir();
 $deleted = 0;
 
-foreach (glob($tmpDir . '/status_cache_v4_*.json') ?: [] as $f) {
+foreach (glob($tmpDir . '/status_cache_v4*.json') ?: [] as $f) {
     if (@unlink($f)) $deleted++;
 }
 foreach (glob($tmpDir . '/rss_cache_*.json') ?: [] as $f) {

@@ -1,7 +1,10 @@
 <?php
 $configPath  = __DIR__ . '/configuration.json';
 $json_data   = json_decode(@file_get_contents($configPath) ?: '{}', true) ?: [];
-$page_url    = $json_data['page_url'] ?? ($json_data['meta']['page_url'] ?? '');
+$page_url    = $json_data['page_url']
+    ?? ($json_data['meta']['page_url']
+    ?? ($json_data['branding']['company_url']
+    ?? ($json_data['company_url'] ?? '')));
 $tokensFile  = __DIR__ . '/cron/email_tokens.json';
 
 $token = preg_replace('/[^a-f0-9]/', '', $_GET['token'] ?? '');

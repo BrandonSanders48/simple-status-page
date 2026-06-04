@@ -391,11 +391,10 @@ function loadRSS() {
 function showRssFeedModal(idx) {
     const feed = (window._allRssFeeds || [])[idx];
     if (!feed) return;
-    const lang        = document.documentElement.lang || 'en';
-    const rssLatest   = lang === 'es' ? 'Último elemento:'  : 'Latest Item:';
-    const rssDesc     = lang === 'es' ? 'Descripción:'      : 'Description:';
-    const rssSource   = lang === 'es' ? 'Ver fuente'        : 'View Source';
-    const rssAll      = lang === 'es' ? 'Todos los elementos:' : 'All Items:';
+    const rssLatest = 'Latest Item:';
+    const rssDesc   = 'Description:';
+    const rssSource = 'View Source';
+    const rssAll    = 'All Items:';
 
     $('#rssFeedModalTitle').text(feed.name || '');
     let html = `<div class="mb-3"><p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">${rssLatest}</p><p class="text-sm text-gray-800 dark:text-gray-200">${escapeHtml(feed.item || '')}</p></div>`;
@@ -585,13 +584,6 @@ $('#manageSubUnsubAll').on('click', function() {
     });
 });
 
-// --- Language selector ---
-$('#langSelect').on('change', function() {
-    document.cookie = 'lang=' + this.value + ';path=/;max-age=31536000';
-    const params = new URLSearchParams(window.location.search);
-    params.set('lang', this.value);
-    window.location.search = '?' + params.toString();
-});
 
 // --- Auto-Refresh ---
 var refreshInterval = 30000; // updated by loadRefreshInterval()
@@ -668,89 +660,6 @@ function showServiceNotification(serviceName, isUp) {
     });
 }
 
-// --- Help FAB drag ---
-(function() {
-    const fab = document.getElementById('help-fab');
-    if (!fab) return;
-    let isDragging = false, offsetX = 0, offsetY = 0, startX = 0, startY = 0, moved = false;
-
-    function lsGet(k)    { try { return localStorage.getItem(k); }    catch(e) { return null; } }
-    function lsSet(k, v) { try { localStorage.setItem(k, v); }        catch(e) {} }
-
-    function restoreFabPosition() {
-        const pos = lsGet('helpFabPos');
-        if (pos) {
-            const { left, top } = JSON.parse(pos);
-            fab.style.left = left; fab.style.top = top;
-            fab.style.right = 'auto'; fab.style.bottom = 'auto';
-        }
-    }
-    restoreFabPosition();
-
-    fab.addEventListener('mousedown', function(e) {
-        isDragging = true; moved = false;
-        startX = e.clientX; startY = e.clientY;
-        offsetX = e.clientX - fab.getBoundingClientRect().left;
-        offsetY = e.clientY - fab.getBoundingClientRect().top;
-        fab.style.transition = 'none';
-        document.body.style.userSelect = 'none';
-    });
-    document.addEventListener('mousemove', function(e) {
-        if (!isDragging) return;
-        moved = true;
-        let x = Math.max(0, Math.min(window.innerWidth  - fab.offsetWidth,  e.clientX - offsetX));
-        let y = Math.max(0, Math.min(window.innerHeight - fab.offsetHeight, e.clientY - offsetY));
-        fab.style.left = x + 'px'; fab.style.top = y + 'px';
-        fab.style.right = 'auto'; fab.style.bottom = 'auto';
-    });
-    document.addEventListener('mouseup', function(e) {
-        if (!isDragging) return;
-        isDragging = false; fab.style.transition = ''; document.body.style.userSelect = '';
-        if (fab.style.left && fab.style.top) {
-            lsSet('helpFabPos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
-        }
-        if (!moved && Math.abs(e.clientX - startX) < 5 && Math.abs(e.clientY - startY) < 5) {
-            window.open('help.php', '_blank');
-        }
-    });
-    fab.addEventListener('touchstart', function(e) {
-        isDragging = true; moved = false;
-        const t = e.touches[0];
-        startX = t.clientX; startY = t.clientY;
-        offsetX = t.clientX - fab.getBoundingClientRect().left;
-        offsetY = t.clientY - fab.getBoundingClientRect().top;
-        fab.style.transition = 'none';
-    });
-    document.addEventListener('touchmove', function(e) {
-        if (!isDragging) return; moved = true;
-        const t = e.touches[0];
-        let x = Math.max(0, Math.min(window.innerWidth  - fab.offsetWidth,  t.clientX - offsetX));
-        let y = Math.max(0, Math.min(window.innerHeight - fab.offsetHeight, t.clientY - offsetY));
-        fab.style.left = x + 'px'; fab.style.top = y + 'px';
-        fab.style.right = 'auto'; fab.style.bottom = 'auto';
-    });
-    document.addEventListener('touchend', function(e) {
-        if (!isDragging) return;
-        isDragging = false; fab.style.transition = '';
-        if (fab.style.left && fab.style.top) {
-            lsSet('helpFabPos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
-        }
-        if (!moved) window.open('help.php', '_blank');
-    });
-    window.addEventListener('resize', function() {
-        const pos = lsGet('helpFabPos');
-        if (!pos) return;
-        let { left, top } = JSON.parse(pos);
-        let x = parseInt(left), y = parseInt(top), changed = false;
-        if (x > window.innerWidth  - fab.offsetWidth)  { x = window.innerWidth  - fab.offsetWidth;  changed = true; }
-        if (y > window.innerHeight - fab.offsetHeight) { y = window.innerHeight - fab.offsetHeight; changed = true; }
-        if (changed) {
-            fab.style.left = x + 'px'; fab.style.top = y + 'px';
-            fab.style.right = 'auto'; fab.style.bottom = 'auto';
-            lsSet('helpFabPos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
-        }
-    });
-})();
 
 // --- Services show more/less ---
 function _applyServicesLimit() {
