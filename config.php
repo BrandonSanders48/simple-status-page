@@ -472,6 +472,17 @@ function checked($v) { return $v ? 'checked' : ''; }
                             <span class="block text-xs text-slate-400 font-normal">Uncheck to allow config access without logging in</span>
                         </span>
                     </label>
+                    <div class="pt-1 border-t border-slate-100 dark:border-slate-700/50">
+                        <label class="cfg-label">Status Cache</label>
+                        <div class="flex items-center gap-3">
+                            <button type="button" id="clearCacheBtn"
+                                class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-slate-200 dark:border-slate-700">
+                                <i class="fa-solid fa-rotate text-xs"></i> Clear Cache
+                            </button>
+                            <span id="clear-cache-status" class="text-xs hidden"></span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">Forces an immediate refresh of the status and RSS caches.</p>
+                    </div>
                 </div>
             </div>
 
@@ -898,7 +909,8 @@ updateHostCount();
 updateRssCount();
 
 // ── Export ───────────────────────────────────────────────────────────
-document.getElementById('exportBtn').addEventListener('click', function() {
+var _exportBtn = document.getElementById('exportBtn');
+if (_exportBtn) _exportBtn.addEventListener('click', function() {
     var json = JSON.stringify(buildConfig(), null, 2);
     var blob = new Blob([json], { type: 'application/json' });
     var url  = URL.createObjectURL(blob);
@@ -912,7 +924,8 @@ document.getElementById('exportBtn').addEventListener('click', function() {
 });
 
 // ── Import ───────────────────────────────────────────────────────────
-document.getElementById('import-file-input').addEventListener('change', function() {
+var _importInput = document.getElementById('import-file-input');
+if (_importInput) _importInput.addEventListener('change', function() {
     if (!this.files[0]) return;
     var file = this.files[0];
     this.value = '';
@@ -1028,6 +1041,40 @@ var _sslCertInput = document.getElementById('ssl-cert-input');
 var _sslKeyInput  = document.getElementById('ssl-key-input');
 if (_sslCertInput) _sslCertInput.addEventListener('change', function() { _sslUpload('ssl-cert-input', 'ssl-cert-status', 'cert'); });
 if (_sslKeyInput)  _sslKeyInput.addEventListener('change',  function() { _sslUpload('ssl-key-input',  'ssl-key-status',  'key');  });
+
+// ── Clear cache ──────────────────────────────────────────────────────
+document.getElementById('clearCacheBtn').addEventListener('click', function() {
+    var btn    = this;
+    var status = document.getElementById('clear-cache-status');
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    status.textContent = 'Clearing…';
+    status.className   = 'text-xs text-slate-400';
+    status.classList.remove('hidden');
+    var fd = new FormData();
+    fd.append('csrf_token', '<?= e($_SESSION['csrf_token']) ?>');
+    fetch('include/clear_cache.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            if (data.ok) {
+                status.textContent = 'Cache cleared.';
+                status.className   = 'text-xs text-emerald-600';
+            } else {
+                status.textContent = data.error || 'Failed.';
+                status.className   = 'text-xs text-red-500';
+            }
+            setTimeout(function() { status.classList.add('hidden'); }, 3000);
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            status.textContent = 'Request failed.';
+            status.className   = 'text-xs text-red-500';
+            setTimeout(function() { status.classList.add('hidden'); }, 3000);
+        });
+});
 
 // ── Keyboard shortcut: Ctrl+S ────────────────────────────────────────
 document.addEventListener('keydown', function(e) {

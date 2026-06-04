@@ -291,7 +291,7 @@ function loadStatus() {
         }
         _applyServicesLimit();
 
-        var ok = data.local_ok && data.wide_ok && (data.errors || 0) === 0;
+        var ok = (data.local_ok !== false) && (data.wide_ok !== false) && (data.errors || 0) === 0;
         var banner = document.getElementById('all_status');
         if (banner) banner.dataset.status = ok ? 'ok' : 'error';
         _html('webTicker', `<b>${ok ? allSystemsOperational : issuesDetected}</b>`);

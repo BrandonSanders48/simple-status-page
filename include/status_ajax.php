@@ -152,15 +152,17 @@ if (!empty($isp_map) && is_array($isp_map)) {
         }
     }
 }
-$wide_result = check_service($public_dns, 53);
-$local_result = check_service($gateway, null);
+$local_result = !empty($gateway)    ? check_service($gateway, null)  : null;
+$wide_result  = !empty($public_dns) ? check_service($public_dns, 53) : null;
 
-$local_text = $local_result ? $t['operational'] : $t['failure'];
-$local_color = $local_result ? "#10b981" : "#ef4444";
-$wide_text = ($public_ip
-    ? ($isp_found ? "$isp_name ($public_ip)" : "{$t['unknown_isp']} ($public_ip)")
-    : $t['ip_unavailable']) . ": " . ($wide_result ? $t['operational'] : $t['failure']);
-$wide_color  = $wide_result  ? "#10b981" : "#ef4444";
+$local_text  = $local_result === null ? 'Not configured' : ($local_result ? $t['operational'] : $t['failure']);
+$local_color = $local_result === null ? '#94a3b8' : ($local_result ? '#10b981' : '#ef4444');
+$wide_text   = $wide_result === null
+    ? 'Not configured'
+    : (($public_ip
+        ? ($isp_found ? "$isp_name ($public_ip)" : "{$t['unknown_isp']} ($public_ip)")
+        : $t['ip_unavailable']) . ': ' . ($wide_result ? $t['operational'] : $t['failure']));
+$wide_color  = $wide_result === null ? '#94a3b8' : ($wide_result ? '#10b981' : '#ef4444');
 
 // Services — parallel TCP checks
 $service_results = check_services_parallel($internal_hosts);
