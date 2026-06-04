@@ -1,9 +1,14 @@
 #!/bin/bash
 set -e
 
-# Always copy new files from the image into the volume without overwriting existing ones.
-# -n (no-clobber) preserves user data (config.json, outage_log.json, uploads, etc.)
-# while ensuring new PHP files added in updates are deployed automatically.
+# Always deploy PHP application files from the image so updates take effect on restart.
+find /var/www/defaults/include -name "*.php" | while IFS= read -r src; do
+    dst="/var/www/html/include/${src#/var/www/defaults/include/}"
+    mkdir -p "$(dirname "$dst")"
+    cp "$src" "$dst"
+done
+
+# Seed data/asset files only if they don't already exist (preserves user data).
 cp -rn /var/www/defaults/include/. /var/www/html/include/
 cp -rn /var/www/defaults/images/.  /var/www/html/images/
 
