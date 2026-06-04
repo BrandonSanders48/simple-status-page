@@ -382,7 +382,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
 
     <!-- Status Banner -->
     <div id="all_status" data-status="loading"
-        class="rounded-2xl p-6 mb-2 text-center text-2xl font-bold flex items-center justify-center gap-3 shadow-md text-white"
+        class="rounded-2xl p-6 mb-2 text-center text-2xl font-bold flex items-center justify-center gap-3 shadow-md"
         style="position:relative">
         <span id="statusIcon" class="text-3xl" style="display:none;"></span>
         <span id="webTicker"><b>Loading...</b></span>

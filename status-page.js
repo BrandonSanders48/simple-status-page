@@ -335,7 +335,7 @@ function loadStatus() {
 
 // --- RSS Notices ---
 var _rssGood   = ["fixed","resolved","restored","recovery","recovered","operational","normal","stable"];
-var _rssMedium = ["maintenance","unavailable","inaccessible","difficulty","difficulties","slow","slowness","trouble","degraded","delay","delays","partial","unstable","intermittent"];
+var _rssMedium = ["maintenance","than normal","unavailable","inaccessible","difficulty","difficulties","slow","slowness","trouble","degraded","delay","delays","partial","unstable","intermittent"];
 var _rssHigh   = ["error","errors","problem","problems","issue","issues","outage","outages","critical","fault","down","failure","failures","disruption","disruptions","major"];
 
 function _rssCardColors(itemText) {
