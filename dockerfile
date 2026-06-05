@@ -8,11 +8,19 @@ RUN apt-get update && apt-get install -y \
 # Enable Apache SSL and rewrite modules
 RUN a2enmod ssl rewrite
 
-# Generate self-signed certificate
+# Generate self-signed certificate — explicitly set CA:FALSE and server extensions
+# so modern browsers (Chrome, Chromium on Yodeck, etc.) don't reject it as a CA cert.
 RUN openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
     -keyout /etc/ssl/private/apache-selfsigned.key \
     -out /etc/ssl/certs/apache-selfsigned.crt \
-    -subj "/C=US/ST=State/L=City/O=StatusPage/CN=localhost"
+    -subj "/C=US/ST=State/L=City/O=StatusPage/CN=localhost" \
+    -addext "basicConstraints=CA:FALSE" \
+    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
+    -addext "keyUsage=digitalSignature,keyEncipherment" \
+    -addext "extendedKeyUsage=serverAuth"
+
+# Suppress the ServerName warning
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 # Apache SSL virtual host (deny direct access to ssl/ cert directory)
 RUN echo '<VirtualHost *:443>\n\
