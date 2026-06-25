@@ -627,6 +627,17 @@ function checked($v) { return $v ? 'checked' : ''; }
                             </button>
                         </div>
                     </div>
+                    <div class="pt-3">
+                        <div class="flex items-center gap-3">
+                            <input id="cfg-test-email-to" class="cfg-input flex-1" type="email" placeholder="Recipient email address">
+                            <button type="button" id="btn-test-email"
+                                onclick="sendTestEmail()"
+                                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
+                                <i class="fa-solid fa-paper-plane text-xs mr-1.5"></i>Send Test
+                            </button>
+                        </div>
+                        <p id="test-email-status" class="text-xs mt-2 hidden"></p>
+                    </div>
                 </div>
             </div>
 
@@ -777,6 +788,25 @@ function addIspRow() {
 }
 
 // ── Config builder ──────────────────────────────────────────────────
+function sendTestEmail() {
+    var to = v('cfg-test-email-to');
+    var status = document.getElementById('test-email-status');
+    if (!to) { status.textContent = 'Enter a recipient email address.'; status.className = 'text-xs mt-2 text-amber-600'; status.classList.remove('hidden'); return; }
+    var btn = document.getElementById('btn-test-email');
+    btn.disabled = true; btn.classList.add('opacity-50');
+    status.textContent = 'Sending...'; status.className = 'text-xs mt-2 text-slate-500'; status.classList.remove('hidden');
+    var fd = new FormData();
+    fd.append('csrf_token', document.querySelector('[name=csrf_token]').value);
+    fd.append('to', to);
+    fetch('include/test_email.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.ok) { status.textContent = 'Test email sent successfully.'; status.className = 'text-xs mt-2 text-green-600'; }
+            else { status.textContent = 'Failed: ' + (d.error || 'Unknown error'); status.className = 'text-xs mt-2 text-red-600'; }
+        })
+        .catch(function() { status.textContent = 'Request failed.'; status.className = 'text-xs mt-2 text-red-600'; })
+        .finally(function() { btn.disabled = false; btn.classList.remove('opacity-50'); });
+}
 function v(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
 function chk(id) { var e = document.getElementById(id); return e ? e.checked : false; }
 
