@@ -557,6 +557,12 @@ function checked($v) { return $v ? 'checked' : ''; }
             <!-- Email / Notifications card -->
             <div class="section-card">
                 <h2 class="font-semibold text-slate-700 dark:text-slate-300 mb-4">Email / Notifications</h2>
+                <div class="mb-4">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input id="cfg-email-action-buttons" type="checkbox" class="w-4 h-4 accent-indigo-600" <?= checked($json_data['email']['show_action_buttons'] ?? true) ?>>
+                        <span class="text-sm font-medium">Show quick-action buttons in notification emails</span>
+                    </label>
+                </div>
                 <div class="space-y-4">
                     <div>
                         <label class="cfg-label">From Address</label>
@@ -832,6 +838,7 @@ function buildConfig() {
         reporting_period: v('cfg-sla-period')
     });
     cfg.email = Object.assign(cfg.email || {}, {
+        show_action_buttons: chk('cfg-email-action-buttons'),
         from:     v('cfg-email-from'),
         reply_to: v('cfg-email-replyto'),
         smtp: Object.assign(((cfg.email || {}).smtp) || {}, {

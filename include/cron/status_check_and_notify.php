@@ -26,10 +26,16 @@ $page_url = $json_data['page_url']
     ?? ($json_data['branding']['company_url']
     ?? ($json_data['company_url'] ?? '')));
 
+$business_name = $json_data['branding']['business_name'] ?? $json_data['business_name'] ?? 'Status Page';
+$business_logo = $json_data['branding']['business_logo'] ?? $json_data['business_logo'] ?? '';
+$company_url   = $json_data['branding']['company_url'] ?? $json_data['company_url'] ?? '';
+$accent_color  = $json_data['theme']['accent_color'] ?? '#06b6d4';
+
 // --- Email settings from config ---
 $email_from = $json_data['email']['from'] ?? 'status@yourdomain.com';
 $email_reply = $json_data['email']['reply_to'] ?? $email_from;
 $smtp = $json_data['email']['smtp'] ?? null;
+$show_action_buttons = $json_data['email']['show_action_buttons'] ?? true;
 
 $statusFile  = __DIR__ . '/service_status.json';
 $tokensFile  = __DIR__ . '/email_tokens.json';
@@ -180,63 +186,104 @@ foreach ($internal_hosts as $service) {
             $subject = "Service '{$name}' is now " . strtoupper($curStr);
             $accentColor = $curStr === 'up' ? '#28a745' : '#dc3545';
             $actionButtons = '';
-            if ($curStr === 'down' && !empty($page_url)) {
+            if ($show_action_buttons && $curStr === 'down' && !empty($page_url)) {
                 $actionUrls = generate_action_tokens($name, $tokensFile, $page_url);
                 $actionButtons = '
-    <div style="margin-top:24px;padding-top:20px;border-top:1px solid #e0e0e0;">
-      <p style="font-size:13px;color:#666;margin:0 0 12px;text-align:center;">Post an incident update to the status page:</p>
-      <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid #f1f5f9;">
+      <p style="font-size:12px;color:#94a3b8;margin:0 0 14px;text-align:center;font-weight:500;">Quick actions</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
         <tr>
-          <td style="padding-right:8px;">
-            <a href="' . htmlspecialchars($actionUrls['wip']) . '" style="display:inline-block;padding:10px 20px;background:#f59e0b;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">⚙&nbsp; Work in Progress</a>
+          <td style="padding-right:10px;">
+            <a href="' . htmlspecialchars($actionUrls['wip']) . '" style="display:inline-block;padding:10px 22px;background:#fef3c7;color:#92400e;border-radius:10px;text-decoration:none;font-weight:600;font-size:13px;">Work in Progress</a>
           </td>
           <td>
-            <a href="' . htmlspecialchars($actionUrls['resolved']) . '" style="display:inline-block;padding:10px 20px;background:#10b981;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">✓&nbsp; Mark as Resolved</a>
+            <a href="' . htmlspecialchars($actionUrls['resolved']) . '" style="display:inline-block;padding:10px 22px;background:#d1fae5;color:#065f46;border-radius:10px;text-decoration:none;font-weight:600;font-size:13px;">Mark Resolved</a>
           </td>
         </tr>
       </table>
-      <p style="font-size:11px;color:#aaa;margin:10px 0 0;text-align:center;">Links expire in 48 hours. Clicking opens a confirmation page.</p>
+      <p style="font-size:11px;color:#cbd5e1;margin:12px 0 0;text-align:center;">Links expire in 48 hours</p>
     </div>';
             }
+            $linkUrl = $company_url ?: $page_url;
+            $logoHtml = '';
+            if (!empty($business_logo) && !empty($page_url)) {
+                $logoSrc = rtrim($page_url, '/') . '/' . ltrim($business_logo, '/');
+                $logoImg = '<img src="' . htmlspecialchars($logoSrc) . '" alt="' . htmlspecialchars($business_name) . '" style="max-height:36px;display:block;">';
+                $logoHtml = !empty($linkUrl) ? '<a href="' . htmlspecialchars($linkUrl) . '" target="_blank" style="text-decoration:none;">' . $logoImg . '</a>' : $logoImg;
+            }
+            $isUp = $curStr === 'up';
+            $statusLabel = $isUp ? 'Operational' : 'Down';
+            $statusIcon  = $isUp ? '&#9989;' : '&#128721;';
+            $pillBg      = $isUp ? '#ecfdf5' : '#fef2f2';
+            $pillColor   = $isUp ? '#059669' : '#dc2626';
+            $bannerBg    = $isUp ? '#f0fdf4' : '#fef2f2';
+            $bannerBorder = $isUp ? '#bbf7d0' : '#fecaca';
             $message = '
 <html>
 <head>
-  <style>
-    body { background: #f8f9fa; color: #23272b; font-family: Arial, sans-serif; }
-    .status-container {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px #0001;
-      max-width: 480px;
-      margin: 30px auto;
-      padding: 32px 24px;
-      border: 1px solid #e0e0e0;
-    }
-    .status-header { display: flex; align-items: center; margin-bottom: 18px; }
-    .status-icon { font-size: 32px; margin-right: 14px; color: ' . $accentColor . '; }
-    .status-title { font-size: 22px; font-weight: bold; color: #23272b; }
-    .status-state { font-size: 18px; font-weight: bold; color: ' . $accentColor . '; margin-bottom: 10px; }
-    .status-details { font-size: 15px; color: #555; margin-bottom: 18px; }
-    .footer { font-size: 12px; color: #888; margin-top: 24px; text-align: center; }
-    a.button { display: inline-block; padding: 8px 18px; background: #007bff; color: #fff !important; border-radius: 6px; text-decoration: none; font-size: 15px; margin-top: 10px; }
-  </style>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
 </head>
-<body>
-  <div class="status-container">
-    <div class="status-header">
-      <span class="status-icon">' . ($curStr === 'up' ? '&#9989;' : '&#128721;') . '</span>
-      <span class="status-title">' . htmlspecialchars($name) . '</span>
-    </div>
-    <div class="status-state">Status: ' . strtoupper($curStr) . '</div>
-    <div class="status-details">
-      The service <b>' . htmlspecialchars($name) . '</b> is now <b style="color:' . $accentColor . ';">' . strtoupper($curStr) . '</b>.<br>
-      <small>Checked at: ' . date('Y-m-d H:i:s') . '</small>
-    </div>
-    <a class="button" href="' . htmlspecialchars($page_url) . '" target="_blank">View Status Page</a>
-    ' . $actionButtons . '
-    <div class="footer">&mdash; simple-status-page</div>
-  </div>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f1f5f9;">
+    <tr><td style="padding:40px 16px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08),0 8px 30px rgba(0,0,0,0.04);">
+
+        <!-- Header -->
+        <tr><td style="padding:28px 32px 20px;border-bottom:1px solid #f1f5f9;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+            <td style="vertical-align:middle;">' . ($logoHtml ?: '<span style="font-size:15px;font-weight:700;color:#0f172a;letter-spacing:-0.3px;">' . htmlspecialchars($business_name) . '</span>') . '</td>
+            <td style="vertical-align:middle;text-align:right;">
+              <span style="display:inline-block;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;letter-spacing:0.3px;background:' . $pillBg . ';color:' . $pillColor . ';">' . $statusLabel . '</span>
+            </td>
+          </tr></table>
+        </td></tr>
+
+        <!-- Status banner -->
+        <tr><td style="padding:24px 32px 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:' . $bannerBg . ';border:1px solid ' . $bannerBorder . ';border-radius:12px;">
+            <tr><td style="padding:20px 24px;text-align:center;">
+              <div style="font-size:36px;line-height:1;margin-bottom:10px;">' . $statusIcon . '</div>
+              <div style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:4px;">' . htmlspecialchars($name) . '</div>
+              <div style="font-size:14px;font-weight:600;color:' . $pillColor . ';">Service is ' . strtolower($statusLabel) . '</div>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <!-- Details -->
+        <tr><td style="padding:24px 32px 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f8fafc;border-radius:10px;">
+            <tr>
+              <td style="padding:14px 20px;font-size:13px;color:#64748b;">Service</td>
+              <td style="padding:14px 20px;font-size:13px;font-weight:600;color:#0f172a;text-align:right;">' . htmlspecialchars($name) . '</td>
+            </tr>
+            <tr>
+              <td style="padding:0 20px 14px;font-size:13px;color:#64748b;">Status</td>
+              <td style="padding:0 20px 14px;font-size:13px;font-weight:600;color:' . $pillColor . ';text-align:right;">' . strtoupper($curStr) . '</td>
+            </tr>
+            <tr>
+              <td style="padding:0 20px 14px;font-size:13px;color:#64748b;">Checked at</td>
+              <td style="padding:0 20px 14px;font-size:13px;color:#334155;text-align:right;">' . date('M j, Y g:i A') . '</td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- CTA button -->
+        <tr><td style="padding:24px 32px 0;text-align:center;">
+          <a href="' . htmlspecialchars($linkUrl) . '" target="_blank" style="display:inline-block;padding:12px 32px;background:' . $accent_color . ';color:#ffffff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:0.2px;">View Status Page</a>
+        </td></tr>
+
+        <!-- Action buttons -->
+        ' . (!empty($actionButtons) ? '<tr><td style="padding:0 32px;">' . $actionButtons . '</td></tr>' : '') . '
+
+        <!-- Footer -->
+        <tr><td style="padding:28px 32px;text-align:center;border-top:1px solid #f1f5f9;margin-top:24px;">
+          <a href="' . htmlspecialchars($linkUrl) . '" target="_blank" style="font-size:12px;color:#94a3b8;text-decoration:none;">' . htmlspecialchars($business_name) . '</a>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>
 ';

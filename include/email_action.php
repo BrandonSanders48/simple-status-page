@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($type === 'wip') {
         $incidents[] = [
-            'title'       => htmlspecialchars($service) . ' — Work in Progress',
+            'title'       => htmlspecialchars($service) . ' - Work in Progress',
             'description' => 'Our team is actively investigating and working to resolve this issue.',
             'severity'    => 'degraded',
             'start_time'  => $now,
@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $icon  = '⚙️';
     } else {
         $incidents[] = [
-            'title'       => htmlspecialchars($service) . ' — Resolved',
+            'title'       => htmlspecialchars($service) . ' - Resolved',
             'description' => 'The issue affecting ' . htmlspecialchars($service) . ' has been resolved.',
             'severity'    => 'resolved',
             'start_time'  => $now,
