@@ -42,6 +42,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $json_data = $merged;
             $json      = json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             $save_ok   = true;
+
+            $validNames = array_map(fn($h) => $h['name'] ?? $h['host'], $merged['internal_hosts'] ?? []);
+
+            $statusFile = __DIR__ . '/include/cron/service_status.json';
+            if (file_exists($statusFile)) {
+                $statuses = json_decode(file_get_contents($statusFile), true) ?: [];
+                $cleaned = array_intersect_key($statuses, array_flip($validNames));
+                if (count($cleaned) !== count($statuses)) {
+                    file_put_contents($statusFile, json_encode($cleaned, JSON_PRETTY_PRINT));
+                }
+            }
+
+            $outageFile = __DIR__ . '/include/cron/outage_log.json';
+            if (file_exists($outageFile)) {
+                $outages = json_decode(file_get_contents($outageFile), true) ?: [];
+                $outages = array_values(array_filter($outages, fn($e) => in_array($e['service'] ?? '', $validNames)));
+                file_put_contents($outageFile, json_encode($outages, JSON_PRETTY_PRINT));
+            }
+
+            $tmpDir = sys_get_temp_dir();
+            foreach (glob($tmpDir . '/status_cache_v4*.json') ?: [] as $f) @unlink($f);
+            foreach (glob($tmpDir . '/rss_cache_*.json') ?: [] as $f) @unlink($f);
         }
     }
 }
