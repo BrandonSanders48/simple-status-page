@@ -145,7 +145,7 @@ $btn_warning   = "$btn_p bg-amber-500 hover:bg-amber-600 text-white focus:ring-a
 $btn_danger    = "$btn_p bg-red-600 hover:bg-red-700 text-white focus:ring-red-500";
 $btn_secondary = "$btn_p bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 focus:ring-slate-400";
 
-// Local asset detection — populated by download-assets.ps1
+// Local asset detection: populated by download-assets.ps1
 $local_tw = file_exists(__DIR__ . '/assets/tailwind.min.js');
 $local_fa = file_exists(__DIR__ . '/assets/fontawesome/css/all.min.css');
 $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
@@ -498,7 +498,7 @@ $local_jq = file_exists(__DIR__ . '/assets/jquery.min.js');
             </div>
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-bug text-slate-500 dark:text-slate-500"></i>
-                <a href="https://github.com/brandonsanders48/simple-status-page/issues/new" target="_blank" rel="noopener"
+                <a href="https://github.com/brandonsanders48/simple-status-page/issues/new" title="Requires login to GitHub" target="_blank" rel="noopener"
                    class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                     Submit Issue
                 </a>
@@ -892,7 +892,7 @@ window.closeConfigModal = function(reload) {
 <script src="status-page.js"></script>
 
 <?php if ($debug_mode): ?>
-<!-- ── Debug overlay (visible in Yodeck — no external deps) ─────────── -->
+<!-- ── Debug overlay (visible in Yodeck, no external deps) ─────────── -->
 <style>
 #sp-debug { position:fixed;bottom:0;left:0;right:0;background:#0f172a;color:#94a3b8;font-family:monospace;font-size:11px;padding:8px 12px;z-index:99999;border-top:3px solid #334155;max-height:50vh;overflow-y:auto;line-height:1.65 }
 #sp-debug .ok  { color:#34d399 }
@@ -936,7 +936,7 @@ window.closeConfigModal = function(reload) {
     // Delayed checks (give scripts time to run)
     setTimeout(function(){
         set('spd-tw', window.tailwind ? OK : NO,
-            window.tailwind ? 'Tailwind loaded' : 'Tailwind NOT loaded — no CSS');
+            window.tailwind ? 'Tailwind loaded' : 'Tailwind NOT loaded, no CSS');
         set('spd-jq', window.jQuery ? OK : WN,
             window.jQuery ? 'jQuery v'+jQuery.fn.jquery : 'jQuery NOT loaded (display still uses fetch)');
 
@@ -949,7 +949,7 @@ window.closeConfigModal = function(reload) {
         set('spd-fa', w>0 ? OK : NO, w>0 ? 'Font Awesome loaded (w='+w+'px)' : 'Font Awesome NOT loaded');
     }, 1500);
 
-    // Live trace log — poll window._spLog every 500ms
+    // Live trace log, poll window._spLog every 500ms
     setInterval(function(){
         var log = window._spLog;
         var el  = document.getElementById('spd-log');

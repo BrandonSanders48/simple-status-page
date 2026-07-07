@@ -1,6 +1,6 @@
 # Simple Status Page
 
-A sleek, production-ready status page built with PHP, Tailwind CSS, and vanilla JS. Real-time service monitoring, incident management, outage history, email subscriptions, RSS feed integration, and full branding customization — no database required.
+A sleek, production-ready status page built with PHP, Tailwind CSS, and vanilla JS. Real-time service monitoring, incident management, outage history, email subscriptions, RSS feed integration, and full branding customization, no database required.
 
 ## Screenshot
 
@@ -18,7 +18,7 @@ A sleek, production-ready status page built with PHP, Tailwind CSS, and vanilla 
 **Service Cards**
 - Hover tooltip shows hostname, port number, last offline time, and outage duration
 - Live downtime counter on any card that is currently down (counts up in real time)
-- Automatic downtime tracking — no cron job required
+- Automatic downtime tracking, no cron job required
 
 **Outage History**
 - Full log of every down→up cycle with service name, went-down time, recovered time, and duration
@@ -32,7 +32,7 @@ A sleek, production-ready status page built with PHP, Tailwind CSS, and vanilla 
 - Admin-only create/remove; visible to all
 
 **Notifications**
-- Email subscriptions — users subscribe per service
+- Email subscriptions, users subscribe per service
 - SMTP notifications via PHPMailer when a service changes state
 - Optional browser push notifications and alert sound on status change
 
@@ -47,7 +47,7 @@ A sleek, production-ready status page built with PHP, Tailwind CSS, and vanilla 
 - RSS / Atom feed integration (displays latest item from external status feeds)
 - Multi-language: English / Español
 - Dark mode (cookie-persisted, toggle in navbar)
-- Fully responsive — mobile, tablet, desktop
+- Fully responsive: mobile, tablet, desktop
 - CSRF protection on all forms
 - Rate limiting on login (5 attempts / 5 min) and incident creation (10 / 10 min)
 - Docker ready
@@ -116,7 +116,7 @@ All settings live in `include/configuration.json` and can be edited through the 
       "host": "192.168.1.1",
       "port": null,
       "type": "PING",
-      "description": "Default gateway — ICMP ping (port null)"
+      "description": "Default gateway, ICMP ping (port null)"
     }
   ]
 }

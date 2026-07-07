@@ -41,7 +41,7 @@ if (!is_dir($sslDir)) mkdir($sslDir, 0700, true);
 
 $dest = $sslDir . ($type === 'cert' ? 'cert.pem' : 'key.pem');
 if (file_put_contents($dest, $content) === false) {
-    http_response_code(500); echo json_encode(['error' => 'Failed to write file — check directory permissions']); exit;
+    http_response_code(500); echo json_encode(['error' => 'Failed to write file, check directory permissions']); exit;
 }
 if ($type === 'key') chmod($dest, 0600);
 

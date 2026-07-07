@@ -138,7 +138,7 @@ footer { flex-shrink: 0; margin-top: auto; }
    DARK MODE
    ════════════════════════════════════════════════════════════════════ */
 
-/* Body — animated network orbs on deep blue-black */
+/* Body: animated network orbs on deep blue-black */
 .dark body {
     background-color: #07101f;
     background-image:
@@ -201,7 +201,7 @@ footer { flex-shrink: 0; margin-top: auto; }
     background-size: 200% 100%;
 }
 
-/* Status banner — dark mode */
+/* Status banner, dark mode */
 .dark #all_status[data-status="loading"] {
     background: #0c1527;
     border-color: #1e293b;
@@ -267,7 +267,7 @@ nav {
     50% { opacity: 0.5; }
 }
 
-/* Ping animation for LIVE dot — box-shadow avoids any overflow dependency */
+/* Ping animation for LIVE dot: box-shadow avoids any overflow dependency */
 @keyframes sp-ping {
     0%   { box-shadow: 0 0 0 0 currentColor; opacity: 0.9; }
     70%  { box-shadow: 0 0 0 6px transparent; opacity: 1; }
@@ -300,13 +300,13 @@ nav {
     to { opacity: 1; }
 }
 
-/* Ambient background drift — light mode */
+/* Ambient background drift, light mode */
 @keyframes sp-orb-light {
     0%   { background-position: 14px 14px, 20% 20%, 80% 80%; }
     100% { background-position: 14px 14px, 80% 20%, 20% 80%; }
 }
 
-/* Ambient background drift — dark mode */
+/* Ambient background drift, dark mode */
 @keyframes sp-orb-dark {
     0%, 100% { background-position: 17px 17px, center -5%, 15% 20%, 85% 80%; }
     33%       { background-position: 17px 17px, center -5%, 72% 14%, 28% 86%; }

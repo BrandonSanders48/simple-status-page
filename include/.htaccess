@@ -1,7 +1,7 @@
 # Block sensitive data files from direct browser access.
 # AJAX endpoints (status_ajax.php, rss_ajax.php, etc.) remain reachable.
 
-# Config — contains SMTP credentials and auth settings
+# Config, contains SMTP credentials and auth settings
 <Files "configuration.json">
     Order deny,allow
     Deny from all
@@ -19,7 +19,7 @@
     Deny from all
 </Files>
 
-# Cron script — should only run server-side, never via HTTP
+# Cron script, should only run server-side, never via HTTP
 <Files "status_check_and_notify.php">
     Order deny,allow
     Deny from all

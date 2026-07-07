@@ -4,7 +4,7 @@ session_start();
 
 $configPath = __DIR__ . '/include/configuration.json';
 
-// Auth — env var takes precedence, then config.json require_auth, then default true
+// Auth: env var takes precedence, then config.json require_auth, then default true
 $auth_env      = getenv('APP_AUTH_REQUIRED');
 $cfg_for_auth  = json_decode(@file_get_contents(__DIR__ . '/include/configuration.json') ?: '{}', true) ?: [];
 $auth_required = ($auth_env !== false && $auth_env !== '')
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $incoming = json_decode($_POST['json'] ?? '', true);
         if ($incoming === null) {
-            $save_err = 'Invalid JSON — ' . json_last_error_msg();
+            $save_err = 'Invalid JSON: ' . json_last_error_msg();
         } else {
             // Auto-increment patch version (e.g. 1.4 → 1.5)
             $currentVer = $incoming['meta']['version'] ?? ($json_data['meta']['version'] ?? '1.0');
@@ -82,7 +82,7 @@ function checked($v) { return $v ? 'checked' : ''; }
 <html lang="en"<?= $is_dark ? ' class="dark"' : '' ?>>
 <head>
     <meta charset="UTF-8">
-    <title>Configuration — <?= e($json_data['business_name'] ?? 'Status Page') ?></title>
+    <title>Configuration - <?= e($json_data['business_name'] ?? 'Status Page') ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -659,7 +659,7 @@ function checked($v) { return $v ? 'checked' : ''; }
                 <div class="flex items-center gap-2 mb-5 text-sm <?= ($certExists && $keyExists) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500' ?>">
                     <i class="fa-solid <?= ($certExists && $keyExists) ? 'fa-circle-check' : 'fa-circle-exclamation' ?> text-base"></i>
                     <?php if ($certExists && $keyExists): ?>
-                        Custom certificate uploaded — restart the container to apply.
+                        Custom certificate uploaded. Restart the container to apply.
                     <?php elseif ($certExists): ?>
                         Certificate uploaded but private key is missing.
                     <?php elseif ($keyExists): ?>

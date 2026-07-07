@@ -1,4 +1,4 @@
-// Execution trace — readable by the ?debug=1 overlay
+// Execution trace, readable by the ?debug=1 overlay
 window._spLog = [];
 function _log(msg) {
     var t = new Date().toISOString().substr(11,12);
@@ -215,7 +215,7 @@ function loadIncidents() {
         });
         _html('incidents_area', html);
     }, function(e) {
-        _log('loadIncidents: FAIL — ' + (e && e.message || e));
+        _log('loadIncidents: FAIL, ' + (e && e.message || e));
         _addClass('incidents_container', 'hidden');
     }, function() { _incidentsLoading = false; });
 }
@@ -325,7 +325,7 @@ function loadStatus() {
             });
         }
     }, function(e) {
-        _log('loadStatus: FAIL — ' + (e && e.message || e));
+        _log('loadStatus: FAIL, ' + (e && e.message || e));
         _html('network_status_placeholder', '<p class="text-sm text-red-500">Unable to load network status.</p>');
         var banner = document.getElementById('all_status');
         if (banner) banner.dataset.status = 'error';
@@ -386,7 +386,7 @@ function loadRSS() {
         window._allRssFeeds = data || [];
         renderRSSCards(data);
     }, function(e) {
-        _log('loadRSS: FAIL — ' + (e && e.message || e));
+        _log('loadRSS: FAIL, ' + (e && e.message || e));
         _html('rss_area', '<p class="text-sm text-red-500 col-span-3">Unable to load notices.</p>');
     }, function() { _rssLoading = false; });
 }
@@ -731,9 +731,9 @@ function openOutageLog() {
         var rows = _outageData.map(function(e) {
             return `<tr class="border-b border-slate-100 dark:border-slate-700/50 last:border-0" data-service="${escapeHtml(e.service||'')}" data-down-at="${e.went_down_at||0}">
                 <td class="py-2.5 pr-4 text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">${escapeHtml(e.service || '')}</td>
-                <td class="py-2.5 pr-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">${e.went_down_at ? fmt(e.went_down_at) : '—'}</td>
-                <td class="py-2.5 pr-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">${e.came_up_at ? fmt(e.came_up_at) : '—'}</td>
-                <td class="py-2.5 text-xs font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">${e.duration_s ? formatDuration(e.duration_s) : '—'}</td>
+                <td class="py-2.5 pr-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">${e.went_down_at ? fmt(e.went_down_at) : 'N/A'}</td>
+                <td class="py-2.5 pr-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">${e.came_up_at ? fmt(e.came_up_at) : 'N/A'}</td>
+                <td class="py-2.5 text-xs font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">${e.duration_s ? formatDuration(e.duration_s) : 'N/A'}</td>
             </tr>`;
         }).join('');
         var inputCls = 'text-xs border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500';

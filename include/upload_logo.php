@@ -34,7 +34,7 @@ if ($file['size'] > 2 * 1024 * 1024) {
     exit;
 }
 
-// MIME detection — finfo preferred, getimagesize as fallback
+// MIME detection: finfo preferred, getimagesize as fallback
 $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp', 'image/svg+xml' => 'svg'];
 $mime = '';
 if (function_exists('finfo_open')) {
@@ -52,7 +52,7 @@ if (!array_key_exists($mime, $allowed)) {
     exit;
 }
 
-// Save inside include/uploads/ — shares the already-mounted include/ volume
+// Save inside include/uploads/, shares the already-mounted include/ volume
 $uploadDir = __DIR__ . '/uploads/';
 if (!is_dir($uploadDir)) {
     if (!mkdir($uploadDir, 0755, true)) {
@@ -65,7 +65,7 @@ if (!is_dir($uploadDir)) {
 $filename = 'logo_' . bin2hex(random_bytes(6)) . '.' . $allowed[$mime];
 if (!move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
     http_response_code(500);
-    echo json_encode(['error' => 'Failed to save file — check directory permissions']);
+    echo json_encode(['error' => 'Failed to save file, check directory permissions']);
     exit;
 }
 

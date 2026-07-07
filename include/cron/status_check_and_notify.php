@@ -83,6 +83,29 @@ function check_port($host, $port) {
     return false;
 }
 
+// A service whose type mentions http/https gets a real HTTP request check instead of
+// a raw port-open check: a webserver/proxy can keep accepting TCP connections while
+// the application behind it is erroring out, which a port check alone would miss.
+function check_http($host, $port, $scheme) {
+    if (!function_exists('curl_init')) return false;
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $scheme . '://' . $host . ':' . $port . '/',
+        CURLOPT_TIMEOUT        => 4,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 3,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_RETURNTRANSFER => true,
+    ]);
+    curl_exec($ch);
+    $errno = curl_errno($ch);
+    $code  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return $errno === 0 && $code > 0 && $code < 500;
+}
+
 // Get subscribers
 $subsFile = __DIR__ . '/../subscriptions.csv';
 $subscribers = [];
@@ -133,7 +156,13 @@ foreach ($internal_hosts as $service) {
     $name = $service['name'] ?? $service['host'];
     $isUp = false;
     if (!empty($service['port'])) {
-        $isUp = check_port($service['host'], (int)$service['port']);
+        $type = $service['type'] ?? '';
+        if (stripos($type, 'http') !== false) {
+            $scheme = (stripos($type, 'https') !== false || (int)$service['port'] === 443) ? 'https' : 'http';
+            $isUp = check_http($service['host'], (int)$service['port'], $scheme);
+        } else {
+            $isUp = check_port($service['host'], (int)$service['port']);
+        }
     } else {
         // Use OS-specific ping
         $pingCmd = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN'
@@ -177,7 +206,10 @@ foreach ($internal_hosts as $service) {
     $currentStatus[$name] = $entry;
 
     // Detect status change and send notifications
-    if ($prevStr !== null && $prevStr !== $curStr) {
+    // Alert on any real transition, including a service found down on the very first
+    // check (no prior baseline), but don't alert when merely establishing an initial
+    // "up" baseline on a fresh install.
+    if ($prevStr !== $curStr && !($prevStr === null && $curStr === 'up')) {
         $emails = $subscribers[$name] ?? [];
         error_log("[$name] STATUS CHANGE DETECTED: {$prevStr} → {$curStr}\n", 3, $logFile);
         error_log("[$name] Subscribers: " . (!empty($emails) ? implode(', ', $emails) : 'None') . "\n", 3, $logFile);

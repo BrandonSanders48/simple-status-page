@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
 # Enable Apache SSL and rewrite modules
 RUN a2enmod ssl rewrite
 
-# Generate self-signed certificate — explicitly set CA:FALSE and server extensions
+# Generate self-signed certificate, explicitly set CA:FALSE and server extensions
 # so modern browsers (Chrome, Chromium on Yodeck, etc.) don't reject it as a CA cert.
 RUN openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
     -keyout /etc/ssl/private/apache-selfsigned.key \

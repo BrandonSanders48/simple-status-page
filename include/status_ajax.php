@@ -30,9 +30,23 @@ if (is_array($_histRaw)) {
 }
 
 
+// A service is "HTTP checked" (real request + status code) rather than just a raw
+// TCP handshake when its configured type mentions http/https: a webserver/proxy
+// can keep accepting TCP connections while the application behind it is erroring out,
+// so a plain port-open check would falsely report it as up.
+function is_http_type($value) {
+    return isset($value['type']) && stripos($value['type'], 'http') !== false;
+}
+
+function http_scheme_for($value, $port) {
+    if (isset($value['type']) && stripos($value['type'], 'https') !== false) return 'https';
+    if ((int)$port === 443) return 'https';
+    return 'http';
+}
+
 // Helper: Check TCP port (non-blocking connect via curl for parallelism),
-// or ICMP ping if port is null.
-function check_service($host, $port = 80) {
+// ICMP ping if port is null, or a real HTTP request if $isHttp is true.
+function check_service($host, $port = 80, $isHttp = false, $scheme = 'http') {
     if ($port === null) {
         $escaped = escapeshellarg($host);
         if (stripos(PHP_OS, 'WIN') === 0) {
@@ -42,6 +56,8 @@ function check_service($host, $port = 80) {
         }
         exec($cmd, $output, $result);
         return $result === 0;
+    } elseif ($isHttp) {
+        return check_http($host, $port, $scheme);
     } else {
         $connection = @fsockopen($host, $port, $errno, $errstr, 2);
         if (is_resource($connection)) {
@@ -52,22 +68,48 @@ function check_service($host, $port = 80) {
     }
 }
 
-// Parallel TCP checks via curl_multi; falls back to sequential fsockopen for pings.
+// Real HTTP(S) health check: a service only counts as up if it actually returns a
+// non-5xx response, not merely if the TCP port accepts a connection.
+function check_http($host, $port, $scheme = 'http') {
+    if (!function_exists('curl_init')) return false;
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $scheme . '://' . $host . ':' . $port . '/',
+        CURLOPT_TIMEOUT        => 4,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 3,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_NOBODY         => false,
+    ]);
+    curl_exec($ch);
+    $errno = curl_errno($ch);
+    $code  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return $errno === 0 && $code > 0 && $code < 500;
+}
+
+// Parallel checks via curl_multi (raw TCP connect or real HTTP request); falls back
+// to sequential checks for pings and when curl_multi is unavailable.
 function check_services_parallel(array $hosts): array {
     $tcp = [];
+    $http = [];
     $ping = [];
     foreach ($hosts as $i => $value) {
         $port = array_key_exists('port', $value) ? (is_null($value['port']) ? null : (int)$value['port']) : 80;
         if ($port === null) {
             $ping[$i] = $value;
+        } elseif (is_http_type($value)) {
+            $http[$i] = ['host' => $value['host'] ?? '', 'port' => $port, 'scheme' => http_scheme_for($value, $port)];
         } else {
             $tcp[$i] = ['host' => $value['host'] ?? '', 'port' => $port];
         }
     }
 
-    // Run TCP checks in parallel with curl_multi
     $results = [];
-    if (!empty($tcp) && function_exists('curl_multi_init')) {
+    if ((!empty($tcp) || !empty($http)) && function_exists('curl_multi_init')) {
         $mh = curl_multi_init();
         $handles = [];
         foreach ($tcp as $i => $info) {
@@ -80,15 +122,36 @@ function check_services_parallel(array $hosts): array {
                 CURLOPT_RETURNTRANSFER => true,
             ]);
             curl_multi_add_handle($mh, $ch);
-            $handles[$i] = $ch;
+            $handles[$i] = ['ch' => $ch, 'http' => false];
+        }
+        foreach ($http as $i => $info) {
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL            => $info['scheme'] . '://' . $info['host'] . ':' . $info['port'] . '/',
+                CURLOPT_TIMEOUT        => 4,
+                CURLOPT_CONNECTTIMEOUT => 3,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_MAXREDIRS      => 3,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_RETURNTRANSFER => true,
+            ]);
+            curl_multi_add_handle($mh, $ch);
+            $handles[$i] = ['ch' => $ch, 'http' => true];
         }
         $running = null;
         do {
             curl_multi_exec($mh, $running);
             if ($running) curl_multi_select($mh, 0.1);
         } while ($running > 0);
-        foreach ($handles as $i => $ch) {
-            $results[$i] = (curl_errno($ch) === 0);
+        foreach ($handles as $i => $h) {
+            $ch = $h['ch'];
+            if ($h['http']) {
+                $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $results[$i] = curl_errno($ch) === 0 && $code > 0 && $code < 500;
+            } else {
+                $results[$i] = (curl_errno($ch) === 0);
+            }
             curl_multi_remove_handle($mh, $ch);
             curl_close($ch);
         }
@@ -97,6 +160,9 @@ function check_services_parallel(array $hosts): array {
         // fallback: sequential
         foreach ($tcp as $i => $info) {
             $results[$i] = check_service($info['host'], $info['port']);
+        }
+        foreach ($http as $i => $info) {
+            $results[$i] = check_http($info['host'], $info['port'], $info['scheme']);
         }
     }
 
@@ -144,7 +210,7 @@ $wide_text   = $wide_result === null
         : 'IP Unavailable') . ': ' . ($wide_result ? 'Operational' : 'Failure'));
 $wide_color  = $wide_result === null ? '#94a3b8' : ($wide_result ? '#10b981' : '#ef4444');
 
-// Services — parallel TCP checks
+// Services, parallel TCP checks
 $service_results = check_services_parallel($internal_hosts);
 $services = [];
 $errors = 0;

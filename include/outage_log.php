@@ -15,7 +15,7 @@ foreach ($log as $e) {
     }
 }
 
-// service_status.json — the same source the tooltip reads from.
+// service_status.json, the same source the tooltip reads from.
 // Contains the most recent outage per service that the cron/ajax recorded.
 $status = file_exists($statusFile) ? (json_decode(file_get_contents($statusFile), true) ?: []) : [];
 foreach ($status as $name => $data) {
