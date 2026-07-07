@@ -9,7 +9,7 @@ A sleek, production-ready status page built with PHP, Tailwind CSS, and vanilla 
 ## Features
 
 **Monitoring**
-- Real-time TCP port and ICMP ping checks for internal services
+- Real-time checks for internal services: real HTTP(S) requests (status-code validated) for services typed HTTP/HTTPS, raw TCP port checks for everything else, and ICMP ping when no port is set
 - Parallel checks via `curl_multi` for fast results
 - Local-area (gateway) and wide-area (public DNS) network status
 - Live pulsing **LIVE** indicator on the status banner
@@ -32,20 +32,22 @@ A sleek, production-ready status page built with PHP, Tailwind CSS, and vanilla 
 - Admin-only create/remove; visible to all
 
 **Notifications**
-- Email subscriptions, users subscribe per service
-- SMTP notifications via PHPMailer when a service changes state
+- Email subscriptions, users subscribe per service, with self-service manage/unsubscribe modals
+- SMTP notifications via PHPMailer when a service changes state, including a service found down on its very first check
+- One-click "Work in Progress" / "Mark Resolved" action links in outage emails that post an incident directly (no login needed)
 - Optional browser push notifications and alert sound on status change
+- Test Email button in Settings to verify SMTP configuration
 
 **Configuration (UI)**
-- In-browser config editor with tabs: General, Services, RSS Feeds, Network, Notifications
+- In-browser config editor with tabs: General, Services, RSS Feeds, Network, Notifications, SSL
 - Drag-and-drop row reordering for services and RSS feeds
 - Live row counter with caps: 20 services max, 10 RSS feeds max
 - One-click config backup download
-- Theme color pickers, announcement banner, SLA settings
+- Self-signed certificate generation plus custom certificate upload
+- Theme color pickers, announcement banner, SLA target badge (displayed value, not yet computed from live outage history)
 
 **Other**
 - RSS / Atom feed integration (displays latest item from external status feeds)
-- Multi-language: English / Español
 - Dark mode (cookie-persisted, toggle in navbar)
 - Fully responsive: mobile, tablet, desktop
 - CSRF protection on all forms
@@ -97,92 +99,23 @@ Requires PHP 8.0+ with `curl` and `exec` available.
 
 ## Configuration
 
-All settings live in `include/configuration.json` and can be edited through the in-browser UI at `/config.php`.
+Everything is configurable both ways: through the in-browser UI at `/config.php`, or by editing `include/configuration.json` directly.
 
 ### Services
 
-```json
-{
-  "internal_hosts": [
-    {
-      "name": "Web Server",
-      "host": "192.168.1.10",
-      "port": 443,
-      "type": "HTTPS",
-      "description": "Main web server"
-    },
-    {
-      "name": "Gateway",
-      "host": "192.168.1.1",
-      "port": null,
-      "type": "PING",
-      "description": "Default gateway, ICMP ping (port null)"
-    }
-  ]
-}
-```
-
-Set `port` to `null` for ICMP ping instead of a TCP check. Maximum 20 services.
+Add each service with a name, host, port, type, and description. Set `port` to `null` for ICMP ping instead of a port check. When `type` mentions "http" or "https" (case-insensitive), the service gets a real HTTP request with status-code validation instead of a raw TCP connect, so an app returning server errors is correctly reported as down even if its port still accepts connections. Maximum 20 services.
 
 ### RSS Feeds
 
-```json
-{
-  "RSS": [
-    {
-      "name": "AWS",
-      "host": "https://status.aws.amazon.com/rss/all.rss",
-      "tag": "item",
-      "description": "AWS service health"
-    }
-  ]
-}
-```
-
-`tag` is `"item"` for RSS or `"entry"` for Atom. Maximum 10 feeds.
+Add a feed with a name, URL, tag, and description. `tag` is `"item"` for RSS or `"entry"` for Atom. Maximum 10 feeds.
 
 ### Branding & Theme
 
-```json
-{
-  "branding": {
-    "business_name": "Your Company",
-    "business_logo": "images/logo.webp",
-    "company_url": "https://example.com",
-    "support_email": "support@example.com",
-    "footer_message": "© 2026 Your Company",
-    "announcement_banner": "Scheduled maintenance Sunday 2–4 PM",
-    "announcement_type": "info"
-  },
-  "theme": {
-    "primary_color": "#6366f1",
-    "accent_color": "#06b6d4",
-    "success_color": "#10b981",
-    "warning_color": "#f59e0b",
-    "error_color": "#ef4444"
-  }
-}
-```
+Set business name, logo, company URL, support email, footer message, announcement banner, and theme colors (primary, accent, success, warning, error).
 
 ### Email Notifications (SMTP)
 
-```json
-{
-  "email": {
-    "from": "noreply@example.com",
-    "reply_to": "support@example.com",
-    "smtp": {
-      "host": "smtp.example.com",
-      "port": 587,
-      "secure": "tls",
-      "username": "you@example.com",
-      "password": "secret"
-    }
-  }
-}
-```
-
-To send notifications on status change, run `include/cron/status_check_and_notify.php` on a cron schedule. The main status page tracks downtime automatically without cron.
+Set the from/reply-to addresses and SMTP host, port, security mode, username, and password. To send notifications on status change, run `include/cron/status_check_and_notify.php` on a cron schedule. The main status page tracks downtime automatically without cron.
 
 ## Environment Variables
 
