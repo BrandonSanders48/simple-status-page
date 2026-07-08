@@ -27,8 +27,11 @@ export async function POST(request: Request) {
   }
 
   const text = await file.text();
-  const marker = type === "cert" ? "CERTIFICATE" : "PRIVATE KEY";
-  if (!text.includes(`BEGIN ${marker}`) || !text.includes(`END ${marker}`)) {
+  // Private keys come in several legitimate PEM flavors (PKCS#8 "PRIVATE KEY", PKCS#1
+  // "RSA PRIVATE KEY", "EC PRIVATE KEY", "ENCRYPTED PRIVATE KEY"); accept any of them.
+  const beginRe = type === "cert" ? /-----BEGIN CERTIFICATE-----/ : /-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----/;
+  const endRe = type === "cert" ? /-----END CERTIFICATE-----/ : /-----END (?:[A-Z]+ )?PRIVATE KEY-----/;
+  if (!beginRe.test(text) || !endRe.test(text)) {
     return NextResponse.json({ error: `File does not look like a valid PEM ${type}` }, { status: 400 });
   }
 
@@ -37,29 +40,32 @@ export async function POST(request: Request) {
   const certPath = path.join(sslDir, "cert.pem");
   const keyPath = path.join(sslDir, "key.pem");
   const targetPath = type === "cert" ? certPath : keyPath;
-  await fs.writeFile(targetPath, text);
+  const counterpartPath = type === "cert" ? keyPath : certPath;
 
-  // If both halves are now present, validate them together and hot-swap the running
-  // HTTPS listener so an upload doesn't silently break TLS on next restart.
+  // Validate against whatever counterpart already exists BEFORE writing anything to
+  // disk, so a mismatched/invalid upload can never clobber the currently-working file.
+  const counterpartText = await fs.readFile(counterpartPath, "utf8").catch(() => null);
   let hotSwapped = false;
-  try {
-    const [certText, keyText] = await Promise.all([
-      fs.readFile(certPath, "utf8").catch(() => null),
-      fs.readFile(keyPath, "utf8").catch(() => null),
-    ]);
-    if (certText && keyText) {
+  if (counterpartText) {
+    const certText = type === "cert" ? text : counterpartText;
+    const keyText = type === "key" ? text : counterpartText;
+    try {
       tls.createSecureContext({ cert: certText, key: keyText }); // throws if mismatched/invalid
-      const g = globalThis as unknown as { __httpsServer?: { setSecureContext: (opts: { cert: string; key: string }) => void } };
-      if (g.__httpsServer) {
-        g.__httpsServer.setSecureContext({ cert: certText, key: keyText });
-        hotSwapped = true;
-      }
+    } catch (err) {
+      return NextResponse.json(
+        { error: `Certificate/key pair failed validation: ${err instanceof Error ? err.message : "unknown error"}` },
+        { status: 400 }
+      );
     }
-  } catch (err) {
-    return NextResponse.json(
-      { error: `Certificate/key pair failed validation: ${err instanceof Error ? err.message : "unknown error"}` },
-      { status: 400 }
-    );
+    await fs.writeFile(targetPath, text);
+    const g = globalThis as unknown as { __httpsServer?: { setSecureContext: (opts: { cert: string; key: string }) => void } };
+    if (g.__httpsServer) {
+      g.__httpsServer.setSecureContext({ cert: certText, key: keyText });
+      hotSwapped = true;
+    }
+  } else {
+    // No counterpart yet, nothing to cross-validate against; store it and wait for the other half.
+    await fs.writeFile(targetPath, text);
   }
 
   return NextResponse.json({ ok: true, hotSwapped });
