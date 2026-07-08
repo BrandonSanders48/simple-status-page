@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import crypto from "node:crypto";
 import { db } from "./db/client";
 import { settings } from "./db/schema";
+import { isHttps } from "./request";
 
 const COOKIE_NAME = "session";
 const SESSION_TTL_SECONDS = 12 * 60 * 60;
@@ -43,7 +44,7 @@ export function isAuthRequired(): boolean {
   return cfg?.requireAuth ?? true;
 }
 
-export async function createSession(): Promise<void> {
+export async function createSession(request: Request): Promise<void> {
   const jwt = await new SignJWT({ role: "admin" })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -53,7 +54,7 @@ export async function createSession(): Promise<void> {
   const store = await cookies();
   store.set(COOKIE_NAME, jwt, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isHttps(request),
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_TTL_SECONDS,

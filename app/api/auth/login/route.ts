@@ -23,6 +23,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
   }
 
-  await createSession();
+  await createSession(request);
   return NextResponse.json({ ok: true });
 }

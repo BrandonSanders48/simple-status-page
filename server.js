@@ -22,16 +22,23 @@ const certPath = path.join(dataDir, "ssl", "cert.pem");
 const keyPath = path.join(dataDir, "ssl", "key.pem");
 
 if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-  const httpsServer = createHttpsServer(
-    { cert: fs.readFileSync(certPath), key: fs.readFileSync(keyPath) },
-    (req, res) => handle(req, res)
-  );
-  // Exposed so the SSL upload route can hot-swap the TLS context without a restart
-  // once both a new cert and key have been uploaded and validated.
-  globalThis.__httpsServer = httpsServer;
-  httpsServer.listen(httpsPort, () => {
-    console.log(`> HTTPS listening on port ${httpsPort}`);
-  });
+  // createServer() validates the cert/key pair synchronously and throws if they don't
+  // match, so a corrupted pair on disk must not be allowed to crash the whole process
+  // (including the already-running HTTP listener) -- just skip HTTPS instead.
+  try {
+    const httpsServer = createHttpsServer(
+      { cert: fs.readFileSync(certPath), key: fs.readFileSync(keyPath) },
+      (req, res) => handle(req, res)
+    );
+    // Exposed so the SSL upload route can hot-swap the TLS context without a restart
+    // once both a new cert and key have been uploaded and validated.
+    globalThis.__httpsServer = httpsServer;
+    httpsServer.listen(httpsPort, () => {
+      console.log(`> HTTPS listening on port ${httpsPort}`);
+    });
+  } catch (err) {
+    console.error("> Invalid SSL certificate/key on disk, HTTPS listener not started:", err.message);
+  }
 } else {
   console.log("> No SSL certificate found, HTTPS listener not started");
 }

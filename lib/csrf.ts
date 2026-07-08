@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import crypto from "node:crypto";
+import { isHttps } from "./request";
 
 const CSRF_COOKIE = "csrf_token";
 
 /** Issues the double-submit CSRF cookie if one doesn't already exist, and returns it. */
-export async function ensureCsrfCookie(): Promise<string> {
+export async function ensureCsrfCookie(request: Request): Promise<string> {
   const store = await cookies();
   const existing = store.get(CSRF_COOKIE)?.value;
   if (existing) return existing;
@@ -12,7 +13,7 @@ export async function ensureCsrfCookie(): Promise<string> {
   const token = crypto.randomBytes(32).toString("hex");
   store.set(CSRF_COOKIE, token, {
     httpOnly: false, // must be readable by client JS to echo back as a header
-    secure: process.env.NODE_ENV === "production",
+    secure: isHttps(request),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
