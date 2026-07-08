@@ -7,6 +7,7 @@ import { SettingsGroup } from "./SettingsGroup";
 interface SslStatus {
   certExists: boolean;
   keyExists: boolean;
+  selfSigned: boolean;
 }
 
 export default function SslTab({ csrfToken }: { csrfToken: string }) {
@@ -41,11 +42,19 @@ export default function SslTab({ csrfToken }: { csrfToken: string }) {
       setter({ ok: false, text: data.error || "Upload failed." });
       return;
     }
-    setter({ ok: true, text: data.hotSwapped ? "Uploaded and applied immediately." : "Uploaded." });
+    const other = type === "cert" ? "private key" : "certificate";
+    setter({
+      ok: true,
+      text: data.hotSwapped
+        ? "Uploaded and applied immediately."
+        : data.pending
+          ? `Uploaded. Waiting for the matching ${other} to apply the pair.`
+          : "Uploaded.",
+    });
     refresh();
   }
 
-  const ready = !!status?.certExists && !!status?.keyExists;
+  const ready = !!status?.certExists && !!status?.keyExists && !status?.selfSigned;
 
   return (
     <div>
@@ -55,11 +64,11 @@ export default function SslTab({ csrfToken }: { csrfToken: string }) {
             <i className={`fa-solid ${ready ? "fa-circle-check" : "fa-circle-exclamation"} text-base`} />
             {ready
               ? "Custom certificate uploaded."
-              : status.certExists
-                ? "Certificate uploaded but private key is missing."
-                : status.keyExists
-                  ? "Private key uploaded but certificate is missing."
-                  : "Using self-signed certificate (no custom cert uploaded)."}
+              : status.selfSigned || (!status.certExists && !status.keyExists)
+                ? "Using self-signed certificate (no custom cert uploaded)."
+                : status.certExists
+                  ? "Certificate uploaded but private key is missing."
+                  : "Private key uploaded but certificate is missing."}
           </div>
         )}
 

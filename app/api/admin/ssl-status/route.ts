@@ -19,10 +19,11 @@ export async function GET() {
   }
 
   const sslDir = path.join(DATA_DIR, "ssl");
-  const [certExists, keyExists] = await Promise.all([
+  const [certExists, keyExists, selfSigned] = await Promise.all([
     exists(path.join(sslDir, "cert.pem")),
     exists(path.join(sslDir, "key.pem")),
+    exists(path.join(sslDir, ".self-signed")),
   ]);
 
-  return NextResponse.json({ certExists, keyExists });
+  return NextResponse.json({ certExists, keyExists, selfSigned });
 }

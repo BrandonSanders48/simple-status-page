@@ -19,7 +19,11 @@ if [ ! -f /data/ssl/cert.pem ] || [ ! -f /data/ssl/key.pem ]; then
         -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
         -addext "keyUsage=digitalSignature,keyEncipherment" \
         -addext "extendedKeyUsage=serverAuth"
-    chown nextjs:nodejs /data/ssl/cert.pem /data/ssl/key.pem
+    # Marks this pair as auto-generated so the admin UI can tell it apart from a real
+    # uploaded cert (both just look like "files exist" otherwise). The upload route
+    # removes this marker whenever a real pair is promoted.
+    touch /data/ssl/.self-signed
+    chown nextjs:nodejs /data/ssl/cert.pem /data/ssl/key.pem /data/ssl/.self-signed
 else
     echo "[entrypoint] Using existing certificate from /data/ssl."
 fi
