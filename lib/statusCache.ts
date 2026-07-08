@@ -2,6 +2,7 @@ import { db } from "./db/client";
 import { settings, ispMapEntries } from "./db/schema";
 import { runServiceChecks } from "./checks/runner";
 import { checkLocalNetwork, checkWideNetwork, getPublicIp } from "./checks/network";
+import { notifyTransitions } from "./notifier";
 
 export interface StatusServicePayload {
   id: number;
@@ -33,7 +34,16 @@ async function computeStatus(): Promise<StatusPayload> {
   const cfg = db.select().from(settings).get();
   const isp = db.select().from(ispMapEntries).all();
 
-  const [{ results }, publicIp] = await Promise.all([runServiceChecks(), getPublicIp()]);
+  const [{ results, transitions }, publicIp] = await Promise.all([runServiceChecks(), getPublicIp()]);
+
+  // runServiceChecks() persists status and computes transitions by diffing against the
+  // previous DB row, so whichever caller (this route or the background scheduler) happens
+  // to run first is the only one that will ever see a given transition. Notify here too,
+  // or transitions observed by a status-page poll (far more frequent than the 2-minute
+  // scheduler) would be silently discarded and subscribers would never be emailed.
+  if (transitions.length > 0) {
+    void notifyTransitions(transitions).catch((err) => console.error("[status] notifyTransitions failed", err));
+  }
 
   const ispName = isp.find((e) => e.ip === publicIp)?.name ?? null;
 
