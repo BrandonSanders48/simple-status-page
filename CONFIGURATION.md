@@ -1,327 +1,111 @@
 # Configuration Guide
 
-This guide explains all available configuration options in `include/configuration.json`.
+All configuration lives in the SQLite database and is managed entirely through the admin UI at `/admin` (login required unless `require_auth` is disabled). There is no configuration file to hand-edit or mount into the container.
 
 ## Table of Contents
 
-1. [Metadata](#metadata)
-2. [Branding & Theming](#branding--theming)
-3. [Email & SMTP](#email--smtp)
-4. [Network Settings](#network-settings)
-5. [SLA Configuration](#sla-configuration)
-6. [Service Monitoring](#service-monitoring)
-7. [RSS Feeds](#rss-feeds)
-8. [Advanced Options](#advanced-options)
+1. [General Tab](#general-tab)
+2. [Services Tab](#services-tab)
+3. [RSS Feeds Tab](#rss-feeds-tab)
+4. [Network Tab](#network-tab)
+5. [Notifications Tab](#notifications-tab)
+6. [SSL Tab](#ssl-tab)
+7. [Environment Variables](#environment-variables)
 
 ---
 
-## Metadata
+## General Tab
 
-Configuration file metadata and versioning.
+**Branding**
 
-```json
-{
-  "meta": {
-    "version": "2.0",
-    "description": "Configuration description",
-    "author": "Your Name or Team"
-  }
-}
-```
+| Field | Description |
+|---|---|
+| Business / Site Name | Display name shown in the navbar and page title |
+| Logo | Uploaded image, served from the container's persistent data volume |
+| Company URL | Shown in the footer and used as the link in notification emails |
+| Support Email / Phone | Shown in the footer |
+| Footer Message | Copyright/legal message displayed in the footer |
 
-- **version**: Config schema version (shown in footer)
-- **description**: Human-readable description of the configuration
-- **author**: Author/team name (shown in footer)
+**Theme Colors** — primary, accent, success, warning, error. Applied via CSS custom properties across the public page.
 
----
+**SLA Tracking** — enable/disable, uptime target percentage, and reporting period (weekly/monthly/quarterly). When enabled, the navbar shows a real uptime percentage computed from outage history over the selected period (simultaneous outages across multiple services count once, not per-service), colored green when it meets the target and red when it doesn't.
 
-## Branding & Theming
+**About / Meta** — description and author shown in the footer, plus a read-only config version that auto-increments on every save.
 
-Customize the appearance and branding of your status page.
-
-### Branding Section
-
-```json
-{
-  "branding": {
-    "business_name": "Your Company",
-    "business_logo": "https://example.com/logo.png",
-    "company_url": "https://example.com",
-    "support_email": "support@example.com",
-    "support_phone": "+1-555-0123",
-    "footer_message": "© 2026 Your Company. All rights reserved.",
-    "announcement_banner": "System maintenance scheduled",
-    "announcement_type": "info"
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `business_name` | string | Display name shown in navbar and page title |
-| `business_logo` | string (URL) | Company logo image URL (recommended: 40px height) |
-| `company_url` | string (URL) | Company website URL (shown in footer) |
-| `support_email` | string (email) | Support email address (shown in footer) |
-| `support_phone` | string | Support phone number (shown in footer) |
-| `footer_message` | string | Copyright/legal message displayed in footer |
-| `announcement_banner` | string | Optional announcement banner text |
-| `announcement_type` | string | Banner style: `info`, `warning`, or `error` |
-
-### Theme Section
-
-Customize colors to match your brand identity.
-
-```json
-{
-  "theme": {
-    "primary_color": "#4f46e5",
-    "accent_color": "#06b6d4",
-    "success_color": "#059669",
-    "warning_color": "#d97706",
-    "error_color": "#dc2626"
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `primary_color` | hex color | Primary brand color |
-| `accent_color` | hex color | Accent/secondary color |
-| `success_color` | hex color | Success/operational status color |
-| `warning_color` | hex color | Warning/degraded status color |
-| `error_color` | hex color | Error/outage status color |
+**Behaviour**
+| Field | Description |
+|---|---|
+| Auto-Refresh Interval | How often the public page polls for updates, in ms (minimum 3000) |
+| Require login for admin features | Uncheck to allow `/admin` access without logging in (can also be forced via `APP_AUTH_REQUIRED`) |
+| Clear Cache | Forces an immediate refresh of the cached status/RSS data on next request |
 
 ---
 
-## Email & SMTP
+## Services Tab
 
-Configure email notifications for subscriptions and alerts.
+Each row: name, host, port, type, description, and a visibility toggle. Reorder with the up/down arrows; order controls display order on the public page. Maximum 20 services.
 
-```json
-{
-  "email": {
-    "from": "status@yourdomain.com",
-    "reply_to": "helpdesk@yourdomain.com",
-    "smtp": {
-      "host": "smtp.yourdomain.com",
-      "port": 587,
-      "secure": "tls"
-    }
-  }
-}
-```
-
-### Environment Variables
-
-Override SMTP credentials via environment variables (recommended for Docker):
-
-```bash
-SMTP_USER=your-username
-SMTP_PASS=your-password
-```
+| Field | Description |
+|---|---|
+| Port | Leave blank for ICMP ping instead of a port check |
+| Type | Free text label, shown on the service card. When it contains "http" or "https" (case-insensitive), the service is checked with a real HTTP request validated by status code, not just a TCP connect, so an app returning server errors is correctly reported as down even if its port still accepts connections. When it contains "dns", the service is checked with a real UDP DNS query instead, since most DNS servers don't listen on TCP at all. Anything else falls back to a raw TCP connect. |
+| Show | Whether the service card appears on the public page (down services still count toward the overall status banner even when hidden) |
 
 ---
 
-## Network Settings
+## RSS Feeds Tab
 
-Configure network connectivity checks.
-
-```json
-{
-  "network": {
-    "gateway": "192.168.1.1",
-    "public_dns": "8.8.8.8",
-    "domain": "domain.local",
-    "description": "Network settings for local and public connectivity",
-    "isp_map": {
-      "203.0.113.1": "Primary ISP",
-      "203.0.113.2": "Secondary ISP"
-    }
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `gateway` | IP address | Local gateway IP for network checks |
-| `public_dns` | IP address | Public DNS server for external connectivity |
-| `domain` | string | Internal domain name |
-| `description` | string | Description of network settings |
-| `isp_map` | object | Map ISP IPs to names for better display |
+Each row: name, feed URL, format (RSS or Atom), and description. Maximum 10 feeds. The latest item's title is fetched and shown as a card on the public page, color-coded by keyword sentiment (e.g. "outage"/"resolved").
 
 ---
 
-## SLA Configuration
+## Network Tab
 
-Display uptime targets and SLA information.
+**Connectivity Checks**
+| Field | Description |
+|---|---|
+| Default Gateway | Checked via ICMP ping for the Local-Area status row |
+| Public DNS Server | Checked with a real DNS query for the Wide-Area status row |
+| Internal Domain | Informational only |
 
-```json
-{
-  "sla": {
-    "enabled": true,
-    "uptime_target": 99.9,
-    "reporting_period": "monthly"
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `enabled` | boolean | Show SLA target in navbar |
-| `uptime_target` | number | Uptime percentage target (e.g., 99.9) |
-| `reporting_period` | string | Reporting period: `daily`, `weekly`, `monthly`, `yearly` |
+**ISP Detection Map** — maps your public IP address to a friendly ISP name shown alongside the Wide-Area status.
 
 ---
 
-## Service Monitoring
+## Notifications Tab
 
-Configure internal services to monitor.
+**Display & Behaviour** — alert sound and browser notifications on status change (client-side, requires browser permission), plus the announcement banner text and style (`info`, `warning`, `error`) shown on the public page.
 
-```json
-{
-  "internal_hosts": [
-    {
-      "host": "192.168.1.10",
-      "port": 443,
-      "type": "HTTPS",
-      "name": "Web Server",
-      "description": "Main production web server"
-    },
-    {
-      "host": "8.8.8.8",
-      "port": 53,
-      "type": "DNS",
-      "name": "Google DNS",
-      "description": "External DNS connectivity"
-    },
-    {
-      "host": "192.168.1.5",
-      "port": null,
-      "type": "Ping",
-      "name": "Backup Server",
-      "description": "Disaster recovery site"
-    }
-  ]
-}
-```
+**Email / Notifications**
+| Field | Description |
+|---|---|
+| Show quick-action buttons in notification emails | Adds "Work in Progress" / "Mark Resolved" links to down-alert emails that post an incident directly, no login required |
+| From / Reply-To Address | |
+| SMTP Host / Port / Security / Username / Password | Security is `tls` (STARTTLS), `ssl`, or `none` |
+| Send a Test Email | Sends using the currently *saved* SMTP settings — save your changes first |
 
-### Service Type Descriptions
-
-| Type | Port Required | Description |
-|------|---|-------------|
-| `HTTPS` | Yes | HTTPS/TLS connection check |
-| `HTTP` | Yes | HTTP connection check |
-| `DNS` | Yes | DNS query to port (typically 53) |
-| `Ping` | No | ICMP ping check |
+Notifications are sent automatically by a background job inside the app every 2 minutes; no external cron setup is required. A service found down on its very first check still triggers an alert, not just on a later up→down transition.
 
 ---
 
-## RSS Feeds
+## SSL Tab
 
-Display external status feeds (vendor status pages, etc.).
-
-```json
-{
-  "RSS": [
-    {
-      "host": "https://status.example.com/rss",
-      "name": "Example Service",
-      "tag": "item",
-      "description": "Status feed for Example Service"
-    }
-  ]
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `host` | URL | RSS feed URL |
-| `name` | string | Display name |
-| `tag` | string | XML tag name containing feed items (usually `item`) |
-| `description` | string | Description of the feed |
-
-### Popular Status Page RSS URLs
-
-- **Atlassian**: `https://status.atlassian.com/history.rss`
-- **GitHub**: `https://www.githubstatus.com/history.rss`
-- **AWS**: `https://status.aws.amazon.com/rss/all.rss`
-- **Google Cloud**: `https://status.cloud.google.com/incidents.rss`
-
----
-
-## Advanced Options
-
-### Refresh Rate
-
-```json
-{
-  "refresh_rate": 30000
-}
-```
-
-Status page auto-refresh interval in milliseconds (default: 30000 = 30 seconds).
-
-### Alert Sound
-
-```json
-{
-  "alert_sound": false
-}
-```
-
-Enable/disable alert sound for status changes (requires `audio/alert.wav`).
-
-### Browser Notifications
-
-```json
-{
-  "browser_notify": true
-}
-```
-
-Enable/disable browser push notifications for status changes.
-
-### Maintenance Windows
-
-```json
-{
-  "maintenance_windows": [
-    {
-      "title": "Scheduled Maintenance",
-      "start": "2026-06-15T02:00:00Z",
-      "end": "2026-06-15T04:00:00Z",
-      "description": "Database migration"
-    }
-  ]
-}
-```
-
-### Status Categories
-
-```json
-{
-  "status_categories": {
-    "operational": { "label": "Operational", "color": "#059669" },
-    "degraded": { "label": "Degraded Performance", "color": "#d97706" },
-    "outage": { "label": "Outage", "color": "#dc2626" },
-    "maintenance": { "label": "Maintenance", "color": "#6366f1" }
-  }
-}
-```
+Upload a certificate and private key (PEM). Both are validated together before being accepted, and applied to the running HTTPS listener immediately when possible, or on next restart otherwise. Files are stored on the container's persistent data volume (`/data/ssl`); a self-signed certificate is generated automatically on first boot if none is uploaded.
 
 ---
 
 ## Environment Variables
 
-Override configuration via Docker environment variables:
-
-```bash
-APP_USERNAME=admin              # Admin login username
-APP_PASSWORD=changeme           # Admin login password
-APP_AUTH_REQUIRED=true          # Require authentication
-SMTP_USER=username              # SMTP username
-SMTP_PASS=password              # SMTP password
-```
+| Variable | Default | Description |
+|---|---|---|
+| `APP_USERNAME` | `admin` | Admin login username |
+| `APP_PASSWORD` | `changeme` | Admin login password |
+| `APP_AUTH_REQUIRED` | `true` | Set `false` to disable the login requirement entirely (overrides the in-app toggle) |
+| `AUTH_SECRET` | *(required)* | Random secret used to sign session cookies. Generate with `openssl rand -hex 32` |
+| `PAGE_URL` | *(company URL setting)* | Public base URL used to build links in notification emails |
+| `DATA_DIR` | `/data` in Docker, `./data` locally | Where the SQLite database, uploads, and SSL certs are stored |
+| `PORT` | `3000` | HTTP listener port |
+| `HTTPS_PORT` | `3443` | HTTPS listener port (only starts once a certificate is present) |
 
 ### Docker Example
 
@@ -329,75 +113,25 @@ SMTP_PASS=password              # SMTP password
 docker run -d \
   -e APP_USERNAME="admin" \
   -e APP_PASSWORD="secure-password" \
-  -e APP_AUTH_REQUIRED="true" \
-  -e SMTP_USER="noreply@example.com" \
-  -e SMTP_PASS="smtp-password" \
-  -p 8080:80 \
-  -v ${PWD}/configuration.json:/usr/share/nginx/html/include/configuration.json \
+  -e AUTH_SECRET="$(openssl rand -hex 32)" \
+  -p 80:3000 -p 443:3443 \
+  -v simple-status-page-data:/data \
   brandonsanders/simple-status-page
 ```
 
 ---
 
-## Example: Complete Configuration
+## Popular Status Page RSS URLs
 
-```json
-{
-  "meta": {
-    "version": "2.0",
-    "description": "Production Status Page",
-    "author": "DevOps Team"
-  },
-  "branding": {
-    "business_name": "ACME Corp",
-    "business_logo": "https://acme.example.com/logo.png",
-    "company_url": "https://acme.example.com",
-    "support_email": "support@acme.example.com",
-    "support_phone": "+1-555-0123",
-    "footer_message": "© 2026 ACME Corporation. All rights reserved.",
-    "announcement_banner": "",
-    "announcement_type": "info"
-  },
-  "theme": {
-    "primary_color": "#1f2937",
-    "accent_color": "#3b82f6",
-    "success_color": "#10b981",
-    "warning_color": "#f59e0b",
-    "error_color": "#ef4444"
-  },
-  "sla": {
-    "enabled": true,
-    "uptime_target": 99.99,
-    "reporting_period": "monthly"
-  },
-  "internal_hosts": [
-    {
-      "host": "api.internal.local",
-      "port": 443,
-      "type": "HTTPS",
-      "name": "API Server",
-      "description": "REST API endpoint"
-    },
-    {
-      "host": "8.8.8.8",
-      "port": 53,
-      "type": "DNS",
-      "name": "DNS Resolution",
-      "description": "External DNS check"
-    }
-  ],
-  "refresh_rate": 30000,
-  "browser_notify": true
-}
-```
-
----
+- **Atlassian**: `https://status.atlassian.com/history.rss`
+- **GitHub**: `https://www.githubstatus.com/history.rss`
+- **AWS**: `https://status.aws.amazon.com/rss/all.rss`
+- **Google Cloud**: `https://status.cloud.google.com/incidents.rss`
 
 ## Tips
 
-1. **Keep it simple** – Only configure what you need
-2. **Use HTTPS URLs** – Always use HTTPS for external resources
-3. **Test your config** – Use the JSON editor to validate your configuration
-4. **Backup regularly** – Export your config before making changes
-5. **Monitor colors** – Ensure good contrast in light and dark modes
-6. **Use environment variables** – Keep sensitive data (passwords) in env vars, not config files
+1. **Keep it simple** — only configure the services and feeds you actually need
+2. **Use HTTPS URLs** for external RSS feeds and logo sources where possible
+3. **Set `AUTH_SECRET`** in production — the app will refuse to start sessions without it
+4. **Back up `/data`** — it holds the entire database, uploaded logo, and SSL certs as a single volume
+5. **Test SMTP with the Send Test button** before relying on real outage alerts

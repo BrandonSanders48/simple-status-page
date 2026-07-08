@@ -1,40 +1,31 @@
 #!/bin/bash
 set -e
 
-# Always deploy PHP application files from the image so updates take effect on restart.
-find /var/www/defaults/include -name "*.php" | while IFS= read -r src; do
-    dst="/var/www/html/include/${src#/var/www/defaults/include/}"
-    mkdir -p "$(dirname "$dst")"
-    cp "$src" "$dst"
-done
+# Ensure runtime directories exist and are writable regardless of how the volume
+# arrived (a fresh bind mount is typically root-owned on the host).
+mkdir -p /data/uploads /data/ssl
+chown -R nextjs:nodejs /data
 
-# Seed data/asset files only if they don't already exist (preserves user data).
-cp -rn /var/www/defaults/include/. /var/www/html/include/
-cp -rn /var/www/defaults/images/.  /var/www/html/images/
-
-# Always ensure runtime directories exist and are writable by www-data
-# (runs as root so chown always works regardless of host mount permissions)
-mkdir -p \
-    /var/www/html/include/cron \
-    /var/www/html/include/uploads \
-    /var/www/html/ssl \
-    /var/www/html/images
-
-chown -R www-data:www-data \
-    /var/www/html/include \
-    /var/www/html/images \
-    /var/www/html/ssl
-
-# Apply custom SSL certificate if uploaded via the settings page
-if [ -f "/var/www/html/ssl/cert.pem" ] && [ -f "/var/www/html/ssl/key.pem" ]; then
-    echo "[entrypoint] Applying custom SSL certificate..."
-    cp /var/www/html/ssl/cert.pem /etc/ssl/certs/apache-selfsigned.crt
-    cp /var/www/html/ssl/key.pem  /etc/ssl/private/apache-selfsigned.key
-    chmod 644 /etc/ssl/certs/apache-selfsigned.crt
-    chmod 600 /etc/ssl/private/apache-selfsigned.key
+# Generate a self-signed certificate on first boot if no custom one has been uploaded,
+# so the HTTPS listener always has something to serve. Lands on the persisted volume
+# (not baked into the image) so an admin-uploaded cert survives container restarts.
+if [ ! -f /data/ssl/cert.pem ] || [ ! -f /data/ssl/key.pem ]; then
+    echo "[entrypoint] No certificate found, generating a self-signed one..."
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+        -keyout /data/ssl/key.pem \
+        -out /data/ssl/cert.pem \
+        -subj "/C=US/ST=State/L=City/O=StatusPage/CN=localhost" \
+        -addext "basicConstraints=CA:FALSE" \
+        -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
+        -addext "keyUsage=digitalSignature,keyEncipherment" \
+        -addext "extendedKeyUsage=serverAuth"
+    chown nextjs:nodejs /data/ssl/cert.pem /data/ssl/key.pem
 else
-    echo "[entrypoint] No custom certificate found, using self-signed cert."
+    echo "[entrypoint] Using existing certificate from /data/ssl."
 fi
 
-cron
-exec apache2-foreground
+echo "[entrypoint] Running database migrations..."
+gosu nextjs ./node_modules/.bin/tsx migrate.ts
+
+echo "[entrypoint] Starting server..."
+exec gosu nextjs node server.js

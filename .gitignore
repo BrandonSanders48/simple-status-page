@@ -1,7 +1,19 @@
 .claude/
 .vscode/
 
-# SSL certificates, never commit private keys
-ssl/*.pem
-ssl/*.crt
-ssl/*.key
+# Node / Next.js
+node_modules/
+.next/
+next-env.d.ts
+npm-debug.log*
+*.tsbuildinfo
+
+# Local SQLite data, uploads, and SSL certs (all live under /data at runtime)
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+.env
+.env.local
