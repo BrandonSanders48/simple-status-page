@@ -15,5 +15,9 @@ data/
 *.db-wal
 *.db-shm
 
+# Legacy PHP-app data kept locally for the one-time upgrade import; must never be
+# committed or baked into published Docker images (see lib/legacyImport.ts).
+include/
+
 .env
 .env.local
