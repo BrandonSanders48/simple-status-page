@@ -5,10 +5,7 @@ import { settings, subscriptions } from "./db/schema";
 import { isSmtpConfigured, sendMail } from "./mailer";
 import { renderStatusChangeEmail } from "./emailTemplates";
 import { generateActionTokens } from "./emailTokens";
-
-function pageUrl(cfg: { companyUrl: string | null }): string | null {
-  return process.env.PAGE_URL || cfg.companyUrl || null;
-}
+import { resolvePageUrl } from "./pageUrl";
 
 /**
  * Sends subscriber emails for service status transitions. Called from the periodic
@@ -25,7 +22,7 @@ export async function notifyTransitions(transitions: ServiceTransition[]): Promi
     return;
   }
 
-  const url = pageUrl(cfg);
+  const url = resolvePageUrl(cfg);
 
   for (const transition of toNotify) {
     const subs = db

@@ -1,7 +1,21 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
-import { incidents } from "@/lib/db/schema";
+import { incidents, settings } from "@/lib/db/schema";
 import { getActionToken, consumeActionToken } from "@/lib/emailTokens";
+import { resolvePageUrl } from "@/lib/pageUrl";
+
+/**
+ * Builds an absolute redirect target from the configured public page URL rather than
+ * `request.url` -- behind a reverse proxy that doesn't forward the original Host, the
+ * request as seen by this server can carry an internal hostname/port, which would
+ * otherwise redirect the subscriber's browser to an address only reachable from inside
+ * the network.
+ */
+function redirectTarget(path: string, request: Request): URL {
+  const cfg = db.select().from(settings).get();
+  const base = cfg ? resolvePageUrl(cfg) : null;
+  return new URL(path, base ?? request.url);
+}
 
 /**
  * Performs the mutation half of the email action-link flow. Deliberately POST-only
@@ -13,12 +27,12 @@ export async function POST(request: Request) {
   const formData = await request.formData().catch(() => null);
   const token = formData?.get("token");
   if (typeof token !== "string" || !token) {
-    return NextResponse.redirect(new URL("/email-action", request.url));
+    return NextResponse.redirect(redirectTarget("/email-action", request));
   }
 
   const payload = getActionToken(token);
   if (!payload) {
-    return NextResponse.redirect(new URL("/email-action", request.url));
+    return NextResponse.redirect(redirectTarget("/email-action", request));
   }
   consumeActionToken(token);
 
@@ -45,7 +59,7 @@ export async function POST(request: Request) {
       .run();
   }
 
-  const doneUrl = new URL("/email-action/done", request.url);
+  const doneUrl = redirectTarget("/email-action/done", request);
   doneUrl.searchParams.set("type", payload.action);
   doneUrl.searchParams.set("service", payload.serviceName);
   return NextResponse.redirect(doneUrl, 303);
