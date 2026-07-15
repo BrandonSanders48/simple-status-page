@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { services, serviceStatus, outageLog } from "@/lib/db/schema";
+import { services, serviceStatus, outageLog, settings } from "@/lib/db/schema";
 import { checkHttp, httpSchemeFor, isHttpType } from "./http";
 import { checkDns, isDnsType } from "./dns";
 import { checkTcp } from "./tcp";
@@ -21,7 +21,11 @@ export interface ServiceTransition {
   serviceName: string;
   prevStatus: "up" | "down" | null;
   curStatus: "up" | "down";
-  /** True unless this is just establishing an initial "up" baseline on first-ever check. */
+  /**
+   * False for: an initial "up" baseline on first-ever check, or a "down" that hasn't
+   * yet lasted notifyDownAfterMinutes, or a recovery from a "down" that was never
+   * itself notified (too brief to cross the threshold).
+   */
   shouldNotify: boolean;
 }
 
@@ -53,6 +57,9 @@ export async function runServiceChecks(): Promise<{
   const allServices = db.select().from(services).all();
   const checked = await Promise.allSettled(allServices.map((svc) => checkOneService(svc)));
 
+  const cfg = db.select().from(settings).get();
+  const notifyDelayS = (cfg?.notifyDownAfterMinutes ?? 0) * 60;
+
   const results: ServiceCheckResult[] = [];
   const transitions: ServiceTransition[] = [];
   const now = Math.floor(Date.now() / 1000);
@@ -68,10 +75,12 @@ export async function runServiceChecks(): Promise<{
     let wentDownAt = prev?.wentDownAt ?? null;
     let lastDownAt = prev?.lastDownAt ?? null;
     let lastDownDurationS = prev?.lastDownDurationS ?? null;
+    let downNotified = prev?.downNotified ?? false;
 
     if (curStatus === "down" && prevStatus !== "down") {
       wentDownAt = now;
       lastDownAt = now;
+      downNotified = false;
     } else if (curStatus === "up" && prevStatus === "down" && wentDownAt) {
       lastDownDurationS = now - wentDownAt;
       db.insert(outageLog)
@@ -93,7 +102,20 @@ export async function runServiceChecks(): Promise<{
           .slice(0, toTrim);
         for (const id of oldestIds) db.delete(outageLog).where(eq(outageLog.id, id)).run();
       }
+
+      // Only tell subscribers it's back up if they were actually told it went down
+      // (i.e. the outage lasted past notifyDownAfterMinutes).
+      transitions.push({ serviceId: svc.id, serviceName: svc.name, prevStatus, curStatus, shouldNotify: downNotified });
+
       wentDownAt = null;
+      downNotified = false;
+    }
+
+    // Notify the first time a continuous outage (including one found on a service's
+    // very first-ever check) has lasted at least notifyDownAfterMinutes.
+    if (curStatus === "down" && !downNotified && wentDownAt !== null && now - wentDownAt >= notifyDelayS) {
+      downNotified = true;
+      transitions.push({ serviceId: svc.id, serviceName: svc.name, prevStatus, curStatus, shouldNotify: true });
     }
 
     db.insert(serviceStatus)
@@ -104,22 +126,15 @@ export async function runServiceChecks(): Promise<{
         lastDownAt,
         lastDownDurationS,
         lastCheckedAt: now,
+        downNotified,
       })
       .onConflictDoUpdate({
         target: serviceStatus.serviceId,
-        set: { status: curStatus, wentDownAt, lastDownAt, lastDownDurationS, lastCheckedAt: now },
+        set: { status: curStatus, wentDownAt, lastDownAt, lastDownDurationS, lastCheckedAt: now, downNotified },
       })
       .run();
 
     results.push({ service: svc, up, wentDownAt, lastDownAt, lastDownDurationS });
-
-    // Notify on any real transition, including a service found down on its very first
-    // check (no prior baseline) — but not when merely establishing an initial "up"
-    // baseline on a fresh install.
-    if (prevStatus !== curStatus) {
-      const shouldNotify = !(prevStatus === null && curStatus === "up");
-      transitions.push({ serviceId: svc.id, serviceName: svc.name, prevStatus, curStatus, shouldNotify });
-    }
   }
 
   return { results, transitions };

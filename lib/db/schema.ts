@@ -46,6 +46,7 @@ export const settings = sqliteTable("settings", {
   smtpUsername: text("smtp_username"),
   smtpPassword: text("smtp_password"),
   smtpShowActionButtons: integer("smtp_show_action_buttons", { mode: "boolean" }).notNull().default(true),
+  notifyDownAfterMinutes: integer("notify_down_after_minutes").notNull().default(3),
 
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -124,6 +125,7 @@ export const serviceStatus = sqliteTable("service_status", {
   lastDownAt: integer("last_down_at"),
   lastDownDurationS: integer("last_down_duration_s"),
   lastCheckedAt: integer("last_checked_at"),
+  downNotified: integer("down_notified", { mode: "boolean" }).notNull().default(false),
 });
 
 export const outageLog = sqliteTable("outage_log", {

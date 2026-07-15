@@ -40,6 +40,7 @@ export const settingsInputSchema = z.object({
   smtpUsername: z.string().max(200).nullable().optional(),
   smtpPassword: z.string().max(500).nullable().optional(),
   smtpShowActionButtons: z.boolean(),
+  notifyDownAfterMinutes: z.number().int().min(0).max(1440),
 });
 
 export const serviceInputSchema = z.object({

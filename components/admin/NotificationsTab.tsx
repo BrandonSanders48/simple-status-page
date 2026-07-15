@@ -88,6 +88,21 @@ export default function NotificationsTab({
           />
           <span className="text-sm font-medium">Show quick-action buttons in notification emails</span>
         </label>
+        <div>
+          <label htmlFor="cfg-notify-delay" className={labelCls}>Only Notify After Down For (minutes)</label>
+          <input
+            id="cfg-notify-delay"
+            type="number"
+            min={0}
+            max={1440}
+            className={inputCls}
+            value={settings.notifyDownAfterMinutes}
+            onChange={(e) => set("notifyDownAfterMinutes", Number(e.target.value))}
+          />
+          <p className="text-xs text-slate-400 mt-1">
+            Skips the outage email for brief blips. A recovery email is only sent if the outage email was too. Set to 0 to notify immediately.
+          </p>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="cfg-email-from" className={labelCls}>From Address</label>
