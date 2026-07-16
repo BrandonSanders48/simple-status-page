@@ -1,4 +1,5 @@
 export interface PowerstoreAlert {
+  id: string;
   severity: string;
   description: string;
 }
@@ -13,7 +14,6 @@ export interface PowerstoreStatus {
   error?: string;
   clusterName?: string;
   clusterState?: string;
-  usedCapacityPercent?: number;
   alerts: PowerstoreAlert[];
   metroSessions: PowerstoreMetroSession[];
 }
@@ -102,7 +102,17 @@ export function CapacityBar({ percent }: { percent: number }) {
   );
 }
 
-export function PowerstoreSection({ status }: { status: PowerstoreStatus }) {
+export function PowerstoreSection({
+  status,
+  canAcknowledge = false,
+  acknowledgingId = null,
+  onAcknowledge,
+}: {
+  status: PowerstoreStatus;
+  canAcknowledge?: boolean;
+  acknowledgingId?: string | null;
+  onAcknowledge?: (alertId: string) => void;
+}) {
   if (!status.ok) {
     return <p className="text-sm text-red-500">Unable to connect to PowerStore: {status.error ?? "unknown error"}</p>;
   }
@@ -119,13 +129,6 @@ export function PowerstoreSection({ status }: { status: PowerstoreStatus }) {
         {status.clusterState && <span className="text-xs text-slate-400">{status.clusterState}</span>}
       </div>
 
-      {status.usedCapacityPercent !== undefined && (
-        <div>
-          <p className="text-xs text-slate-400 mb-1">Capacity used</p>
-          <CapacityBar percent={status.usedCapacityPercent} />
-        </div>
-      )}
-
       <div>
         <p className="text-xs text-slate-400 mb-1">Active alerts ({status.alerts.length})</p>
         {status.alerts.length === 0 ? (
@@ -133,9 +136,19 @@ export function PowerstoreSection({ status }: { status: PowerstoreStatus }) {
         ) : (
           <ul className="space-y-1">
             {status.alerts.slice(0, 5).map((a, i) => (
-              <li key={i} className="text-sm text-slate-600 dark:text-slate-300 flex items-start gap-2">
+              <li key={a.id || i} className="text-sm text-slate-600 dark:text-slate-300 flex items-start gap-2">
                 <Pill ok={!CRITICAL_SEVERITIES.has(a.severity)} label={a.severity} />
                 <span className="flex-1">{a.description}</span>
+                {canAcknowledge && a.id && (
+                  <button
+                    type="button"
+                    onClick={() => onAcknowledge?.(a.id)}
+                    disabled={acknowledgingId === a.id}
+                    className="text-xs font-medium text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {acknowledgingId === a.id ? "Clearing..." : "Clear"}
+                  </button>
+                )}
               </li>
             ))}
           </ul>

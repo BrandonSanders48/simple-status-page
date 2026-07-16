@@ -8,6 +8,7 @@ export interface PowerstoreConfig {
 }
 
 export interface PowerstoreAlert {
+  id: string;
   severity: string;
   description: string;
 }
@@ -22,16 +23,12 @@ export interface PowerstoreStatus {
   error?: string;
   clusterName?: string;
   clusterState?: string;
-  /** Used-capacity percentage, when the array reports it. Absolute figures aren't
-   * surfaced because the capacity field's unit varies across PowerStore API versions
-   * and getting it wrong would show a wildly incorrect number; a percentage is
-   * unit-invariant. */
-  usedCapacityPercent?: number;
   alerts: PowerstoreAlert[];
   metroSessions: PowerstoreMetroSession[];
   /** Non-fatal notes about resources/fields that couldn't be read (e.g. a field name
-   * PowerStore rejected, or Metro not licensed) -- surfaced in the admin Test
-   * Connection summary so a schema mismatch is diagnosable without devtools access. */
+   * PowerStore rejected, or an account lacking permission for Metro) -- surfaced in
+   * the admin Test Connection summary so a schema mismatch is diagnosable without
+   * devtools access. */
   diagnostics: string[];
 }
 
@@ -73,12 +70,23 @@ async function get(cfg: PowerstoreConfig, path: string, select: string | null, t
   }
 }
 
-function firstNumber(obj: JsonRecord | undefined, keys: string[]): number | undefined {
-  for (const key of keys) {
-    const v = obj?.[key];
-    if (typeof v === "number") return v;
+async function patch(cfg: PowerstoreConfig, path: string, body: JsonRecord, timeoutMs = 6000): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await undiciFetch(`https://${cfg.host}/api/rest${path}`, {
+      method: "PATCH",
+      headers: { Authorization: authHeader(cfg), Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      dispatcher: insecureAgent,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) {
+      const respBody = await res.text().catch(() => "");
+      return { ok: false, error: `${path} returned HTTP ${res.status}${respBody ? `: ${respBody.slice(0, 200)}` : ""}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? `${path}: ${err.message}` : `${path}: request failed` };
   }
-  return undefined;
 }
 
 function asRecordArray(value: unknown): JsonRecord[] {
@@ -97,9 +105,8 @@ export function isMetroSessionHealthy(state: string): boolean {
   return HEALTHY_METRO_STATES.has(state.toLowerCase());
 }
 
-/** Cluster identity/health (name, state) -- isolated from the capacity fetch below so a
- * bad capacity field name can never take out name/state too. Falls back to an
- * unfiltered request (guaranteed valid, if sparse) if the select itself is rejected. */
+/** Cluster identity/health (name, state) -- falls back to an unfiltered request
+ * (guaranteed valid, if sparse) if the select itself is rejected. */
 async function fetchClusterIdentity(cfg: PowerstoreConfig, diagnostics: string[]): Promise<JsonRecord | undefined> {
   const attempt = await get(cfg, "/cluster", "id,name,state");
   if (!attempt.error) return asRecordArray(attempt.data)[0];
@@ -111,21 +118,6 @@ async function fetchClusterIdentity(cfg: PowerstoreConfig, diagnostics: string[]
     return undefined;
   }
   return asRecordArray(fallback.data)[0];
-}
-
-/** Best-effort capacity read -- field names vary across PowerStore OS versions, so a
- * 400 here is expected on some arrays and just means no capacity bar is shown. */
-async function fetchClusterCapacity(cfg: PowerstoreConfig, diagnostics: string[]): Promise<{ total?: number; used?: number }> {
-  const attempt = await get(cfg, "/cluster", "id,physical_total,physical_used,usable_total_capacity,usable_used_capacity");
-  if (attempt.error) {
-    diagnostics.push(attempt.error);
-    return {};
-  }
-  const cluster = asRecordArray(attempt.data)[0];
-  return {
-    total: firstNumber(cluster, ["physical_total", "usable_total_capacity"]),
-    used: firstNumber(cluster, ["physical_used", "usable_used_capacity"]),
-  };
 }
 
 async function fetchAlerts(cfg: PowerstoreConfig, diagnostics: string[]): Promise<PowerstoreAlert[]> {
@@ -146,6 +138,7 @@ async function fetchAlerts(cfg: PowerstoreConfig, diagnostics: string[]): Promis
   return rows
     .filter((a) => a.is_acknowledged !== true)
     .map((a) => ({
+      id: typeof a.id === "string" ? a.id : "",
       severity: typeof a.severity === "string" ? a.severity : "Unknown",
       description: typeof a.description_l10n === "string" ? a.description_l10n : "Unnamed alert",
     }));
@@ -157,12 +150,14 @@ async function fetchAlerts(cfg: PowerstoreConfig, diagnostics: string[]): Promis
  * resource on newer arrays, or entries within the general `replication_session`
  * resource on older ones (distinguished by a type/role field mentioning "metro"). Both
  * are tried; whichever responds wins, and a failure on either is recorded as a
- * diagnostic rather than treated as fatal.
+ * diagnostic rather than treated as fatal. A 403 on either specifically means the
+ * configured PowerStore account's role doesn't have replication/Metro read
+ * permission -- that's a PowerStore RBAC setting, not something fixable here.
  */
 async function fetchMetroSessions(cfg: PowerstoreConfig, diagnostics: string[]): Promise<JsonRecord[]> {
   const [dedicated, general] = await Promise.all([
     get(cfg, "/metro_replication_session", "id,name,state"),
-    get(cfg, "/replication_session", "id,name,state,session_type,replication_type,role"),
+    get(cfg, "/replication_session", "id,state,session_type,replication_type,role"),
   ]);
 
   if (dedicated.error) diagnostics.push(dedicated.error);
@@ -179,18 +174,17 @@ async function fetchMetroSessions(cfg: PowerstoreConfig, diagnostics: string[]):
  * health, active alerts, and Metro replication session state.
  *
  * Field names below match the PowerStore REST API as documented for OS 3.x/4.x, but
- * Dell has changed some of them (especially capacity) across versions. Every resource
- * is fetched independently with its own fallback so one wrong field name only loses
- * that one piece of data instead of the entire status -- check `diagnostics` (surfaced
- * in the admin Test Connection summary) for anything that didn't come through, and
+ * Dell has changed some of them across versions. Every resource is fetched
+ * independently with its own fallback so one wrong field name only loses that one
+ * piece of data instead of the entire status -- check `diagnostics` (surfaced in the
+ * admin Test Connection summary) for anything that didn't come through, and
  * cross-reference https://<mgmt-ip>/swaggerui for the actual field names if needed.
  */
 export async function fetchPowerstoreStatus(cfg: PowerstoreConfig): Promise<PowerstoreStatus> {
   const diagnostics: string[] = [];
   try {
-    const [cluster, capacity, alerts, metroRows] = await Promise.all([
+    const [cluster, alerts, metroRows] = await Promise.all([
       fetchClusterIdentity(cfg, diagnostics),
-      fetchClusterCapacity(cfg, diagnostics),
       fetchAlerts(cfg, diagnostics),
       fetchMetroSessions(cfg, diagnostics),
     ]);
@@ -199,8 +193,6 @@ export async function fetchPowerstoreStatus(cfg: PowerstoreConfig): Promise<Powe
       ok: true,
       clusterName: typeof cluster?.name === "string" ? cluster.name : undefined,
       clusterState: typeof cluster?.state === "string" ? cluster.state : undefined,
-      usedCapacityPercent:
-        capacity.total && capacity.used !== undefined && capacity.total > 0 ? (capacity.used / capacity.total) * 100 : undefined,
       alerts,
       metroSessions: metroRows.map((m) => ({
         name: (typeof m.name === "string" && m.name) || (typeof m.id === "string" && m.id) || "Metro session",
@@ -217,4 +209,9 @@ export async function fetchPowerstoreStatus(cfg: PowerstoreConfig): Promise<Powe
       diagnostics,
     };
   }
+}
+
+/** Acknowledges (clears) a PowerStore alert so it drops off the active-alerts list. */
+export async function acknowledgePowerstoreAlert(cfg: PowerstoreConfig, alertId: string): Promise<{ ok: boolean; error?: string }> {
+  return patch(cfg, `/alert/${encodeURIComponent(alertId)}`, { is_acknowledged: true });
 }

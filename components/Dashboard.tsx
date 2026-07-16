@@ -213,6 +213,9 @@ export default function Dashboard({
           loading={!status}
           onOpenOutageLog={() => setShowOutageLog(true)}
           storage={storage}
+          isAdmin={isAdmin}
+          csrfToken={session?.csrfToken}
+          onStorageChanged={loadStorage}
         />
 
         <RssPanel feeds={rss} loading={!rssLoaded} />
