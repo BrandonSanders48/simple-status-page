@@ -40,6 +40,32 @@ export interface StoragePayload {
 const CRITICAL_SEVERITIES = new Set(["Critical", "Major"]);
 const HEALTHY_METRO_STATES = new Set(["ok", "synchronized", "healthy"]);
 
+export function isMetroSessionHealthy(state: string): boolean {
+  return HEALTHY_METRO_STATES.has(state.toLowerCase());
+}
+
+export function isPowerstoreHealthy(status: PowerstoreStatus): boolean {
+  if (!status.ok) return false;
+  if (status.alerts.some((a) => CRITICAL_SEVERITIES.has(a.severity))) return false;
+  if (status.metroSessions.some((m) => !isMetroSessionHealthy(m.state))) return false;
+  return true;
+}
+
+export function isProxmoxHealthy(status: ProxmoxStatus): boolean {
+  if (!status.ok) return false;
+  return status.storages.every((s) => s.active);
+}
+
+/** True unless storage monitoring is enabled and something it's watching (PowerStore
+ * health/alerts/Metro, or Proxmox's view of that storage) is unhealthy -- so the site
+ * banner can fold this in without needing to know it exists when it's off. */
+export function isStorageHealthy(payload: StoragePayload | null): boolean {
+  if (!payload?.enabled) return true;
+  const powerstoreOk = !payload.powerstore || isPowerstoreHealthy(payload.powerstore);
+  const proxmoxOk = !payload.proxmox || isProxmoxHealthy(payload.proxmox);
+  return powerstoreOk && proxmoxOk;
+}
+
 export function Pill({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span
@@ -105,19 +131,21 @@ export function PowerstoreSection({ status }: { status: PowerstoreStatus }) {
         )}
       </div>
 
-      {status.metroSessions.length > 0 && (
-        <div>
-          <p className="text-xs text-slate-400 mb-1">Metro replication</p>
+      <div>
+        <p className="text-xs text-slate-400 mb-1">Metro sync status</p>
+        {status.metroSessions.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">No Metro replication sessions found</p>
+        ) : (
           <ul className="space-y-1">
             {status.metroSessions.map((m, i) => (
               <li key={i} className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
-                <Pill ok={HEALTHY_METRO_STATES.has(m.state.toLowerCase())} label={m.state} />
+                <Pill ok={isMetroSessionHealthy(m.state)} label={m.state} />
                 <span>{m.name}</span>
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

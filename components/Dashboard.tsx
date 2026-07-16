@@ -7,6 +7,7 @@ import NetworkStatusRow from "./NetworkStatusRow";
 import IncidentsPanel from "./IncidentsPanel";
 import RssPanel from "./RssPanel";
 import ServiceTabs from "./ServiceTabs";
+import { isStorageHealthy, type StoragePayload } from "./StorageSections";
 import OutageHistoryModal from "./OutageHistoryModal";
 import DarkModeToggle from "./DarkModeToggle";
 import LoginModal from "./LoginModal";
@@ -61,6 +62,7 @@ export default function Dashboard({
   const lastServiceStates = useRef<Map<number, boolean>>(new Map());
   const [rss, setRss] = useState<RssCardPayload[]>([]);
   const [rssLoaded, setRssLoaded] = useState(false);
+  const [storage, setStorage] = useState<StoragePayload | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [showOutageLog, setShowOutageLog] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -108,6 +110,13 @@ export default function Dashboard({
       .catch(() => {});
   }, []);
 
+  const loadStorage = useCallback(() => {
+    fetch("/api/storage")
+      .then((r) => r.json())
+      .then(setStorage)
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (browserNotify && typeof Notification !== "undefined" && Notification.permission === "default") {
       Notification.requestPermission();
@@ -118,15 +127,20 @@ export default function Dashboard({
     loadStatus();
     loadRss();
     loadIncidents();
+    loadStorage();
     const statusTimer = setInterval(loadStatus, refreshRateMs);
     const rssTimer = setInterval(loadRss, refreshRateMs);
     const incidentsTimer = setInterval(loadIncidents, refreshRateMs);
+    // PowerStore/Proxmox are polled less often than the live service checks -- the
+    // server-side cache backing /api/storage only refreshes every 60s anyway.
+    const storageTimer = setInterval(loadStorage, 60_000);
     return () => {
       clearInterval(statusTimer);
       clearInterval(rssTimer);
       clearInterval(incidentsTimer);
+      clearInterval(storageTimer);
     };
-  }, [loadStatus, loadRss, loadIncidents, refreshRateMs]);
+  }, [loadStatus, loadRss, loadIncidents, loadStorage, refreshRateMs]);
 
   async function handleRemoveIncident(id: number) {
     if (!session) return;
@@ -134,7 +148,9 @@ export default function Dashboard({
     loadIncidents();
   }
 
-  const overallOk = status ? status.services.every((s) => s.up) && status.local.ok !== false && status.wide.ok !== false : null;
+  const overallOk = status
+    ? status.services.every((s) => s.up) && status.local.ok !== false && status.wide.ok !== false && isStorageHealthy(storage)
+    : null;
   const isAdmin = !!session?.authenticated;
 
   return (
@@ -196,6 +212,7 @@ export default function Dashboard({
           visibleCount={servicesVisibleCount}
           loading={!status}
           onOpenOutageLog={() => setShowOutageLog(true)}
+          storage={storage}
         />
 
         <RssPanel feeds={rss} loading={!rssLoaded} />

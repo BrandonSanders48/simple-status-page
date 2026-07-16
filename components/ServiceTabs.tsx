@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import ServicesPanel from "./ServicesPanel";
 import { PowerstoreSection, ProxmoxSection, type StoragePayload } from "./StorageSections";
 import type { StatusServicePayload } from "@/lib/statusCache";
@@ -33,21 +33,15 @@ export default function ServiceTabs({
   visibleCount,
   loading,
   onOpenOutageLog,
+  storage,
 }: {
   services: StatusServicePayload[];
   visibleCount: number;
   loading: boolean;
   onOpenOutageLog: () => void;
+  storage: StoragePayload | null;
 }) {
-  const [storage, setStorage] = useState<StoragePayload | null>(null);
   const [tab, setTab] = useState<TabKey>("services");
-
-  useEffect(() => {
-    const load = () => fetch("/api/storage").then((r) => r.json()).then(setStorage).catch(() => {});
-    load();
-    const timer = setInterval(load, 60_000);
-    return () => clearInterval(timer);
-  }, []);
 
   const hasPowerstore = !!storage?.powerstore;
   const hasProxmox = !!storage?.proxmox;
