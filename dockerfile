@@ -47,9 +47,12 @@ COPY --from=builder /app/migrate-legacy-data.ts ./migrate-legacy-data.ts
 COPY --from=builder /app/include ./include
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 
-RUN mkdir -p /data/uploads /data/ssl \
-    && chown -R nextjs:nodejs /app /data \
-    && chmod +x /docker-entrypoint.sh
+# No recursive chown here: nothing under /app is written to at runtime (default
+# world-readable permissions from COPY are enough for the nextjs user to read/exec
+# it), and /data is a volume that docker-entrypoint.sh already chowns on every
+# container start regardless of how it arrived. A build-time `chown -R` over the
+# full node_modules/.next tree was previously ~40% of the entire image build time.
+RUN chmod +x /docker-entrypoint.sh
 
 ENV NODE_ENV=production
 ENV DATA_DIR=/data
