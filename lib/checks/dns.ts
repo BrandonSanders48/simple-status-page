@@ -26,7 +26,7 @@ function buildQuery(id: number): Buffer {
 /**
  * Real DNS health check: send an actual UDP query and confirm a well-formed DNS
  * response comes back (matching transaction ID, response flag set), rather than just
- * checking whether some port accepts a connection — most DNS servers don't even listen
+ * checking whether some port accepts a connection -- most DNS servers don't even listen
  * on TCP, so a raw TCP connect test can misreport a resolver's real health.
  */
 export function checkDns(host: string, port = 53, timeoutMs = 2000): Promise<boolean> {

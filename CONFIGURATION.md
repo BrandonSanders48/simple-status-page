@@ -26,11 +26,11 @@ All configuration lives in the SQLite database and is managed entirely through t
 | Support Email / Phone | Shown in the footer |
 | Footer Message | Copyright/legal message displayed in the footer |
 
-**Theme Colors** — primary, accent, success, warning, error. Applied via CSS custom properties across the public page.
+**Theme Colors**: primary, accent, success, warning, error. Applied via CSS custom properties across the public page.
 
-**SLA Tracking** — enable/disable, uptime target percentage, and reporting period (weekly/monthly/quarterly). When enabled, the navbar shows a real uptime percentage computed from outage history over the selected period (simultaneous outages across multiple services count once, not per-service), colored green when it meets the target and red when it doesn't.
+**SLA Tracking**: enable/disable, uptime target percentage, and reporting period (weekly/monthly/quarterly). When enabled, the navbar shows a real uptime percentage computed from outage history over the selected period (simultaneous outages across multiple services count once, not per-service), colored green when it meets the target and red when it doesn't.
 
-**About / Meta** — description and author shown in the footer, plus a read-only config version that auto-increments on every save.
+**About / Meta**: description and author shown in the footer, plus a read-only config version that auto-increments on every save.
 
 **Behaviour**
 | Field | Description |
@@ -68,13 +68,13 @@ Each row: name, feed URL, format (RSS or Atom), and description. Maximum 10 feed
 | Public DNS Server | Checked with a real DNS query for the Wide-Area status row |
 | Internal Domain | Informational only |
 
-**ISP Detection Map** — maps your public IP address to a friendly ISP name shown alongside the Wide-Area status.
+**ISP Detection Map**: maps your public IP address to a friendly ISP name shown alongside the Wide-Area status.
 
 ---
 
 ## Notifications Tab
 
-**Display & Behaviour** — alert sound and browser notifications on status change (client-side, requires browser permission), plus the announcement banner text and style (`info`, `warning`, `error`) shown on the public page.
+**Display & Behaviour**: alert sound and browser notifications on status change (client-side, requires browser permission), plus the announcement banner text and style (`info`, `warning`, `error`) shown on the public page.
 
 **Email / Notifications**
 | Field | Description |
@@ -82,7 +82,7 @@ Each row: name, feed URL, format (RSS or Atom), and description. Maximum 10 feed
 | Show quick-action buttons in notification emails | Adds "Work in Progress" / "Mark Resolved" links to down-alert emails that post an incident directly, no login required |
 | From / Reply-To Address | |
 | SMTP Host / Port / Security / Username / Password | Security is `tls` (STARTTLS), `ssl`, or `none` |
-| Send a Test Email | Sends using the currently *saved* SMTP settings — save your changes first |
+| Send a Test Email | Sends using the currently *saved* SMTP settings, save your changes first |
 
 Notifications are sent automatically by a background job inside the app every 2 minutes; no external cron setup is required. A service found down on its very first check still triggers an alert, not just on a later up→down transition.
 
@@ -130,8 +130,8 @@ docker run -d \
 
 ## Tips
 
-1. **Keep it simple** — only configure the services and feeds you actually need
+1. **Keep it simple**: only configure the services and feeds you actually need
 2. **Use HTTPS URLs** for external RSS feeds and logo sources where possible
-3. **Set `AUTH_SECRET`** in production — the app will refuse to start sessions without it
-4. **Back up `/data`** — it holds the entire database, uploaded logo, and SSL certs as a single volume
+3. **Set `AUTH_SECRET`** in production: the app will refuse to start sessions without it
+4. **Back up `/data`**: it holds the entire database, uploaded logo, and SSL certs as a single volume
 5. **Test SMTP with the Send Test button** before relying on real outage alerts

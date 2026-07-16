@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const diagnosticsText = result.diagnostics.length > 0 ? ` (${result.diagnostics.join("; ")})` : "";
     return NextResponse.json({
       ok: true,
-      summary: `Cluster "${result.clusterName ?? "unknown"}" (${result.clusterState ?? "unknown state"}) — ${result.alerts.length} active alert(s), ${result.metroSessions.length} Metro session(s).${diagnosticsText}`,
+      summary: `Cluster "${result.clusterName ?? "unknown"}" (${result.clusterState ?? "unknown state"}), ${result.alerts.length} active alert(s), ${result.metroSessions.length} Metro session(s).${diagnosticsText}`,
     });
   }
 
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const diagnosticsText = result.diagnostics.length > 0 ? ` (${result.diagnostics.join("; ")})` : "";
     return NextResponse.json({
       ok: true,
-      summary: `${result.nodes.length} node(s)${quorumText}, ${offlineNodes} offline — ${storageText}.${diagnosticsText}`,
+      summary: `${result.nodes.length} node(s)${quorumText}, ${offlineNodes} offline, ${storageText}.${diagnosticsText}`,
     });
   }
 

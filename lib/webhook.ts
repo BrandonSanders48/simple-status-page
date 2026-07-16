@@ -17,7 +17,7 @@ export interface WebhookNotification {
 function buildPayload(cfg: Settings, n: WebhookNotification): Record<string, unknown> {
   const emoji = n.status === "down" ? "\u{1F534}" : "\u{1F7E2}";
   const verb = n.status === "down" ? "is DOWN" : "has RECOVERED";
-  const suffix = n.linkUrl ? ` — ${n.linkUrl}` : "";
+  const suffix = n.linkUrl ? ` - ${n.linkUrl}` : "";
 
   if (cfg.webhookFormat === "slack") {
     return { text: `${emoji} *${n.serviceName}* ${verb}${suffix}` };
