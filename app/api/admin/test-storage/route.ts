@@ -30,9 +30,10 @@ export async function POST(request: Request) {
     if (!result.ok) {
       return NextResponse.json({ error: result.error ?? "Failed to connect to PowerStore" }, { status: 502 });
     }
+    const diagnosticsText = result.diagnostics.length > 0 ? ` (${result.diagnostics.join("; ")})` : "";
     return NextResponse.json({
       ok: true,
-      summary: `Cluster "${result.clusterName ?? "unknown"}" (${result.clusterState ?? "unknown state"}) — ${result.alerts.length} active alert(s), ${result.metroSessions.length} Metro session(s).`,
+      summary: `Cluster "${result.clusterName ?? "unknown"}" (${result.clusterState ?? "unknown state"}) — ${result.alerts.length} active alert(s), ${result.metroSessions.length} Metro session(s).${diagnosticsText}`,
     });
   }
 
