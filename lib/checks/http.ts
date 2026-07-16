@@ -1,11 +1,5 @@
-import { Agent, fetch as undiciFetch } from "undici";
-
-// Internal/self-signed endpoints are common for status-page targets, so TLS
-// verification is disabled per-request via this dedicated dispatcher — never via the
-// global NODE_TLS_REJECT_UNAUTHORIZED env var, which would weaken verification for
-// every outbound call in the process (RSS fetches, SMTP, the public-IP lookup), not
-// just internal service checks.
-const insecureAgent = new Agent({ connect: { rejectUnauthorized: false } });
+import { fetch as undiciFetch } from "undici";
+import { insecureAgent } from "@/lib/insecureAgent";
 
 export function httpSchemeFor(type: string, port: number): "http" | "https" {
   if (type.toLowerCase().includes("https")) return "https";

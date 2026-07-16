@@ -41,6 +41,14 @@ export const settingsInputSchema = z.object({
   smtpPassword: z.string().max(500).nullable().optional(),
   smtpShowActionButtons: z.boolean(),
   notifyDownAfterMinutes: z.number().int().min(0).max(1440),
+  storageIntegrationEnabled: z.boolean(),
+  powerstoreHost: z.string().max(300).nullable().optional(),
+  powerstoreUsername: z.string().max(200).nullable().optional(),
+  powerstorePassword: z.string().max(500).nullable().optional(),
+  proxmoxHost: z.string().max(300).nullable().optional(),
+  proxmoxTokenId: z.string().max(300).nullable().optional(),
+  proxmoxTokenSecret: z.string().max(500).nullable().optional(),
+  proxmoxStorageId: z.string().max(200).nullable().optional(),
 });
 
 export const serviceInputSchema = z.object({

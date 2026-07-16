@@ -48,6 +48,15 @@ export const settings = sqliteTable("settings", {
   smtpShowActionButtons: integer("smtp_show_action_buttons", { mode: "boolean" }).notNull().default(true),
   notifyDownAfterMinutes: integer("notify_down_after_minutes").notNull().default(3),
 
+  storageIntegrationEnabled: integer("storage_integration_enabled", { mode: "boolean" }).notNull().default(false),
+  powerstoreHost: text("powerstore_host"),
+  powerstoreUsername: text("powerstore_username"),
+  powerstorePassword: text("powerstore_password"),
+  proxmoxHost: text("proxmox_host"),
+  proxmoxTokenId: text("proxmox_token_id"),
+  proxmoxTokenSecret: text("proxmox_token_secret"),
+  proxmoxStorageId: text("proxmox_storage_id"),
+
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

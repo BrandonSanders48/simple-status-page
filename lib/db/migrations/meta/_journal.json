@@ -15,6 +15,13 @@
       "when": 1784121505263,
       "tag": "0001_classy_moira_mactaggert",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784219358114,
+      "tag": "0002_remarkable_justice",
+      "breakpoints": true
     }
   ]
 }
