@@ -4,10 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import StatusBanner from "./StatusBanner";
 import NetworkStatusRow from "./NetworkStatusRow";
-import ServicesPanel from "./ServicesPanel";
 import IncidentsPanel from "./IncidentsPanel";
 import RssPanel from "./RssPanel";
-import StoragePanel from "./StoragePanel";
+import ServiceTabs from "./ServiceTabs";
 import OutageHistoryModal from "./OutageHistoryModal";
 import DarkModeToggle from "./DarkModeToggle";
 import LoginModal from "./LoginModal";
@@ -192,9 +191,7 @@ export default function Dashboard({
 
         <NetworkStatusRow local={status?.local ?? null} wide={status?.wide ?? null} />
 
-        <StoragePanel />
-
-        <ServicesPanel
+        <ServiceTabs
           services={status?.services ?? []}
           visibleCount={servicesVisibleCount}
           loading={!status}

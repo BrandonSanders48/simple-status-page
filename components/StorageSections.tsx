@@ -1,18 +1,14 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
-interface PowerstoreAlert {
+export interface PowerstoreAlert {
   severity: string;
   description: string;
 }
 
-interface PowerstoreMetroSession {
+export interface PowerstoreMetroSession {
   name: string;
   state: string;
 }
 
-interface PowerstoreStatus {
+export interface PowerstoreStatus {
   ok: boolean;
   error?: string;
   clusterName?: string;
@@ -22,20 +18,20 @@ interface PowerstoreStatus {
   metroSessions: PowerstoreMetroSession[];
 }
 
-interface ProxmoxStorageEntry {
+export interface ProxmoxStorageEntry {
   node: string;
   storage: string;
   active: boolean;
   usedPercent?: number;
 }
 
-interface ProxmoxStatus {
+export interface ProxmoxStatus {
   ok: boolean;
   error?: string;
   storages: ProxmoxStorageEntry[];
 }
 
-interface StoragePayload {
+export interface StoragePayload {
   enabled: boolean;
   powerstore: PowerstoreStatus | null;
   proxmox: ProxmoxStatus | null;
@@ -44,7 +40,7 @@ interface StoragePayload {
 const CRITICAL_SEVERITIES = new Set(["Critical", "Major"]);
 const HEALTHY_METRO_STATES = new Set(["ok", "synchronized", "healthy"]);
 
-function Pill({ ok, label }: { ok: boolean; label: string }) {
+export function Pill({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span
       className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
@@ -56,7 +52,7 @@ function Pill({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
-function CapacityBar({ percent }: { percent: number }) {
+export function CapacityBar({ percent }: { percent: number }) {
   const clamped = Math.min(100, Math.max(0, percent));
   const barColor = clamped >= 90 ? "bg-red-500" : clamped >= 75 ? "bg-amber-500" : "bg-emerald-500";
   return (
@@ -69,9 +65,9 @@ function CapacityBar({ percent }: { percent: number }) {
   );
 }
 
-function PowerstoreSection({ status }: { status: PowerstoreStatus }) {
+export function PowerstoreSection({ status }: { status: PowerstoreStatus }) {
   if (!status.ok) {
-    return <p className="text-sm text-red-500">PowerStore: {status.error ?? "unable to connect"}</p>;
+    return <p className="text-sm text-red-500">Unable to connect to PowerStore: {status.error ?? "unknown error"}</p>;
   }
 
   const hasCriticalAlert = status.alerts.some((a) => CRITICAL_SEVERITIES.has(a.severity));
@@ -126,9 +122,9 @@ function PowerstoreSection({ status }: { status: PowerstoreStatus }) {
   );
 }
 
-function ProxmoxSection({ status }: { status: ProxmoxStatus }) {
+export function ProxmoxSection({ status }: { status: ProxmoxStatus }) {
   if (!status.ok) {
-    return <p className="text-sm text-red-500">Proxmox: {status.error ?? "unable to connect"}</p>;
+    return <p className="text-sm text-red-500">Unable to connect to Proxmox: {status.error ?? "unknown error"}</p>;
   }
   if (status.storages.length === 0) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">No matching storage found on the Proxmox cluster.</p>;
@@ -148,40 +144,5 @@ function ProxmoxSection({ status }: { status: ProxmoxStatus }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-export default function StoragePanel() {
-  const [data, setData] = useState<StoragePayload | null>(null);
-
-  useEffect(() => {
-    const load = () => fetch("/api/storage").then((r) => r.json()).then(setData).catch(() => {});
-    load();
-    const timer = setInterval(load, 60_000);
-    return () => clearInterval(timer);
-  }, []);
-
-  if (!data?.enabled || (!data.powerstore && !data.proxmox)) return null;
-
-  return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5 mb-5">
-      <h5 className="flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-200 mb-4">
-        <i className="fa-solid fa-database text-cyan-500" /> Storage
-      </h5>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {data.powerstore && (
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">PowerStore</p>
-            <PowerstoreSection status={data.powerstore} />
-          </div>
-        )}
-        {data.proxmox && (
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Proxmox Cluster</p>
-            <ProxmoxSection status={data.proxmox} />
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
