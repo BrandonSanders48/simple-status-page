@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, notInArray } from "drizzle-orm";
 import { db } from "./db/client";
-import { settings, services, rssFeeds, ispMapEntries } from "./db/schema";
+import { settings, services, rssFeeds, ispMapEntries, statusCategories } from "./db/schema";
 
 export const MAX_SERVICES = 20;
 export const MAX_RSS_FEEDS = 10;
@@ -49,6 +49,9 @@ export const settingsInputSchema = z.object({
   proxmoxTokenId: z.string().max(300).nullable().optional(),
   proxmoxTokenSecret: z.string().max(500).nullable().optional(),
   proxmoxStorageId: z.string().max(200).nullable().optional(),
+  webhookEnabled: z.boolean(),
+  webhookUrl: z.string().max(500).nullable().optional(),
+  webhookFormat: z.enum(["slack", "discord", "generic"]),
 });
 
 export const serviceInputSchema = z.object({
@@ -73,11 +76,18 @@ export const ispMapInputSchema = z.object({
   name: z.string().min(1).max(200),
 });
 
+export const statusCategoryInputSchema = z.object({
+  key: z.string().min(1).max(50),
+  label: z.string().min(1).max(100),
+  color: z.string().min(1).max(30),
+});
+
 export const configPayloadSchema = z.object({
   settings: settingsInputSchema,
   services: z.array(serviceInputSchema).max(MAX_SERVICES),
   rssFeeds: z.array(rssFeedInputSchema).max(MAX_RSS_FEEDS),
   ispMap: z.array(ispMapInputSchema),
+  statusCategories: z.array(statusCategoryInputSchema).max(20),
 });
 
 export type ConfigPayload = z.infer<typeof configPayloadSchema>;
@@ -87,7 +97,8 @@ export function getFullConfig() {
   const svc = db.select().from(services).all();
   const rss = db.select().from(rssFeeds).all();
   const isp = db.select().from(ispMapEntries).all();
-  return { settings: cfg, services: svc, rssFeeds: rss, ispMap: isp };
+  const categories = db.select().from(statusCategories).all();
+  return { settings: cfg, services: svc, rssFeeds: rss, ispMap: isp, statusCategories: categories };
 }
 
 function bumpVersion(current: string): string {
@@ -142,6 +153,15 @@ export function saveFullConfig(payload: ConfigPayload) {
     if (payload.ispMap.length > 0) {
       tx.insert(ispMapEntries).values(payload.ispMap).run();
     }
+
+    // Keys are a fixed seeded set (see migrate.ts) -- only label/color are editable,
+    // so this updates existing rows rather than delete-and-reinsert.
+    payload.statusCategories.forEach((cat) => {
+      tx.update(statusCategories)
+        .set({ label: cat.label, color: cat.color })
+        .where(eq(statusCategories.key, cat.key))
+        .run();
+    });
   });
 
   return getFullConfig();

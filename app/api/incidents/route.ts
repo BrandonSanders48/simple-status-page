@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { desc } from "drizzle-orm";
+import { asc, desc } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { incidents } from "@/lib/db/schema";
+import { incidents, incidentUpdates } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { verifyCsrf } from "@/lib/csrf";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
@@ -10,7 +10,17 @@ const ALLOWED_SEVERITIES = ["degraded", "outage", "maintenance", "resolved"];
 
 export async function GET() {
   const rows = db.select().from(incidents).orderBy(desc(incidents.startTime)).all();
-  return NextResponse.json(rows);
+  const updates = db.select().from(incidentUpdates).orderBy(asc(incidentUpdates.createdAt)).all();
+
+  const updatesByIncident = new Map<number, typeof updates>();
+  for (const u of updates) {
+    const list = updatesByIncident.get(u.incidentId) ?? [];
+    list.push(u);
+    updatesByIncident.set(u.incidentId, list);
+  }
+
+  const withUpdates = rows.map((r) => ({ ...r, updates: updatesByIncident.get(r.id) ?? [] }));
+  return NextResponse.json(withUpdates);
 }
 
 export async function POST(request: Request) {

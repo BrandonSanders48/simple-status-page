@@ -57,6 +57,10 @@ export const settings = sqliteTable("settings", {
   proxmoxTokenSecret: text("proxmox_token_secret"),
   proxmoxStorageId: text("proxmox_storage_id"),
 
+  webhookEnabled: integer("webhook_enabled", { mode: "boolean" }).notNull().default(false),
+  webhookUrl: text("webhook_url"),
+  webhookFormat: text("webhook_format").notNull().default("generic"), // slack | discord | generic
+
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -107,6 +111,18 @@ export const incidents = sqliteTable("incidents", {
   severity: text("severity").notNull(), // degraded | outage | maintenance | resolved
   startTime: text("start_time").notNull(),
   endTime: text("end_time"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Timeline entries posted after an incident's initial creation (the incident's own
+// title/description/severity/startTime doubles as the first entry in that timeline).
+export const incidentUpdates = sqliteTable("incident_updates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  incidentId: integer("incident_id")
+    .notNull()
+    .references(() => incidents.id, { onDelete: "cascade" }),
+  status: text("status").notNull(), // investigating | identified | monitoring | resolved
+  message: text("message").notNull(),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

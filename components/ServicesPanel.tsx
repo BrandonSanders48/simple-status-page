@@ -5,11 +5,17 @@ import ServiceCard from "./ServiceCard";
 import Skeleton from "./Skeleton";
 import type { StatusServicePayload } from "@/lib/statusCache";
 
+interface DayUptime {
+  date: string;
+  upPercent: number | null;
+}
+
 interface Props {
   services: StatusServicePayload[];
   visibleCount: number;
   loading: boolean;
   onOpenOutageLog: () => void;
+  uptimeByService?: Record<number, DayUptime[]>;
 }
 
 function ServiceCardSkeleton() {
@@ -25,7 +31,7 @@ function ServiceCardSkeleton() {
   );
 }
 
-export default function ServicesPanel({ services, visibleCount, loading, onOpenOutageLog }: Props) {
+export default function ServicesPanel({ services, visibleCount, loading, onOpenOutageLog, uptimeByService }: Props) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? services : services.slice(0, visibleCount);
   const hiddenCount = services.length - visibleCount;
@@ -56,7 +62,7 @@ export default function ServicesPanel({ services, visibleCount, loading, onOpenO
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
             {shown.map((s) => (
-              <ServiceCard key={s.id} service={s} />
+              <ServiceCard key={s.id} service={s} uptime={uptimeByService?.[s.id]} />
             ))}
           </div>
           {hiddenCount > 0 && (

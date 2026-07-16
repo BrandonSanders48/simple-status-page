@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/useSession";
-import type { FullConfig, SettingsRow, DraftService, IspMapRow } from "@/lib/adminTypes";
+import type { FullConfig, SettingsRow, DraftService, IspMapRow, StatusCategoryRow } from "@/lib/adminTypes";
 import GeneralTab from "./GeneralTab";
 import ServicesTab from "./ServicesTab";
 import RssTab, { type DraftFeed } from "./RssTab";
@@ -11,10 +11,12 @@ import NetworkTab from "./NetworkTab";
 import NotificationsTab from "./NotificationsTab";
 import SslTab from "./SslTab";
 import StorageTab from "./StorageTab";
+import StatusCategoriesTab from "./StatusCategoriesTab";
 
 const SECTIONS = [
   { key: "general", label: "General", icon: "fa-sliders", color: "text-emerald-500" },
   { key: "services", label: "Services", icon: "fa-server", color: "text-indigo-500" },
+  { key: "categories", label: "Status Labels", icon: "fa-tags", color: "text-pink-500" },
   { key: "rss", label: "RSS Feeds", icon: "fa-rss", color: "text-orange-500" },
   { key: "network", label: "Network", icon: "fa-network-wired", color: "text-sky-500" },
   { key: "storage", label: "Storage", icon: "fa-database", color: "text-cyan-500" },
@@ -30,6 +32,7 @@ export default function AdminDashboard() {
   const [services, setServices] = useState<DraftService[]>([]);
   const [rssFeeds, setRssFeeds] = useState<DraftFeed[]>([]);
   const [ispMap, setIspMap] = useState<IspMapRow[]>([]);
+  const [statusCategories, setStatusCategories] = useState<StatusCategoryRow[]>([]);
   const [saveState, setSaveState] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -43,6 +46,7 @@ export default function AdminDashboard() {
       setServices(data.services);
       setRssFeeds(data.rssFeeds);
       setIspMap(data.ispMap);
+      setStatusCategories(data.statusCategories);
     }
     setLoading(false);
   }, []);
@@ -91,6 +95,7 @@ export default function AdminDashboard() {
       })),
       rssFeeds: rssFeeds.map(({ name, host, tag, description }) => ({ name, host, tag, description })),
       ispMap: ispMap.map(({ ip, name }) => ({ ip, name })),
+      statusCategories: statusCategories.map(({ key, label, color }) => ({ key, label, color })),
     };
 
     try {
@@ -105,6 +110,7 @@ export default function AdminDashboard() {
       setServices(data.services);
       setRssFeeds(data.rssFeeds);
       setIspMap(data.ispMap);
+      setStatusCategories(data.statusCategories);
       setSaveState({ ok: true, text: "Configuration saved successfully." });
     } catch (err) {
       setSaveState({ ok: false, text: err instanceof Error ? err.message : "Failed to save." });
@@ -179,6 +185,8 @@ export default function AdminDashboard() {
               <GeneralTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
             ) : s.key === "services" ? (
               <ServicesTab services={services} onChange={setServices} />
+            ) : s.key === "categories" ? (
+              <StatusCategoriesTab categories={statusCategories} onChange={setStatusCategories} />
             ) : s.key === "rss" ? (
               <RssTab feeds={rssFeeds} onChange={setRssFeeds} />
             ) : s.key === "network" ? (

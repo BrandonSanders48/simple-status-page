@@ -7,6 +7,11 @@ import type { StatusServicePayload } from "@/lib/statusCache";
 
 type TabKey = "services" | "storage" | "proxmox";
 
+interface DayUptime {
+  date: string;
+  upPercent: number | null;
+}
+
 function TabButton({
   active,
   onClick,
@@ -59,6 +64,7 @@ export default function ServiceTabs({
   isAdmin,
   csrfToken,
   onStorageChanged,
+  uptimeByService,
 }: {
   services: StatusServicePayload[];
   visibleCount: number;
@@ -68,6 +74,7 @@ export default function ServiceTabs({
   isAdmin: boolean;
   csrfToken?: string;
   onStorageChanged: () => void;
+  uptimeByService?: Record<number, DayUptime[]>;
 }) {
   const [tab, setTab] = useState<TabKey>("services");
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
@@ -93,7 +100,15 @@ export default function ServiceTabs({
   }
 
   if (!hasPowerstore && !hasProxmox) {
-    return <ServicesPanel services={services} visibleCount={visibleCount} loading={loading} onOpenOutageLog={onOpenOutageLog} />;
+    return (
+      <ServicesPanel
+        services={services}
+        visibleCount={visibleCount}
+        loading={loading}
+        onOpenOutageLog={onOpenOutageLog}
+        uptimeByService={uptimeByService}
+      />
+    );
   }
 
   const activeTab = (tab === "storage" && !hasPowerstore) || (tab === "proxmox" && !hasProxmox) ? "services" : tab;
@@ -133,7 +148,13 @@ export default function ServiceTabs({
       </div>
 
       {activeTab === "services" && (
-        <ServicesPanel services={services} visibleCount={visibleCount} loading={loading} onOpenOutageLog={onOpenOutageLog} />
+        <ServicesPanel
+          services={services}
+          visibleCount={visibleCount}
+          loading={loading}
+          onOpenOutageLog={onOpenOutageLog}
+          uptimeByService={uptimeByService}
+        />
       )}
       {activeTab === "storage" && storage?.powerstore && (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">

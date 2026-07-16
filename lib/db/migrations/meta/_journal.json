@@ -22,6 +22,13 @@
       "when": 1784219358114,
       "tag": "0002_remarkable_justice",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1784230043801,
+      "tag": "0003_redundant_maximus",
+      "breakpoints": true
     }
   ]
 }

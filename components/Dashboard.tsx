@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import StatusBanner from "./StatusBanner";
 import NetworkStatusRow from "./NetworkStatusRow";
-import IncidentsPanel from "./IncidentsPanel";
+import IncidentsPanel, { type StatusCategory } from "./IncidentsPanel";
+import MaintenanceBanner from "./MaintenanceBanner";
+import CreateMaintenanceModal from "./CreateMaintenanceModal";
 import RssPanel from "./RssPanel";
 import ServiceTabs from "./ServiceTabs";
 import { isStorageHealthy, type StoragePayload } from "./StorageSections";
@@ -28,6 +30,19 @@ interface Incident {
   severity: "degraded" | "outage" | "maintenance" | "resolved";
   startTime: string;
   endTime: string | null;
+}
+
+interface MaintenanceWindow {
+  id: number;
+  title: string | null;
+  description: string | null;
+  startTime: string | null;
+  endTime: string | null;
+}
+
+interface DayUptime {
+  date: string;
+  upPercent: number | null;
 }
 
 export default function Dashboard({
@@ -64,9 +79,13 @@ export default function Dashboard({
   const [rssLoaded, setRssLoaded] = useState(false);
   const [storage, setStorage] = useState<StoragePayload | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [maintenanceWindows, setMaintenanceWindows] = useState<MaintenanceWindow[]>([]);
+  const [categories, setCategories] = useState<StatusCategory[]>([]);
+  const [uptimeByService, setUptimeByService] = useState<Record<number, DayUptime[]>>({});
   const [showOutageLog, setShowOutageLog] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showCreateIncident, setShowCreateIncident] = useState(false);
+  const [showCreateMaintenance, setShowCreateMaintenance] = useState(false);
   const [showSubscribe, setShowSubscribe] = useState(false);
   const [showManageSubs, setShowManageSubs] = useState(false);
 
@@ -117,6 +136,28 @@ export default function Dashboard({
       .catch(() => {});
   }, []);
 
+  const loadMaintenance = useCallback(() => {
+    fetch("/api/maintenance")
+      .then((r) => r.json())
+      .then(setMaintenanceWindows)
+      .catch(() => {});
+  }, []);
+
+  const loadUptime = useCallback(() => {
+    fetch("/api/uptime?days=30")
+      .then((r) => r.json())
+      .then(setUptimeByService)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    // Rarely changes -- fetched once rather than on the polling loop.
+    fetch("/api/status-categories")
+      .then((r) => r.json())
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (browserNotify && typeof Notification !== "undefined" && Notification.permission === "default") {
       Notification.requestPermission();
@@ -128,24 +169,38 @@ export default function Dashboard({
     loadRss();
     loadIncidents();
     loadStorage();
+    loadMaintenance();
+    loadUptime();
     const statusTimer = setInterval(loadStatus, refreshRateMs);
     const rssTimer = setInterval(loadRss, refreshRateMs);
     const incidentsTimer = setInterval(loadIncidents, refreshRateMs);
     // PowerStore/Proxmox are polled less often than the live service checks -- the
     // server-side cache backing /api/storage only refreshes every 60s anyway.
     const storageTimer = setInterval(loadStorage, 60_000);
+    // Maintenance schedules change rarely -- no need to poll as often as live status.
+    const maintenanceTimer = setInterval(loadMaintenance, 60_000);
+    // Uptime history only changes on the 2-min background check cycle.
+    const uptimeTimer = setInterval(loadUptime, 60_000);
     return () => {
       clearInterval(statusTimer);
       clearInterval(rssTimer);
       clearInterval(incidentsTimer);
       clearInterval(storageTimer);
+      clearInterval(maintenanceTimer);
+      clearInterval(uptimeTimer);
     };
-  }, [loadStatus, loadRss, loadIncidents, loadStorage, refreshRateMs]);
+  }, [loadStatus, loadRss, loadIncidents, loadStorage, loadMaintenance, loadUptime, refreshRateMs]);
 
   async function handleRemoveIncident(id: number) {
     if (!session) return;
     await fetch(`/api/incidents/${id}`, { method: "DELETE", headers: { "X-CSRF-Token": session.csrfToken } });
     loadIncidents();
+  }
+
+  async function handleRemoveMaintenance(id: number) {
+    if (!session) return;
+    await fetch(`/api/maintenance/${id}`, { method: "DELETE", headers: { "X-CSRF-Token": session.csrfToken } });
+    loadMaintenance();
   }
 
   const overallOk = status
@@ -203,7 +258,16 @@ export default function Dashboard({
         <StatusBanner loading={!status} ok={overallOk} live={!!status} />
         <div className="h-5 mb-4" />
 
-        <IncidentsPanel incidents={incidents} isAdmin={isAdmin} onRemove={handleRemoveIncident} />
+        <IncidentsPanel
+          incidents={incidents}
+          isAdmin={isAdmin}
+          onRemove={handleRemoveIncident}
+          categories={categories}
+          csrfToken={session?.csrfToken}
+          onChanged={loadIncidents}
+        />
+
+        <MaintenanceBanner windows={maintenanceWindows} isAdmin={isAdmin} onRemove={handleRemoveMaintenance} />
 
         <NetworkStatusRow local={status?.local ?? null} wide={status?.wide ?? null} />
 
@@ -216,6 +280,7 @@ export default function Dashboard({
           isAdmin={isAdmin}
           csrfToken={session?.csrfToken}
           onStorageChanged={loadStorage}
+          uptimeByService={uptimeByService}
         />
 
         <RssPanel feeds={rss} loading={!rssLoaded} />
@@ -231,6 +296,15 @@ export default function Dashboard({
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-400 shadow-lg rounded-xl text-white text-sm font-medium"
           >
             <i className="fa-solid fa-triangle-exclamation" /> Incidents
+          </button>
+        )}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setShowCreateMaintenance(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-500 shadow-lg rounded-xl text-white text-sm font-medium"
+          >
+            <i className="fa-solid fa-wrench" /> Maintenance
           </button>
         )}
         <button
@@ -256,6 +330,13 @@ export default function Dashboard({
           csrfToken={session.csrfToken}
           onClose={() => setShowCreateIncident(false)}
           onCreated={loadIncidents}
+        />
+      )}
+      {showCreateMaintenance && session && (
+        <CreateMaintenanceModal
+          csrfToken={session.csrfToken}
+          onClose={() => setShowCreateMaintenance(false)}
+          onCreated={loadMaintenance}
         />
       )}
       {showSubscribe && session && (

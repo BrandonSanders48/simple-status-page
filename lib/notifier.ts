@@ -6,53 +6,74 @@ import { isSmtpConfigured, sendMail } from "./mailer";
 import { renderStatusChangeEmail } from "./emailTemplates";
 import { generateActionTokens } from "./emailTokens";
 import { resolvePageUrl } from "./pageUrl";
+import { isWebhookConfigured, sendWebhookNotification } from "./webhook";
 
 /**
- * Sends subscriber emails for service status transitions. Called from the periodic
- * background job with the transitions detected by the same check pass that persisted
- * them, so this never re-runs checks itself.
+ * Sends subscriber emails and/or a webhook (Slack/Discord/generic) notification for
+ * service status transitions. Called from the periodic background job with the
+ * transitions detected by the same check pass that persisted them, so this never
+ * re-runs checks itself. The two channels are independent -- either, both, or neither
+ * can be configured.
  */
 export async function notifyTransitions(transitions: ServiceTransition[]): Promise<void> {
   const toNotify = transitions.filter((t) => t.shouldNotify);
   if (toNotify.length === 0) return;
 
   const cfg = db.select().from(settings).get();
-  if (!isSmtpConfigured(cfg)) {
-    console.log("[notifier] SMTP not configured, skipping", toNotify.length, "notification(s)");
+  const url = cfg ? resolvePageUrl(cfg) : null;
+
+  const smtpReady = isSmtpConfigured(cfg);
+  const webhookReady = isWebhookConfigured(cfg);
+  if (!smtpReady && !webhookReady) {
+    console.log("[notifier] no notification channel configured, skipping", toNotify.length, "notification(s)");
     return;
   }
 
-  const url = resolvePageUrl(cfg);
-
   for (const transition of toNotify) {
-    const subs = db
-      .select({ email: subscriptions.email })
-      .from(subscriptions)
-      .where(eq(subscriptions.serviceId, transition.serviceId))
-      .all();
-    if (subs.length === 0) continue;
+    if (smtpReady) {
+      const subs = db
+        .select({ email: subscriptions.email })
+        .from(subscriptions)
+        .where(eq(subscriptions.serviceId, transition.serviceId))
+        .all();
 
-    const actionUrls =
-      cfg.smtpShowActionButtons && transition.curStatus === "down" && url
-        ? generateActionTokens(transition.serviceId, transition.serviceName, url)
-        : null;
+      if (subs.length > 0) {
+        const actionUrls =
+          cfg.smtpShowActionButtons && transition.curStatus === "down" && url
+            ? generateActionTokens(transition.serviceId, transition.serviceName, url)
+            : null;
 
-    const html = renderStatusChangeEmail({
-      businessName: cfg.businessName,
-      accentColor: cfg.themeAccentColor,
-      serviceName: transition.serviceName,
-      status: transition.curStatus,
-      linkUrl: url,
-      actionUrls,
-    });
+        const html = renderStatusChangeEmail({
+          businessName: cfg.businessName,
+          accentColor: cfg.themeAccentColor,
+          serviceName: transition.serviceName,
+          status: transition.curStatus,
+          linkUrl: url,
+          actionUrls,
+        });
 
-    const subject = `Service '${transition.serviceName}' is now ${transition.curStatus.toUpperCase()}`;
+        const subject = `Service '${transition.serviceName}' is now ${transition.curStatus.toUpperCase()}`;
 
-    for (const { email } of subs) {
+        for (const { email } of subs) {
+          try {
+            await sendMail(cfg, { to: email, subject, html });
+          } catch (err) {
+            console.error(`[notifier] failed to email ${email} about ${transition.serviceName}:`, err);
+          }
+        }
+      }
+    }
+
+    if (webhookReady) {
       try {
-        await sendMail(cfg, { to: email, subject, html });
+        await sendWebhookNotification(cfg, {
+          businessName: cfg.businessName,
+          serviceName: transition.serviceName,
+          status: transition.curStatus,
+          linkUrl: url,
+        });
       } catch (err) {
-        console.error(`[notifier] failed to email ${email} about ${transition.serviceName}:`, err);
+        console.error(`[notifier] failed to post webhook for ${transition.serviceName}:`, err);
       }
     }
   }

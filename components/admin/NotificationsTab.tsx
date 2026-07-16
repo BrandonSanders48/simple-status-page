@@ -17,6 +17,8 @@ export default function NotificationsTab({
   const [testTo, setTestTo] = useState("");
   const [testStatus, setTestStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [sending, setSending] = useState(false);
+  const [webhookTestStatus, setWebhookTestStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const [webhookTesting, setWebhookTesting] = useState(false);
 
   function set<K extends keyof SettingsRow>(key: K, value: SettingsRow[K]) {
     onChange({ ...settings, [key]: value });
@@ -39,6 +41,25 @@ export default function NotificationsTab({
       setTestStatus({ ok: false, text: err instanceof Error ? err.message : "Failed to send test email." });
     } finally {
       setSending(false);
+    }
+  }
+
+  async function sendWebhookTest() {
+    setWebhookTesting(true);
+    setWebhookTestStatus(null);
+    try {
+      const res = await fetch("/api/admin/test-webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+        body: JSON.stringify({ url: settings.webhookUrl, format: settings.webhookFormat }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send test webhook.");
+      setWebhookTestStatus({ ok: true, text: "Test webhook sent!" });
+    } catch (err) {
+      setWebhookTestStatus({ ok: false, text: err instanceof Error ? err.message : "Failed to send test webhook." });
+    } finally {
+      setWebhookTesting(false);
     }
   }
 
@@ -176,6 +197,60 @@ export default function NotificationsTab({
             <p className={`text-xs mt-2 ${testStatus.ok ? "text-emerald-600" : "text-red-500"}`}>{testStatus.text}</p>
           )}
           <p className="text-xs text-slate-400 mt-1">Uses the saved SMTP settings, save your changes first.</p>
+        </div>
+      </SettingsGroup>
+
+      <SettingsGroup
+        title="Webhook / Chat Notifications"
+        description="Posts the same outage/recovery alerts to a Slack, Discord, or generic webhook URL, independent of subscriber emails."
+        wide
+      >
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={settings.webhookEnabled}
+            onChange={(e) => set("webhookEnabled", e.target.checked)}
+            className="w-4 h-4 accent-indigo-600"
+          />
+          <span className="text-sm font-medium">Enable webhook notifications</span>
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <label htmlFor="cfg-webhook-url" className={labelCls}>Webhook URL</label>
+            <input
+              id="cfg-webhook-url"
+              className={inputCls}
+              value={settings.webhookUrl ?? ""}
+              onChange={(e) => set("webhookUrl", e.target.value)}
+              placeholder="https://hooks.slack.com/services/..."
+            />
+          </div>
+          <div>
+            <label htmlFor="cfg-webhook-format" className={labelCls}>Format</label>
+            <select
+              id="cfg-webhook-format"
+              className={inputCls}
+              value={settings.webhookFormat}
+              onChange={(e) => set("webhookFormat", e.target.value as SettingsRow["webhookFormat"])}
+            >
+              <option value="slack">Slack</option>
+              <option value="discord">Discord</option>
+              <option value="generic">Generic JSON</option>
+            </select>
+          </div>
+        </div>
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800/70">
+          <button
+            type="button"
+            onClick={sendWebhookTest}
+            disabled={webhookTesting || !settings.webhookUrl}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg whitespace-nowrap disabled:opacity-60"
+          >
+            <i className="fa-solid fa-paper-plane text-xs mr-1.5" /> {webhookTesting ? "Sending..." : "Send Test"}
+          </button>
+          {webhookTestStatus && (
+            <p className={`text-xs mt-2 ${webhookTestStatus.ok ? "text-emerald-600" : "text-red-500"}`}>{webhookTestStatus.text}</p>
+          )}
         </div>
       </SettingsGroup>
     </div>

@@ -3,8 +3,14 @@
 import { useEffect, useState } from "react";
 import { formatDuration, formatTimestamp } from "@/lib/format";
 import type { StatusServicePayload } from "@/lib/statusCache";
+import UptimeSparkline from "./UptimeSparkline";
 
-export default function ServiceCard({ service }: { service: StatusServicePayload }) {
+interface DayUptime {
+  date: string;
+  upPercent: number | null;
+}
+
+export default function ServiceCard({ service, uptime }: { service: StatusServicePayload; uptime?: DayUptime[] }) {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   useEffect(() => {
@@ -49,6 +55,7 @@ export default function ServiceCard({ service }: { service: StatusServicePayload
           {formatDuration(now - service.wentDownAt)}
         </p>
       )}
+      {uptime && uptime.length > 0 && <UptimeSparkline days={uptime} />}
     </div>
   );
 }
