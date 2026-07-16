@@ -2,6 +2,7 @@ export interface PowerstoreAlert {
   id: string;
   severity: string;
   description: string;
+  raisedAt?: string;
 }
 
 export interface PowerstoreMetroSession {
@@ -60,6 +61,12 @@ export interface StoragePayload {
 
 const CRITICAL_SEVERITIES = new Set(["critical", "major"]);
 const HEALTHY_METRO_STATES = new Set(["ok", "synchronized", "healthy"]);
+
+function formatAlertTime(raisedAt: string): string {
+  const d = new Date(raisedAt);
+  if (isNaN(d.getTime())) return raisedAt;
+  return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 
 /** Info/Minor/Warning alerts are noise, not issues -- only Critical/Major should ever
  * flip a tab badge, the "Attention" pill, or the overall status banner to unhealthy. */
@@ -160,7 +167,10 @@ export function PowerstoreSection({
             {status.alerts.slice(0, 5).map((a, i) => (
               <li key={a.id || i} className="text-sm text-slate-600 dark:text-slate-300 flex items-start gap-2">
                 <Pill ok={!isCriticalSeverity(a.severity)} label={a.severity} />
-                <span className="flex-1">{a.description}</span>
+                <span className="flex-1">
+                  {a.description}
+                  {a.raisedAt && <span className="block text-xs text-slate-400 dark:text-slate-500">{formatAlertTime(a.raisedAt)}</span>}
+                </span>
                 {canAcknowledge && a.id && (
                   <button
                     type="button"

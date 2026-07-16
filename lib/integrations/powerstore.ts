@@ -11,6 +11,8 @@ export interface PowerstoreAlert {
   id: string;
   severity: string;
   description: string;
+  /** ISO timestamp of when the alert was raised, when the array reports it. */
+  raisedAt?: string;
 }
 
 export interface PowerstoreMetroSession {
@@ -121,18 +123,19 @@ async function fetchClusterIdentity(cfg: PowerstoreConfig, diagnostics: string[]
 }
 
 async function fetchAlerts(cfg: PowerstoreConfig, diagnostics: string[]): Promise<PowerstoreAlert[]> {
-  const attempt = await get(cfg, "/alert", "id,severity,description_l10n,is_acknowledged");
-  let rows: JsonRecord[];
-  if (!attempt.error) {
-    rows = asRecordArray(attempt.data);
-  } else {
-    diagnostics.push(attempt.error);
-    const fallback = await get(cfg, "/alert", "id,severity,is_acknowledged");
-    if (fallback.error) {
-      diagnostics.push(fallback.error);
-      return [];
+  // Tries the fullest field set first and narrows on failure -- select validates
+  // fail-fast (see fetchMetroSessions), so a field this array doesn't recognize only
+  // costs whatever comes after it in the list, not the whole request.
+  const selects = ["id,severity,description_l10n,is_acknowledged,raised_timestamp", "id,severity,description_l10n,is_acknowledged", "id,severity,is_acknowledged"];
+
+  let rows: JsonRecord[] = [];
+  for (const select of selects) {
+    const attempt = await get(cfg, "/alert", select);
+    if (!attempt.error) {
+      rows = asRecordArray(attempt.data);
+      break;
     }
-    rows = asRecordArray(fallback.data);
+    diagnostics.push(attempt.error);
   }
 
   return rows
@@ -141,6 +144,7 @@ async function fetchAlerts(cfg: PowerstoreConfig, diagnostics: string[]): Promis
       id: typeof a.id === "string" ? a.id : "",
       severity: typeof a.severity === "string" ? a.severity : "Unknown",
       description: typeof a.description_l10n === "string" ? a.description_l10n : "Unnamed alert",
+      raisedAt: typeof a.raised_timestamp === "string" ? a.raised_timestamp : undefined,
     }))
     // Most severe first -- the panel only shows the first handful, so whatever's
     // driving an "Attention" state must always be the thing that's actually visible.
