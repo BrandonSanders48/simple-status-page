@@ -40,10 +40,22 @@ export interface ProxmoxStatus {
   storages: ProxmoxStorageEntry[];
 }
 
+export interface PowerstoreTarget {
+  id: number;
+  name: string;
+  status: PowerstoreStatus;
+}
+
+export interface ProxmoxTarget {
+  id: number;
+  name: string;
+  status: ProxmoxStatus;
+}
+
 export interface StoragePayload {
   enabled: boolean;
-  powerstore: PowerstoreStatus | null;
-  proxmox: ProxmoxStatus | null;
+  powerstores: PowerstoreTarget[];
+  proxmoxes: ProxmoxTarget[];
 }
 
 const CRITICAL_SEVERITIES = new Set(["critical", "major"]);
@@ -73,14 +85,13 @@ export function isProxmoxHealthy(status: ProxmoxStatus): boolean {
   return status.storages.every((s) => s.active);
 }
 
-/** True unless storage monitoring is enabled and something it's watching (PowerStore
- * health/alerts/Metro, or Proxmox's view of that storage) is unhealthy -- so the site
- * banner can fold this in without needing to know it exists when it's off. */
+/** True unless storage monitoring is enabled and something it's watching (any
+ * PowerStore's health/alerts/Metro, or any Proxmox cluster's view of its storage) is
+ * unhealthy -- so the site banner can fold this in without needing to know it exists
+ * when it's off. */
 export function isStorageHealthy(payload: StoragePayload | null): boolean {
   if (!payload?.enabled) return true;
-  const powerstoreOk = !payload.powerstore || isPowerstoreHealthy(payload.powerstore);
-  const proxmoxOk = !payload.proxmox || isProxmoxHealthy(payload.proxmox);
-  return powerstoreOk && proxmoxOk;
+  return payload.powerstores.every((t) => isPowerstoreHealthy(t.status)) && payload.proxmoxes.every((t) => isProxmoxHealthy(t.status));
 }
 
 export function Pill({ ok, label }: { ok: boolean; label: string }) {
@@ -109,18 +120,25 @@ export function CapacityBar({ percent }: { percent: number }) {
 }
 
 export function PowerstoreSection({
+  name,
   status,
   canAcknowledge = false,
   acknowledgingId = null,
   onAcknowledge,
 }: {
+  name: string;
   status: PowerstoreStatus;
   canAcknowledge?: boolean;
   acknowledgingId?: string | null;
   onAcknowledge?: (alertId: string) => void;
 }) {
   if (!status.ok) {
-    return <p className="text-sm text-red-500">Unable to connect to PowerStore: {status.error ?? "unknown error"}</p>;
+    return (
+      <div>
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">{name}</p>
+        <p className="text-sm text-red-500">Unable to connect to PowerStore: {status.error ?? "unknown error"}</p>
+      </div>
+    );
   }
 
   const hasCriticalAlert = status.alerts.some((a) => isCriticalSeverity(a.severity));
@@ -128,9 +146,7 @@ export function PowerstoreSection({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-          {status.clusterName ?? "PowerStore"}
-        </span>
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
         <Pill ok={!hasCriticalAlert} label={hasCriticalAlert ? "Attention" : "Healthy"} />
         {status.clusterState && <span className="text-xs text-slate-400">{status.clusterState}</span>}
       </div>
@@ -180,47 +196,71 @@ export function PowerstoreSection({
   );
 }
 
-export function ProxmoxSection({ status }: { status: ProxmoxStatus }) {
+export function ProxmoxSection({ name, status }: { name: string; status: ProxmoxStatus }) {
   if (!status.ok) {
-    return <p className="text-sm text-red-500">Unable to connect to Proxmox: {status.error ?? "unknown error"}</p>;
+    return (
+      <div>
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">{name}</p>
+        <p className="text-sm text-red-500">Unable to connect to Proxmox: {status.error ?? "unknown error"}</p>
+      </div>
+    );
   }
+
+  // Storage is typically shared across every node in the cluster, so each node's row
+  // shows its own compute (CPU/memory) alongside that shared storage's status/capacity
+  // rather than as a disconnected second list.
+  const storageByNode = new Map(status.storages.map((s) => [s.node, s]));
+  const unmatchedStorages = status.storages.filter((s) => !status.nodes.some((n) => n.name === s.node));
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Cluster</span>
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
         {status.quorate !== null && <Pill ok={status.quorate} label={status.quorate ? "Quorate" : "No Quorum"} />}
       </div>
 
-      {status.nodes.length > 0 && (
+      {status.nodes.length > 0 ? (
         <div>
           <p className="text-xs text-slate-400 mb-1">Nodes</p>
-          <ul className="space-y-1.5">
-            {status.nodes.map((n, i) => (
-              <li key={i} className="flex flex-wrap items-center gap-3">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-28 truncate">{n.name}</span>
-                <Pill ok={n.online} label={n.online ? "Online" : "Offline"} />
-                {n.cpuPercent !== undefined && (
-                  <span className="text-xs text-slate-400">CPU {n.cpuPercent.toFixed(0)}%</span>
-                )}
-                {n.memPercent !== undefined && (
-                  <div className="flex-1 min-w-[100px] max-w-[160px]">
-                    <CapacityBar percent={n.memPercent} />
-                  </div>
-                )}
-              </li>
-            ))}
+          <ul className="space-y-2">
+            {status.nodes.map((n, i) => {
+              const storage = storageByNode.get(n.name);
+              return (
+                <li key={i} className="flex flex-wrap items-center gap-3">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-28 truncate">{n.name}</span>
+                  <Pill ok={n.online} label={n.online ? "Online" : "Offline"} />
+                  {n.cpuPercent !== undefined && <span className="text-xs text-slate-400">CPU {n.cpuPercent.toFixed(0)}%</span>}
+                  {n.memPercent !== undefined && (
+                    <div className="w-24 flex-shrink-0">
+                      <CapacityBar percent={n.memPercent} />
+                    </div>
+                  )}
+                  {storage && (
+                    <>
+                      <Pill ok={storage.active} label={storage.active ? "Storage Available" : "Storage Unavailable"} />
+                      {storage.usedPercent !== undefined && (
+                        <div className="flex-1 min-w-[100px]">
+                          <CapacityBar percent={storage.usedPercent} />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
+      ) : (
+        status.storages.length === 0 && (
+          <p className="text-sm text-slate-500 dark:text-slate-400">No matching storage found on the Proxmox cluster.</p>
+        )
       )}
 
-      <div>
-        <p className="text-xs text-slate-400 mb-1">Storage</p>
-        {status.storages.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">No matching storage found on the Proxmox cluster.</p>
-        ) : (
+      {unmatchedStorages.length > 0 && (
+        <div>
+          <p className="text-xs text-slate-400 mb-1">Storage</p>
           <ul className="space-y-1.5">
-            {status.storages.map((s, i) => (
+            {unmatchedStorages.map((s, i) => (
               <li key={i} className="flex flex-wrap items-center gap-3">
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-28 truncate">{s.node}</span>
                 <Pill ok={s.active} label={s.active ? "Available" : "Unavailable"} />
@@ -232,8 +272,8 @@ export function ProxmoxSection({ status }: { status: ProxmoxStatus }) {
               </li>
             ))}
           </ul>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

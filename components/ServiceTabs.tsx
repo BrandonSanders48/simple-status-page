@@ -54,6 +54,8 @@ function TabButton({
  * Tabs between the internally-hosted service tiles and, when configured, the
  * PowerStore and Proxmox storage panels. Falls back to plain (tab-less) Internal
  * Services when storage monitoring isn't enabled, so sites not using it see no change.
+ * Each PowerStore array / Proxmox cluster is shown as its own named card, so
+ * monitoring both a main site and a DR site (say) is just two cards in one tab.
  */
 export default function ServiceTabs({
   services,
@@ -77,25 +79,27 @@ export default function ServiceTabs({
   uptimeByService?: Record<number, DayUptime[]>;
 }) {
   const [tab, setTab] = useState<TabKey>("services");
-  const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
+  const [acknowledging, setAcknowledging] = useState<{ targetId: number; alertId: string } | null>(null);
 
-  const hasPowerstore = !!storage?.powerstore;
-  const hasProxmox = !!storage?.proxmox;
+  const powerstores = storage?.powerstores ?? [];
+  const proxmoxes = storage?.proxmoxes ?? [];
+  const hasPowerstore = powerstores.length > 0;
+  const hasProxmox = proxmoxes.length > 0;
 
-  async function handleAcknowledge(alertId: string) {
+  async function handleAcknowledge(targetId: number, alertId: string) {
     if (!csrfToken) return;
-    setAcknowledgingId(alertId);
+    setAcknowledging({ targetId, alertId });
     try {
       await fetch("/api/admin/powerstore-alert", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-        body: JSON.stringify({ alertId }),
+        body: JSON.stringify({ targetId, alertId }),
       });
       onStorageChanged();
     } catch {
       // Swallow -- the alert simply stays in the list, and the user can retry.
     } finally {
-      setAcknowledgingId(null);
+      setAcknowledging(null);
     }
   }
 
@@ -114,8 +118,8 @@ export default function ServiceTabs({
   const activeTab = (tab === "storage" && !hasPowerstore) || (tab === "proxmox" && !hasProxmox) ? "services" : tab;
 
   const servicesHaveIssue = services.some((s) => !s.up);
-  const powerstoreHasIssue = !!storage?.powerstore && !isPowerstoreHealthy(storage.powerstore);
-  const proxmoxHasIssue = !!storage?.proxmox && !isProxmoxHealthy(storage.proxmox);
+  const powerstoreHasIssue = powerstores.some((t) => !isPowerstoreHealthy(t.status));
+  const proxmoxHasIssue = proxmoxes.some((t) => !isProxmoxHealthy(t.status));
 
   return (
     <div className="mb-5">
@@ -156,19 +160,28 @@ export default function ServiceTabs({
           uptimeByService={uptimeByService}
         />
       )}
-      {activeTab === "storage" && storage?.powerstore && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">
-          <PowerstoreSection
-            status={storage.powerstore}
-            canAcknowledge={isAdmin}
-            acknowledgingId={acknowledgingId}
-            onAcknowledge={handleAcknowledge}
-          />
+      {activeTab === "storage" && (
+        <div className="space-y-4">
+          {powerstores.map((t) => (
+            <div key={t.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">
+              <PowerstoreSection
+                name={t.name}
+                status={t.status}
+                canAcknowledge={isAdmin}
+                acknowledgingId={acknowledging?.targetId === t.id ? acknowledging.alertId : null}
+                onAcknowledge={(alertId) => handleAcknowledge(t.id, alertId)}
+              />
+            </div>
+          ))}
         </div>
       )}
-      {activeTab === "proxmox" && storage?.proxmox && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">
-          <ProxmoxSection status={storage.proxmox} />
+      {activeTab === "proxmox" && (
+        <div className="space-y-4">
+          {proxmoxes.map((t) => (
+            <div key={t.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">
+              <ProxmoxSection name={t.name} status={t.status} />
+            </div>
+          ))}
         </div>
       )}
     </div>

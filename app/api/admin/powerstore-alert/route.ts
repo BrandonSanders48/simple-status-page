@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { verifyCsrf } from "@/lib/csrf";
 import { db } from "@/lib/db/client";
-import { settings } from "@/lib/db/schema";
+import { powerstoreTargets } from "@/lib/db/schema";
 import { acknowledgePowerstoreAlert } from "@/lib/integrations/powerstore";
 import { invalidateStorageCache } from "@/lib/storageCache";
 
@@ -19,17 +20,18 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const alertId = typeof body?.alertId === "string" ? body.alertId : "";
-  if (!alertId) {
-    return NextResponse.json({ error: "alertId is required" }, { status: 400 });
+  const targetId = Number(body?.targetId);
+  if (!alertId || !Number.isInteger(targetId)) {
+    return NextResponse.json({ error: "alertId and targetId are required" }, { status: 400 });
   }
 
-  const cfg = db.select().from(settings).get();
-  if (!cfg?.powerstoreHost || !cfg.powerstoreUsername || !cfg.powerstorePassword) {
-    return NextResponse.json({ error: "PowerStore is not configured" }, { status: 400 });
+  const target = db.select().from(powerstoreTargets).where(eq(powerstoreTargets.id, targetId)).get();
+  if (!target) {
+    return NextResponse.json({ error: "PowerStore target not found" }, { status: 404 });
   }
 
   const result = await acknowledgePowerstoreAlert(
-    { host: cfg.powerstoreHost, username: cfg.powerstoreUsername, password: cfg.powerstorePassword },
+    { host: target.host, username: target.username, password: target.password },
     alertId
   );
   if (!result.ok) {

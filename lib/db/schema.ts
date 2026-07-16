@@ -49,13 +49,6 @@ export const settings = sqliteTable("settings", {
   notifyDownAfterMinutes: integer("notify_down_after_minutes").notNull().default(3),
 
   storageIntegrationEnabled: integer("storage_integration_enabled", { mode: "boolean" }).notNull().default(false),
-  powerstoreHost: text("powerstore_host"),
-  powerstoreUsername: text("powerstore_username"),
-  powerstorePassword: text("powerstore_password"),
-  proxmoxHost: text("proxmox_host"),
-  proxmoxTokenId: text("proxmox_token_id"),
-  proxmoxTokenSecret: text("proxmox_token_secret"),
-  proxmoxStorageId: text("proxmox_storage_id"),
 
   webhookEnabled: integer("webhook_enabled", { mode: "boolean" }).notNull().default(false),
   webhookUrl: text("webhook_url"),
@@ -102,6 +95,29 @@ export const statusCategories = sqliteTable("status_categories", {
   key: text("key").primaryKey(),
   label: text("label").notNull(),
   color: text("color").notNull(),
+});
+
+// Multiple PowerStore arrays/Proxmox clusters can be monitored at once (e.g. a main
+// site and a DR site), each shown as its own named card under the Storage/Proxmox tabs.
+export const powerstoreTargets = sqliteTable("powerstore_targets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  host: text("host").notNull(),
+  username: text("username").notNull(),
+  password: text("password").notNull(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const proxmoxTargets = sqliteTable("proxmox_targets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  host: text("host").notNull(),
+  tokenId: text("token_id").notNull(),
+  tokenSecret: text("token_secret").notNull(),
+  storageId: text("storage_id"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
 });
 
 export const incidents = sqliteTable("incidents", {

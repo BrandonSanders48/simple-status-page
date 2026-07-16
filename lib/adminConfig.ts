@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { eq, notInArray } from "drizzle-orm";
 import { db } from "./db/client";
-import { settings, services, rssFeeds, ispMapEntries, statusCategories } from "./db/schema";
+import { settings, services, rssFeeds, ispMapEntries, statusCategories, powerstoreTargets, proxmoxTargets } from "./db/schema";
 
 export const MAX_SERVICES = 20;
 export const MAX_RSS_FEEDS = 10;
+export const MAX_STORAGE_TARGETS = 10;
 
 export const settingsInputSchema = z.object({
   businessName: z.string().min(1).max(200),
@@ -42,13 +43,6 @@ export const settingsInputSchema = z.object({
   smtpShowActionButtons: z.boolean(),
   notifyDownAfterMinutes: z.number().int().min(0).max(1440),
   storageIntegrationEnabled: z.boolean(),
-  powerstoreHost: z.string().max(300).nullable().optional(),
-  powerstoreUsername: z.string().max(200).nullable().optional(),
-  powerstorePassword: z.string().max(500).nullable().optional(),
-  proxmoxHost: z.string().max(300).nullable().optional(),
-  proxmoxTokenId: z.string().max(300).nullable().optional(),
-  proxmoxTokenSecret: z.string().max(500).nullable().optional(),
-  proxmoxStorageId: z.string().max(200).nullable().optional(),
   webhookEnabled: z.boolean(),
   webhookUrl: z.string().max(500).nullable().optional(),
   webhookFormat: z.enum(["slack", "discord", "generic"]),
@@ -82,12 +76,33 @@ export const statusCategoryInputSchema = z.object({
   color: z.string().min(1).max(30),
 });
 
+export const powerstoreTargetInputSchema = z.object({
+  id: z.number().int().optional(),
+  name: z.string().min(1).max(100),
+  host: z.string().min(1).max(300),
+  username: z.string().min(1).max(200),
+  password: z.string().min(1).max(500),
+  enabled: z.boolean(),
+});
+
+export const proxmoxTargetInputSchema = z.object({
+  id: z.number().int().optional(),
+  name: z.string().min(1).max(100),
+  host: z.string().min(1).max(300),
+  tokenId: z.string().min(1).max(300),
+  tokenSecret: z.string().min(1).max(500),
+  storageId: z.string().max(200).nullable().optional(),
+  enabled: z.boolean(),
+});
+
 export const configPayloadSchema = z.object({
   settings: settingsInputSchema,
   services: z.array(serviceInputSchema).max(MAX_SERVICES),
   rssFeeds: z.array(rssFeedInputSchema).max(MAX_RSS_FEEDS),
   ispMap: z.array(ispMapInputSchema),
   statusCategories: z.array(statusCategoryInputSchema).max(20),
+  powerstoreTargets: z.array(powerstoreTargetInputSchema).max(MAX_STORAGE_TARGETS),
+  proxmoxTargets: z.array(proxmoxTargetInputSchema).max(MAX_STORAGE_TARGETS),
 });
 
 export type ConfigPayload = z.infer<typeof configPayloadSchema>;
@@ -98,7 +113,17 @@ export function getFullConfig() {
   const rss = db.select().from(rssFeeds).all();
   const isp = db.select().from(ispMapEntries).all();
   const categories = db.select().from(statusCategories).all();
-  return { settings: cfg, services: svc, rssFeeds: rss, ispMap: isp, statusCategories: categories };
+  const psTargets = db.select().from(powerstoreTargets).all();
+  const pveTargets = db.select().from(proxmoxTargets).all();
+  return {
+    settings: cfg,
+    services: svc,
+    rssFeeds: rss,
+    ispMap: isp,
+    statusCategories: categories,
+    powerstoreTargets: psTargets,
+    proxmoxTargets: pveTargets,
+  };
 }
 
 function bumpVersion(current: string): string {
@@ -161,6 +186,46 @@ export function saveFullConfig(payload: ConfigPayload) {
         .set({ label: cat.label, color: cat.color })
         .where(eq(statusCategories.key, cat.key))
         .run();
+    });
+
+    // Diffed by id (not delete-and-reinsert) so a target's id -- referenced when
+    // acknowledging a PowerStore alert -- stays stable across unrelated saves.
+    const incomingPsIds = payload.powerstoreTargets.filter((t) => t.id !== undefined).map((t) => t.id!);
+    if (incomingPsIds.length > 0) {
+      tx.delete(powerstoreTargets).where(notInArray(powerstoreTargets.id, incomingPsIds)).run();
+    } else {
+      tx.delete(powerstoreTargets).run();
+    }
+    payload.powerstoreTargets.forEach((t, index) => {
+      if (t.id !== undefined) {
+        tx.update(powerstoreTargets)
+          .set({ ...t, sortOrder: index })
+          .where(eq(powerstoreTargets.id, t.id))
+          .run();
+      } else {
+        tx.insert(powerstoreTargets)
+          .values({ ...t, sortOrder: index })
+          .run();
+      }
+    });
+
+    const incomingPveIds = payload.proxmoxTargets.filter((t) => t.id !== undefined).map((t) => t.id!);
+    if (incomingPveIds.length > 0) {
+      tx.delete(proxmoxTargets).where(notInArray(proxmoxTargets.id, incomingPveIds)).run();
+    } else {
+      tx.delete(proxmoxTargets).run();
+    }
+    payload.proxmoxTargets.forEach((t, index) => {
+      if (t.id !== undefined) {
+        tx.update(proxmoxTargets)
+          .set({ ...t, sortOrder: index })
+          .where(eq(proxmoxTargets.id, t.id))
+          .run();
+      } else {
+        tx.insert(proxmoxTargets)
+          .values({ ...t, sortOrder: index })
+          .run();
+      }
     });
   });
 

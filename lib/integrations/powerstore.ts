@@ -192,6 +192,21 @@ export async function fetchPowerstoreStatus(cfg: PowerstoreConfig): Promise<Powe
       fetchMetroSessions(cfg, diagnostics),
     ]);
 
+    // Each fetch above catches its own errors (so one bad field guess doesn't kill
+    // everything) and never throws -- which means a total connection failure (wrong
+    // host, bad credentials, timeout) would otherwise still land on this "success"
+    // path with no data. Failing to read even basic cluster identity is the strongest
+    // signal we couldn't actually reach the array at all.
+    if (cluster === undefined) {
+      return {
+        ok: false,
+        error: diagnostics[0] ?? "Failed to connect to PowerStore",
+        alerts: [],
+        metroSessions: [],
+        diagnostics,
+      };
+    }
+
     return {
       ok: true,
       clusterName: typeof cluster?.name === "string" ? cluster.name : undefined,

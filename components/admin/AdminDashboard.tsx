@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/useSession";
-import type { FullConfig, SettingsRow, DraftService, IspMapRow, StatusCategoryRow } from "@/lib/adminTypes";
+import type {
+  FullConfig,
+  SettingsRow,
+  DraftService,
+  IspMapRow,
+  StatusCategoryRow,
+  DraftPowerstoreTarget,
+  DraftProxmoxTarget,
+} from "@/lib/adminTypes";
 import GeneralTab from "./GeneralTab";
 import ServicesTab from "./ServicesTab";
 import RssTab, { type DraftFeed } from "./RssTab";
@@ -33,6 +41,8 @@ export default function AdminDashboard() {
   const [rssFeeds, setRssFeeds] = useState<DraftFeed[]>([]);
   const [ispMap, setIspMap] = useState<IspMapRow[]>([]);
   const [statusCategories, setStatusCategories] = useState<StatusCategoryRow[]>([]);
+  const [powerstoreTargets, setPowerstoreTargets] = useState<DraftPowerstoreTarget[]>([]);
+  const [proxmoxTargets, setProxmoxTargets] = useState<DraftProxmoxTarget[]>([]);
   const [saveState, setSaveState] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -47,6 +57,8 @@ export default function AdminDashboard() {
       setRssFeeds(data.rssFeeds);
       setIspMap(data.ispMap);
       setStatusCategories(data.statusCategories);
+      setPowerstoreTargets(data.powerstoreTargets);
+      setProxmoxTargets(data.proxmoxTargets);
     }
     setLoading(false);
   }, []);
@@ -96,6 +108,23 @@ export default function AdminDashboard() {
       rssFeeds: rssFeeds.map(({ name, host, tag, description }) => ({ name, host, tag, description })),
       ispMap: ispMap.map(({ ip, name }) => ({ ip, name })),
       statusCategories: statusCategories.map(({ key, label, color }) => ({ key, label, color })),
+      powerstoreTargets: powerstoreTargets.map(({ id, name, host, username, password, enabled }) => ({
+        id,
+        name,
+        host,
+        username,
+        password,
+        enabled,
+      })),
+      proxmoxTargets: proxmoxTargets.map(({ id, name, host, tokenId, tokenSecret, storageId, enabled }) => ({
+        id,
+        name,
+        host,
+        tokenId,
+        tokenSecret,
+        storageId,
+        enabled,
+      })),
     };
 
     try {
@@ -111,6 +140,8 @@ export default function AdminDashboard() {
       setRssFeeds(data.rssFeeds);
       setIspMap(data.ispMap);
       setStatusCategories(data.statusCategories);
+      setPowerstoreTargets(data.powerstoreTargets);
+      setProxmoxTargets(data.proxmoxTargets);
       setSaveState({ ok: true, text: "Configuration saved successfully." });
     } catch (err) {
       setSaveState({ ok: false, text: err instanceof Error ? err.message : "Failed to save." });
@@ -192,7 +223,15 @@ export default function AdminDashboard() {
             ) : s.key === "network" ? (
               <NetworkTab settings={settings} onChange={setSettings} ispMap={ispMap} onIspChange={setIspMap} />
             ) : s.key === "storage" ? (
-              <StorageTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
+              <StorageTab
+                settings={settings}
+                onChange={setSettings}
+                powerstoreTargets={powerstoreTargets}
+                onPowerstoreTargetsChange={setPowerstoreTargets}
+                proxmoxTargets={proxmoxTargets}
+                onProxmoxTargetsChange={setProxmoxTargets}
+                csrfToken={session.csrfToken}
+              />
             ) : s.key === "notifications" ? (
               <NotificationsTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
             ) : (
