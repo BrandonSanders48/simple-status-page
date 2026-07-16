@@ -6,14 +6,13 @@ import StatusBanner from "./StatusBanner";
 import NetworkStatusRow from "./NetworkStatusRow";
 import IncidentsPanel, { type StatusCategory } from "./IncidentsPanel";
 import MaintenanceBanner from "./MaintenanceBanner";
-import CreateMaintenanceModal from "./CreateMaintenanceModal";
+import CreatePostModal from "./CreatePostModal";
 import RssPanel from "./RssPanel";
 import ServiceTabs from "./ServiceTabs";
 import { isStorageHealthy, type StoragePayload } from "./StorageSections";
 import OutageHistoryModal from "./OutageHistoryModal";
 import DarkModeToggle from "./DarkModeToggle";
 import LoginModal from "./LoginModal";
-import CreateIncidentModal from "./CreateIncidentModal";
 import SubscribeModal from "./SubscribeModal";
 import ManageSubscriptionsModal from "./ManageSubscriptionsModal";
 import Footer from "./Footer";
@@ -84,8 +83,7 @@ export default function Dashboard({
   const [uptimeByService, setUptimeByService] = useState<Record<number, DayUptime[]>>({});
   const [showOutageLog, setShowOutageLog] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
-  const [showCreateIncident, setShowCreateIncident] = useState(false);
-  const [showCreateMaintenance, setShowCreateMaintenance] = useState(false);
+  const [showCreatePost, setShowCreatePost] = useState(false);
   const [showSubscribe, setShowSubscribe] = useState(false);
   const [showManageSubs, setShowManageSubs] = useState(false);
 
@@ -292,19 +290,10 @@ export default function Dashboard({
         {isAdmin && (
           <button
             type="button"
-            onClick={() => setShowCreateIncident(true)}
+            onClick={() => setShowCreatePost(true)}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-400 shadow-lg rounded-xl text-white text-sm font-medium"
           >
-            <i className="fa-solid fa-triangle-exclamation" /> Incidents
-          </button>
-        )}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => setShowCreateMaintenance(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-500 shadow-lg rounded-xl text-white text-sm font-medium"
-          >
-            <i className="fa-solid fa-wrench" /> Maintenance
+            <i className="fa-solid fa-triangle-exclamation" /> New Post
           </button>
         )}
         <button
@@ -325,18 +314,14 @@ export default function Dashboard({
           }}
         />
       )}
-      {showCreateIncident && session && (
-        <CreateIncidentModal
+      {showCreatePost && session && (
+        <CreatePostModal
           csrfToken={session.csrfToken}
-          onClose={() => setShowCreateIncident(false)}
-          onCreated={loadIncidents}
-        />
-      )}
-      {showCreateMaintenance && session && (
-        <CreateMaintenanceModal
-          csrfToken={session.csrfToken}
-          onClose={() => setShowCreateMaintenance(false)}
-          onCreated={loadMaintenance}
+          onClose={() => setShowCreatePost(false)}
+          onCreated={() => {
+            loadIncidents();
+            loadMaintenance();
+          }}
         />
       )}
       {showSubscribe && session && (

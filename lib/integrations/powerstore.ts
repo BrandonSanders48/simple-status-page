@@ -37,6 +37,11 @@ type GetResult = { data: unknown; error: null } | { data: null; error: string };
 
 const CRITICAL_SEVERITIES = new Set(["critical", "major"]);
 const HEALTHY_METRO_STATES = new Set(["ok", "synchronized", "healthy"]);
+const SEVERITY_RANK: Record<string, number> = { critical: 0, major: 1, minor: 2, warning: 2, info: 3 };
+
+function severityRank(severity: string): number {
+  return SEVERITY_RANK[severity.toLowerCase()] ?? 4;
+}
 
 function authHeader(cfg: PowerstoreConfig): string {
   return "Basic " + Buffer.from(`${cfg.username}:${cfg.password}`).toString("base64");
@@ -136,7 +141,10 @@ async function fetchAlerts(cfg: PowerstoreConfig, diagnostics: string[]): Promis
       id: typeof a.id === "string" ? a.id : "",
       severity: typeof a.severity === "string" ? a.severity : "Unknown",
       description: typeof a.description_l10n === "string" ? a.description_l10n : "Unnamed alert",
-    }));
+    }))
+    // Most severe first -- the panel only shows the first handful, so whatever's
+    // driving an "Attention" state must always be the thing that's actually visible.
+    .sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
 }
 
 /**

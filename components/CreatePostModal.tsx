@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
-export default function CreateMaintenanceModal({
+type PostType = "incident" | "maintenance";
+
+export default function CreatePostModal({
   csrfToken,
   onClose,
   onCreated,
@@ -11,8 +13,10 @@ export default function CreateMaintenanceModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const [type, setType] = useState<PostType>("incident");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [severity, setSeverity] = useState("outage");
   const [startTime, setStartTime] = useState(() => new Date().toISOString().slice(0, 16));
   const [endTime, setEndTime] = useState("");
   const [error, setError] = useState("");
@@ -23,17 +27,24 @@ export default function CreateMaintenanceModal({
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/maintenance", {
+      const isIncident = type === "incident";
+      const res = await fetch(isIncident ? "/api/incidents" : "/api/maintenance", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-        body: JSON.stringify({ title, description, start_time: startTime, end_time: endTime || null }),
+        body: JSON.stringify({
+          title,
+          description,
+          ...(isIncident ? { severity } : {}),
+          start_time: startTime,
+          end_time: endTime || null,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to schedule maintenance.");
+      if (!res.ok) throw new Error(data.error || `Failed to ${isIncident ? "create incident" : "schedule maintenance"}.`);
       onCreated();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to schedule maintenance.");
+      setError(err instanceof Error ? err.message : "Failed to submit.");
     } finally {
       setSubmitting(false);
     }
@@ -44,26 +55,71 @@ export default function CreateMaintenanceModal({
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h5 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            <i className="fa-solid fa-wrench text-indigo-500" /> Schedule Maintenance
+            <i className={`fa-solid ${type === "incident" ? "fa-triangle-exclamation text-amber-500" : "fa-wrench text-indigo-500"}`} />
+            {type === "incident" ? "Create Incident" : "Schedule Maintenance"}
           </h5>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">
             &times;
           </button>
         </div>
+
+        <div className="flex gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setType("incident")}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+              type === "incident"
+                ? "bg-amber-500 text-white"
+                : "bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+            }`}
+          >
+            <i className="fa-solid fa-triangle-exclamation text-xs mr-1.5" /> Incident
+          </button>
+          <button
+            type="button"
+            onClick={() => setType("maintenance")}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+              type === "maintenance"
+                ? "bg-indigo-600 text-white"
+                : "bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+            }`}
+          >
+            <i className="fa-solid fa-wrench text-xs mr-1.5" /> Maintenance
+          </button>
+        </div>
+
         {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title, e.g. Database maintenance window"
+            placeholder={type === "incident" ? "Title, e.g. Email service outage" : "Title, e.g. Database maintenance window"}
             className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700/50 text-sm"
           />
+          {type === "incident" && (
+            <select
+              aria-label="Severity"
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700/50 text-sm"
+            >
+              <option value="degraded">Degraded Performance</option>
+              <option value="outage">Outage</option>
+              <option value="maintenance">Scheduled Maintenance</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          )}
           <textarea
+            required={type === "incident"}
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What's happening and what to expect..."
+            placeholder={
+              type === "incident"
+                ? "Describe what is happening and affected services..."
+                : "What's happening and what to expect..."
+            }
             className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700/50 text-sm resize-none"
           />
           <div className="grid grid-cols-2 gap-3">
@@ -94,9 +150,11 @@ export default function CreateMaintenanceModal({
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60"
+              className={`px-5 py-2 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60 ${
+                type === "incident" ? "bg-amber-500 hover:bg-amber-400" : "bg-indigo-600 hover:bg-indigo-500"
+              }`}
             >
-              Schedule
+              {type === "incident" ? "Post Incident" : "Schedule"}
             </button>
           </div>
         </form>
