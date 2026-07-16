@@ -50,12 +50,16 @@ export async function POST(request: Request) {
     if (!result.ok) {
       return NextResponse.json({ error: result.error ?? "Failed to connect to Proxmox" }, { status: 502 });
     }
+    const offlineNodes = result.nodes.filter((n) => !n.online).length;
+    const quorumText = result.quorate === null ? "" : result.quorate ? ", quorate" : ", NO QUORUM";
+    const storageText =
+      result.storages.length > 0
+        ? `${result.storages.length} matching storage entr${result.storages.length === 1 ? "y" : "ies"}`
+        : "no matching storage entries (check the Storage ID)";
+    const diagnosticsText = result.diagnostics.length > 0 ? ` (${result.diagnostics.join("; ")})` : "";
     return NextResponse.json({
       ok: true,
-      summary:
-        result.storages.length > 0
-          ? `Found ${result.storages.length} matching storage entr${result.storages.length === 1 ? "y" : "ies"} across the cluster.`
-          : "Connected, but no matching storage entries were found — check the Storage ID.",
+      summary: `${result.nodes.length} node(s)${quorumText}, ${offlineNodes} offline — ${storageText}.${diagnosticsText}`,
     });
   }
 

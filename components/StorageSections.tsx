@@ -18,6 +18,13 @@ export interface PowerstoreStatus {
   metroSessions: PowerstoreMetroSession[];
 }
 
+export interface ProxmoxNode {
+  name: string;
+  online: boolean;
+  cpuPercent?: number;
+  memPercent?: number;
+}
+
 export interface ProxmoxStorageEntry {
   node: string;
   storage: string;
@@ -28,6 +35,8 @@ export interface ProxmoxStorageEntry {
 export interface ProxmoxStatus {
   ok: boolean;
   error?: string;
+  quorate: boolean | null;
+  nodes: ProxmoxNode[];
   storages: ProxmoxStorageEntry[];
 }
 
@@ -53,6 +62,8 @@ export function isPowerstoreHealthy(status: PowerstoreStatus): boolean {
 
 export function isProxmoxHealthy(status: ProxmoxStatus): boolean {
   if (!status.ok) return false;
+  if (status.quorate === false) return false;
+  if (status.nodes.some((n) => !n.online)) return false;
   return status.storages.every((s) => s.active);
 }
 
@@ -154,23 +165,56 @@ export function ProxmoxSection({ status }: { status: ProxmoxStatus }) {
   if (!status.ok) {
     return <p className="text-sm text-red-500">Unable to connect to Proxmox: {status.error ?? "unknown error"}</p>;
   }
-  if (status.storages.length === 0) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">No matching storage found on the Proxmox cluster.</p>;
-  }
 
   return (
-    <ul className="space-y-2">
-      {status.storages.map((s, i) => (
-        <li key={i} className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-28 truncate">{s.node}</span>
-          <Pill ok={s.active} label={s.active ? "Available" : "Unavailable"} />
-          {s.usedPercent !== undefined && (
-            <div className="flex-1 min-w-[120px]">
-              <CapacityBar percent={s.usedPercent} />
-            </div>
-          )}
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Cluster</span>
+        {status.quorate !== null && <Pill ok={status.quorate} label={status.quorate ? "Quorate" : "No Quorum"} />}
+      </div>
+
+      {status.nodes.length > 0 && (
+        <div>
+          <p className="text-xs text-slate-400 mb-1">Nodes</p>
+          <ul className="space-y-1.5">
+            {status.nodes.map((n, i) => (
+              <li key={i} className="flex flex-wrap items-center gap-3">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-28 truncate">{n.name}</span>
+                <Pill ok={n.online} label={n.online ? "Online" : "Offline"} />
+                {n.cpuPercent !== undefined && (
+                  <span className="text-xs text-slate-400">CPU {n.cpuPercent.toFixed(0)}%</span>
+                )}
+                {n.memPercent !== undefined && (
+                  <div className="flex-1 min-w-[100px] max-w-[160px]">
+                    <CapacityBar percent={n.memPercent} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div>
+        <p className="text-xs text-slate-400 mb-1">Storage</p>
+        {status.storages.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">No matching storage found on the Proxmox cluster.</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {status.storages.map((s, i) => (
+              <li key={i} className="flex flex-wrap items-center gap-3">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-28 truncate">{s.node}</span>
+                <Pill ok={s.active} label={s.active ? "Available" : "Unavailable"} />
+                {s.usedPercent !== undefined && (
+                  <div className="flex-1 min-w-[120px]">
+                    <CapacityBar percent={s.usedPercent} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
