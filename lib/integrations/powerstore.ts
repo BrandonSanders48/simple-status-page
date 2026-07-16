@@ -35,9 +35,8 @@ export interface PowerstoreStatus {
 type JsonRecord = Record<string, unknown>;
 type GetResult = { data: unknown; error: null } | { data: null; error: string };
 
-const CRITICAL_SEVERITIES = new Set(["Critical", "Major"]);
+const CRITICAL_SEVERITIES = new Set(["critical", "major"]);
 const HEALTHY_METRO_STATES = new Set(["ok", "synchronized", "healthy"]);
-const METRO_MARKER_KEYS = ["session_type", "replication_type", "type", "role"];
 
 function authHeader(cfg: PowerstoreConfig): string {
   return "Basic " + Buffer.from(`${cfg.username}:${cfg.password}`).toString("base64");
@@ -93,12 +92,8 @@ function asRecordArray(value: unknown): JsonRecord[] {
   return Array.isArray(value) ? (value as JsonRecord[]) : [];
 }
 
-function looksLikeMetro(entry: JsonRecord): boolean {
-  return METRO_MARKER_KEYS.some((key) => typeof entry[key] === "string" && (entry[key] as string).toLowerCase().includes("metro"));
-}
-
 export function isPowerstoreAlertCritical(severity: string): boolean {
-  return CRITICAL_SEVERITIES.has(severity);
+  return CRITICAL_SEVERITIES.has(severity.toLowerCase());
 }
 
 export function isMetroSessionHealthy(state: string): boolean {
@@ -145,28 +140,28 @@ async function fetchAlerts(cfg: PowerstoreConfig, diagnostics: string[]): Promis
 }
 
 /**
- * Fetches Metro replication sessions. Dell has exposed this under different resource
- * names/shapes across PowerStore OS versions -- the dedicated `metro_replication_session`
- * resource on newer arrays, or entries within the general `replication_session`
- * resource on older ones (distinguished by a type/role field mentioning "metro"). Both
- * are tried; whichever responds wins, and a failure on either is recorded as a
- * diagnostic rather than treated as fatal. A 403 on either specifically means the
- * configured PowerStore account's role doesn't have replication/Metro read
- * permission -- that's a PowerStore RBAC setting, not something fixable here.
+ * Fetches Metro replication sessions via /replication_session. There's no dedicated
+ * Metro resource on this OS version -- /metro_replication_session returns 403 even
+ * for a full-admin account with Metro actively in use, so it's most likely just not a
+ * real endpoint here rather than a permissions gap.
  */
 async function fetchMetroSessions(cfg: PowerstoreConfig, diagnostics: string[]): Promise<JsonRecord[]> {
-  const [dedicated, general] = await Promise.all([
-    get(cfg, "/metro_replication_session", "id,name,state"),
-    get(cfg, "/replication_session", "id,state,session_type,replication_type,role"),
-  ]);
+  // /replication_session validates `select` fail-fast (stops at the first field it
+  // doesn't recognize) rather than reporting every bad one, so several rounds of
+  // testing narrowed this down to the fields this array actually accepts: `name`,
+  // `session_type`, and the dedicated `metro_replication_session` resource were all
+  // rejected (the latter with 403 even for a full-admin account, so it's most likely
+  // just not a real endpoint on this OS version rather than a permissions gap).
+  const result = await get(cfg, "/replication_session", "id,state,role");
+  if (result.error) {
+    diagnostics.push(result.error);
+    return [];
+  }
 
-  if (dedicated.error) diagnostics.push(dedicated.error);
-  if (general.error) diagnostics.push(general.error);
-
-  const dedicatedRows = asRecordArray(dedicated.data);
-  const metroFromGeneral = asRecordArray(general.data).filter(looksLikeMetro);
-
-  return [...dedicatedRows, ...metroFromGeneral];
+  // Without a confirmed field to distinguish Metro from async replication sessions,
+  // every session found is shown -- accurate for arrays that only use Metro, but
+  // sessions of both kinds would appear together if both are configured.
+  return asRecordArray(result.data);
 }
 
 /**
@@ -195,7 +190,10 @@ export async function fetchPowerstoreStatus(cfg: PowerstoreConfig): Promise<Powe
       clusterState: typeof cluster?.state === "string" ? cluster.state : undefined,
       alerts,
       metroSessions: metroRows.map((m) => ({
-        name: (typeof m.name === "string" && m.name) || (typeof m.id === "string" && m.id) || "Metro session",
+        name:
+          (typeof m.role === "string" && typeof m.id === "string" && `${m.role} (${m.id})`) ||
+          (typeof m.id === "string" && m.id) ||
+          "Replication session",
         state: typeof m.state === "string" ? m.state : "Unknown",
       })),
       diagnostics,

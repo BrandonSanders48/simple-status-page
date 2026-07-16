@@ -46,8 +46,14 @@ export interface StoragePayload {
   proxmox: ProxmoxStatus | null;
 }
 
-const CRITICAL_SEVERITIES = new Set(["Critical", "Major"]);
+const CRITICAL_SEVERITIES = new Set(["critical", "major"]);
 const HEALTHY_METRO_STATES = new Set(["ok", "synchronized", "healthy"]);
+
+/** Info/Minor/Warning alerts are noise, not issues -- only Critical/Major should ever
+ * flip a tab badge, the "Attention" pill, or the overall status banner to unhealthy. */
+export function isCriticalSeverity(severity: string): boolean {
+  return CRITICAL_SEVERITIES.has(severity.toLowerCase());
+}
 
 export function isMetroSessionHealthy(state: string): boolean {
   return HEALTHY_METRO_STATES.has(state.toLowerCase());
@@ -55,7 +61,7 @@ export function isMetroSessionHealthy(state: string): boolean {
 
 export function isPowerstoreHealthy(status: PowerstoreStatus): boolean {
   if (!status.ok) return false;
-  if (status.alerts.some((a) => CRITICAL_SEVERITIES.has(a.severity))) return false;
+  if (status.alerts.some((a) => isCriticalSeverity(a.severity))) return false;
   if (status.metroSessions.some((m) => !isMetroSessionHealthy(m.state))) return false;
   return true;
 }
@@ -117,7 +123,7 @@ export function PowerstoreSection({
     return <p className="text-sm text-red-500">Unable to connect to PowerStore: {status.error ?? "unknown error"}</p>;
   }
 
-  const hasCriticalAlert = status.alerts.some((a) => CRITICAL_SEVERITIES.has(a.severity));
+  const hasCriticalAlert = status.alerts.some((a) => isCriticalSeverity(a.severity));
 
   return (
     <div className="space-y-3">
@@ -137,7 +143,7 @@ export function PowerstoreSection({
           <ul className="space-y-1">
             {status.alerts.slice(0, 5).map((a, i) => (
               <li key={a.id || i} className="text-sm text-slate-600 dark:text-slate-300 flex items-start gap-2">
-                <Pill ok={!CRITICAL_SEVERITIES.has(a.severity)} label={a.severity} />
+                <Pill ok={!isCriticalSeverity(a.severity)} label={a.severity} />
                 <span className="flex-1">{a.description}</span>
                 {canAcknowledge && a.id && (
                   <button
