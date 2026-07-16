@@ -57,6 +57,7 @@ export default function Dashboard({
   configVersion = null,
   metaAuthor = null,
   debug = false,
+  initialUptimeByService = {},
 }: {
   businessName: string;
   logoPath?: string | null;
@@ -70,6 +71,7 @@ export default function Dashboard({
   configVersion?: string | null;
   metaAuthor?: string | null;
   debug?: boolean;
+  initialUptimeByService?: Record<number, DayUptime[]>;
 }) {
   const { session, login, logout } = useSession();
   const [status, setStatus] = useState<StatusPayload | null>(null);
@@ -80,7 +82,7 @@ export default function Dashboard({
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [maintenanceWindows, setMaintenanceWindows] = useState<MaintenanceWindow[]>([]);
   const [categories, setCategories] = useState<StatusCategory[]>([]);
-  const [uptimeByService, setUptimeByService] = useState<Record<number, DayUptime[]>>({});
+  const [uptimeByService, setUptimeByService] = useState<Record<number, DayUptime[]>>(initialUptimeByService);
   const [showOutageLog, setShowOutageLog] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
