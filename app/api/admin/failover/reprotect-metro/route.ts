@@ -5,15 +5,14 @@ import { verifyCsrf } from "@/lib/csrf";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { db } from "@/lib/db/client";
 import { powerstoreTargets } from "@/lib/db/schema";
-import { promoteMetroSession } from "@/lib/integrations/powerstore";
+import { reprotectMetroSession } from "@/lib/integrations/powerstore";
 import { invalidateStorageCache } from "@/lib/storageCache";
 import { recordFailoverAction } from "@/lib/failoverLog";
 
 /**
- * Promotes a Metro replication session on the DR-flagged PowerStore array -- the
- * storage half of a manual failover, alongside the Proxmox VM start/shutdown actions.
- * Only ever targets a DR-flagged array (never primary), and is rate limited given how
- * consequential a real Metro failover is on top of the usual auth/CSRF checks.
+ * Re-establishes replication on a Metro session that was previously promoted (the
+ * first step of a failback) -- only ever targets a DR-flagged array, same as promote,
+ * since in this tool's model that's always the side currently acting as primary.
  */
 export async function POST(request: Request) {
   if (!(await requireAuth())) {
@@ -22,8 +21,8 @@ export async function POST(request: Request) {
   if (!(await verifyCsrf(request))) {
     return NextResponse.json({ error: "Invalid CSRF token" }, { status: 403 });
   }
-  if (!rateLimit(`failover_promote:${clientIp(request)}`, 3, 5 * 60 * 1000)) {
-    return NextResponse.json({ error: "Too many promotion requests. Please wait and try again." }, { status: 429 });
+  if (!rateLimit(`failover_reprotect:${clientIp(request)}`, 3, 5 * 60 * 1000)) {
+    return NextResponse.json({ error: "Too many reprotect requests. Please wait and try again." }, { status: 429 });
   }
 
   const body = await request.json().catch(() => null);
@@ -41,16 +40,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "That PowerStore target isn't marked as the DR site." }, { status: 400 });
   }
 
-  const result = await promoteMetroSession({ host: target.host, username: target.username, password: target.password }, sessionId);
+  const result = await reprotectMetroSession({ host: target.host, username: target.username, password: target.password }, sessionId);
   recordFailoverAction({
-    action: "promote_metro",
+    action: "reprotect_metro",
     targetName: target.name,
     detail: `Session ${sessionId}`,
     outcome: result.ok ? "success" : "error",
     errorMessage: result.error,
   });
   if (!result.ok) {
-    return NextResponse.json({ error: result.error ?? "Failed to promote Metro session" }, { status: 502 });
+    return NextResponse.json({ error: result.error ?? "Failed to reprotect Metro session" }, { status: 502 });
   }
 
   invalidateStorageCache();

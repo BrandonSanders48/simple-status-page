@@ -64,6 +64,13 @@
       "when": 1784307708779,
       "tag": "0008_fresh_firebrand",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1784311446600,
+      "tag": "0009_slimy_skullbuster",
+      "breakpoints": true
     }
   ]
 }

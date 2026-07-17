@@ -280,3 +280,13 @@ export async function acknowledgePowerstoreAlert(cfg: PowerstoreConfig, alertId:
 export async function promoteMetroSession(cfg: PowerstoreConfig, sessionId: string): Promise<{ ok: boolean; error?: string }> {
   return post(cfg, `/replication_session/${encodeURIComponent(sessionId)}/failover`, {});
 }
+
+/**
+ * Re-establishes replication after a failover (the first step of a failback), so the
+ * array that was just promoted can eventually sync back to the original primary once
+ * it recovers. Same verification caveat as promoteMetroSession -- this is a best
+ * guess (`reprotect`) at PowerStore's action name, not confirmed against a live call.
+ */
+export async function reprotectMetroSession(cfg: PowerstoreConfig, sessionId: string): Promise<{ ok: boolean; error?: string }> {
+  return post(cfg, `/replication_session/${encodeURIComponent(sessionId)}/reprotect`, {});
+}

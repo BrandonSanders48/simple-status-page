@@ -6,6 +6,7 @@ import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { db } from "@/lib/db/client";
 import { proxmoxTargets } from "@/lib/db/schema";
 import { listProxmoxVms, shutdownProxmoxVm } from "@/lib/integrations/proxmox";
+import { recordFailoverAction } from "@/lib/failoverLog";
 
 const MAX_RANGE = 200;
 
@@ -56,6 +57,13 @@ export async function POST(request: Request) {
   const cfg = { host: target.host, tokenId: target.tokenId, tokenSecret: target.tokenSecret };
   const listing = await listProxmoxVms(cfg);
   if (!listing.ok) {
+    recordFailoverAction({
+      action: "shutdown_vms",
+      targetName: target.name,
+      detail: `VMID ${startId}-${endId}: could not list VMs`,
+      outcome: "error",
+      errorMessage: listing.error,
+    });
     return NextResponse.json({ error: listing.error ?? "Failed to query Proxmox" }, { status: 502 });
   }
 
@@ -72,6 +80,17 @@ export async function POST(request: Request) {
         : { vmid: vm.vmid, name: vm.name, outcome: "error" as const, error: stopped.error };
     })
   );
+
+  const shutdown = results.filter((r) => r.outcome === "shutdown").length;
+  const skipped = results.filter((r) => r.outcome === "already-stopped").length;
+  const errored = results.filter((r) => r.outcome === "error");
+  recordFailoverAction({
+    action: "shutdown_vms",
+    targetName: target.name,
+    detail: `VMID ${startId}-${endId}: ${shutdown} shut down, ${skipped} already stopped, ${errored.length} error(s)`,
+    outcome: errored.length > 0 ? "error" : "success",
+    errorMessage: errored[0]?.error,
+  });
 
   return NextResponse.json({ ok: true, results });
 }

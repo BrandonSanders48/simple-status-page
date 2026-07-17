@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { computeFailoverStatus, type FailoverRecommendation } from "@/lib/failover";
 import type { StoragePayload, PowerstoreTarget } from "./StorageSections";
 
@@ -42,10 +42,39 @@ const RECOMMENDATION_COPY: Record<FailoverRecommendation, { label: string; class
   },
 };
 
+function StepBadge({ step }: { step: number }) {
+  return (
+    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white text-xs font-semibold mr-2">
+      {step}
+    </span>
+  );
+}
+
+function LockedCard({ step, title, description, onSkip }: { step: number; title: string; description: string; onSkip: () => void }) {
+  return (
+    <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5 opacity-60">
+      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center">
+        <StepBadge step={step} />
+        {title}
+      </p>
+      <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mt-3">
+        Complete the previous step first, or{" "}
+        <button type="button" onClick={onSkip} className="underline hover:text-indigo-600 dark:hover:text-indigo-400">
+          skip this step
+        </button>
+        .
+      </p>
+    </div>
+  );
+}
+
 /**
  * Generic "pick a cluster, pick a VMID range, preview, confirm, act" card -- used for
  * both starting VMs at DR and shutting down VMs at primary, which are otherwise
  * identical flows with an inverted skip condition and a different destructive action.
+ * Optionally gated as one step of the guided failover sequence (locked until the
+ * previous step is done or explicitly skipped).
  */
 function VmActionCard({
   title,
@@ -56,6 +85,10 @@ function VmActionCard({
   actionUrl,
   csrfToken,
   idPrefix,
+  step,
+  locked,
+  onSkip,
+  onDone,
 }: {
   title: string;
   description: string;
@@ -65,6 +98,10 @@ function VmActionCard({
   actionUrl: string;
   csrfToken?: string;
   idPrefix: string;
+  step?: number;
+  locked?: boolean;
+  onSkip?: () => void;
+  onDone?: () => void;
 }) {
   const isActionable = (status: string) => (verb === "start" ? status !== "running" : status === "running");
   const actionVerb = verb === "start" ? "Start" : "Shut down";
@@ -83,6 +120,10 @@ function VmActionCard({
   const [acting, setActing] = useState(false);
   const [results, setResults] = useState<ActionResult[] | null>(null);
   const [actError, setActError] = useState<string | null>(null);
+
+  if (locked && onSkip) {
+    return <LockedCard step={step ?? 1} title={title} description={description} onSkip={onSkip} />;
+  }
 
   async function preview() {
     if (targetId === null) return;
@@ -125,6 +166,7 @@ function VmActionCard({
       );
       setPreviewVms(null);
       setConfirmed(false);
+      onDone?.();
     } catch (err) {
       setActError(err instanceof Error ? err.message : `Failed to ${verb} VMs.`);
     } finally {
@@ -138,7 +180,10 @@ function VmActionCard({
   return (
     <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
       <div>
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{title}</p>
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center">
+          {step !== undefined && <StepBadge step={step} />}
+          {title}
+        </p>
         <p className="text-xs text-slate-400 mt-0.5">{description}</p>
       </div>
 
@@ -270,32 +315,60 @@ function VmActionCard({
 
 /**
  * Lists Metro replication sessions on whichever PowerStore array(s) are flagged as the
- * DR site, each with a Promote action (double-confirmed inline, not via checkbox,
- * since there's normally just one or two sessions rather than a range to preview).
+ * DR site, each with Promote (the storage half of a failover) and Reprotect (the first
+ * step of a later failback, re-establishing replication once the array has been
+ * promoted) actions -- both double-confirmed inline rather than via checkbox, since
+ * there's normally just one or two sessions rather than a range to preview.
  */
-function PromoteMetroCard({ drPowerstores, csrfToken }: { drPowerstores: PowerstoreTarget[]; csrfToken?: string }) {
+function PromoteMetroCard({
+  drPowerstores,
+  csrfToken,
+  step,
+  locked,
+  onSkip,
+  onDone,
+}: {
+  drPowerstores: PowerstoreTarget[];
+  csrfToken?: string;
+  step?: number;
+  locked?: boolean;
+  onSkip?: () => void;
+  onDone?: () => void;
+}) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [promoting, setPromoting] = useState<string | null>(null);
+  const [confirmingAction, setConfirmingAction] = useState<"promote" | "reprotect" | null>(null);
+  const [busySessionId, setBusySessionId] = useState<string | null>(null);
   const [result, setResult] = useState<{ sessionId: string; ok: boolean; text: string } | null>(null);
 
-  async function promote(targetId: number, sessionId: string) {
+  const title = "Promote DR datastore";
+  const description =
+    "Promotes a Metro replication session on the PowerStore array marked as the DR site to read/write, so it can serve as primary storage. Only use this once the primary array is confirmed unreachable. Reprotect re-establishes replication afterward, as the first step of a later failback.";
+
+  if (locked && onSkip) {
+    return <LockedCard step={step ?? 1} title={title} description={description} onSkip={onSkip} />;
+  }
+
+  async function run(action: "promote" | "reprotect", targetId: number, sessionId: string) {
     if (!csrfToken) return;
-    setPromoting(sessionId);
+    setBusySessionId(sessionId);
     setResult(null);
     try {
-      const res = await fetch("/api/admin/failover/promote-metro", {
+      const url = action === "promote" ? "/api/admin/failover/promote-metro" : "/api/admin/failover/reprotect-metro";
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
         body: JSON.stringify({ targetId, sessionId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to promote Metro session.");
-      setResult({ sessionId, ok: true, text: "Promoted." });
+      if (!res.ok) throw new Error(data.error || `Failed to ${action} Metro session.`);
+      setResult({ sessionId, ok: true, text: action === "promote" ? "Promoted." : "Reprotected." });
+      if (action === "promote") onDone?.();
     } catch (err) {
-      setResult({ sessionId, ok: false, text: err instanceof Error ? err.message : "Failed to promote Metro session." });
+      setResult({ sessionId, ok: false, text: err instanceof Error ? err.message : `Failed to ${action} Metro session.` });
     } finally {
-      setPromoting(null);
+      setBusySessionId(null);
       setConfirmingId(null);
+      setConfirmingAction(null);
     }
   }
 
@@ -304,11 +377,11 @@ function PromoteMetroCard({ drPowerstores, csrfToken }: { drPowerstores: Powerst
   return (
     <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
       <div>
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Promote DR datastore</p>
-        <p className="text-xs text-slate-400 mt-0.5">
-          Promotes a Metro replication session on the PowerStore array marked as the DR site to read/write, so it can serve as primary
-          storage. Only use this once the primary array is confirmed unreachable.
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center">
+          {step !== undefined && <StepBadge step={step} />}
+          {title}
         </p>
+        <p className="text-xs text-slate-400 mt-0.5">{description}</p>
       </div>
 
       {drPowerstores.length === 0 ? (
@@ -330,31 +403,51 @@ function PromoteMetroCard({ drPowerstores, csrfToken }: { drPowerstores: Powerst
               <div className="ml-auto flex items-center gap-2">
                 {confirmingId === session.id ? (
                   <>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Promote this session?</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {confirmingAction === "promote" ? "Promote" : "Reprotect"} this session?
+                    </span>
                     <button
                       type="button"
-                      onClick={() => promote(target.id, session.id)}
-                      disabled={promoting === session.id}
+                      onClick={() => confirmingAction && run(confirmingAction, target.id, session.id)}
+                      disabled={busySessionId === session.id}
                       className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg disabled:opacity-40"
                     >
-                      {promoting === session.id ? "Promoting..." : "Confirm"}
+                      {busySessionId === session.id ? "Working..." : "Confirm"}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setConfirmingId(null)}
+                      onClick={() => {
+                        setConfirmingId(null);
+                        setConfirmingAction(null);
+                      }}
                       className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                     >
                       Cancel
                     </button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingId(session.id)}
-                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-300 dark:border-red-500/40 text-red-600 dark:text-red-400 text-xs font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
-                  >
-                    Promote
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmingId(session.id);
+                        setConfirmingAction("promote");
+                      }}
+                      className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-300 dark:border-red-500/40 text-red-600 dark:text-red-400 text-xs font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
+                    >
+                      Promote
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmingId(session.id);
+                        setConfirmingAction("reprotect");
+                      }}
+                      className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
+                    >
+                      Reprotect
+                    </button>
+                  </>
                 )}
               </div>
               {result?.sessionId === session.id && (
@@ -368,12 +461,91 @@ function PromoteMetroCard({ drPowerstores, csrfToken }: { drPowerstores: Powerst
   );
 }
 
+interface LogEntry {
+  id: number;
+  action: string;
+  targetName: string;
+  detail: string;
+  outcome: "success" | "error";
+  errorMessage?: string | null;
+  createdAt: string;
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  start_vms: "Start VMs",
+  shutdown_vms: "Shut down VMs",
+  promote_metro: "Promote Metro session",
+  reprotect_metro: "Reprotect Metro session",
+};
+
+function formatLogTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+/** Audit trail of Failover tab actions -- refetched each time this tab is opened
+ * (ServiceTabs unmounts inactive tabs), plus a manual refresh button. */
+function FailoverLog() {
+  const [entries, setEntries] = useState<LogEntry[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetch("/api/admin/failover/log")
+      .then((r) => r.json())
+      .then((data) => setEntries(data.actions ?? []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return (
+    <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Recent failover actions</p>
+        <button
+          type="button"
+          onClick={load}
+          className="text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1.5"
+        >
+          <i className="fa-solid fa-rotate-right text-[10px]" /> Refresh
+        </button>
+      </div>
+      {loading && !entries ? (
+        <p className="text-sm text-slate-400">Loading...</p>
+      ) : !entries || entries.length === 0 ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">No failover actions recorded yet.</p>
+      ) : (
+        <ul className="space-y-2 max-h-64 overflow-y-auto">
+          {entries.map((e) => (
+            <li key={e.id} className="flex items-start gap-2 text-sm">
+              <span className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${e.outcome === "success" ? "bg-emerald-500" : "bg-red-500"}`} />
+              <div className="flex-1 min-w-0">
+                <p className="text-slate-700 dark:text-slate-200">
+                  <span className="font-medium">{ACTION_LABELS[e.action] ?? e.action}</span> on {e.targetName}
+                </p>
+                <p className="text-xs text-slate-400">{e.detail}</p>
+                {e.outcome === "error" && e.errorMessage && <p className="text-xs text-red-500">{e.errorMessage}</p>}
+              </div>
+              <span className="text-xs text-slate-400 whitespace-nowrap">{formatLogTime(e.createdAt)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /**
  * Public tab: shows a fail-over-or-not recommendation to everyone (derived from
- * already-fetched Storage data, no separate polling), plus admin-only controls to
- * start VMs at the DR site and shut down VMs at the primary site, by VMID range.
- * Both are genuinely consequential, so both require a preview step and an explicit
- * confirmation checkbox before anything fires.
+ * already-fetched Storage data, no separate polling), plus admin-only controls for a
+ * guided manual failover -- shut down primary VMs, promote the DR datastore, then
+ * start DR VMs, in that order, each step locked until the previous one is done or
+ * explicitly skipped. Reprotect (failback prep) and the action log sit outside the
+ * gated sequence since they apply after the fact, not during it.
  */
 export default function FailoverSection({
   storage,
@@ -390,6 +562,9 @@ export default function FailoverSection({
   const primaryProxmoxes = (storage?.proxmoxes ?? []).filter((t) => !t.isDr);
   const drPowerstores = (storage?.powerstores ?? []).filter((t) => t.isDr);
 
+  const [step1Done, setStep1Done] = useState(false);
+  const [step2Done, setStep2Done] = useState(false);
+
   return (
     <div className="space-y-5">
       <div className={`rounded-xl border p-4 ${copy.className}`}>
@@ -397,20 +572,16 @@ export default function FailoverSection({
         <p className="text-sm mt-1 opacity-90">{copy.detail}</p>
       </div>
 
+      {!isAdmin && (
+        <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
+          <i className="fa-solid fa-lock text-xs" /> Log in as an admin to start/shut down VMs or promote the DR datastore.
+        </p>
+      )}
+
       {isAdmin && (
         <div className="space-y-4">
-          <PromoteMetroCard drPowerstores={drPowerstores} csrfToken={csrfToken} />
           <VmActionCard
-            title="Start VMs at DR site"
-            description="Starts QEMU VMs by id range on the Proxmox cluster marked as the DR site. Preview first, this powers on real infrastructure."
-            targets={drProxmoxes}
-            emptyMessage="No Proxmox cluster is marked as the DR site. Mark one in the admin Proxmox tab first."
-            verb="start"
-            actionUrl="/api/admin/failover/start"
-            csrfToken={csrfToken}
-            idPrefix="dr"
-          />
-          <VmActionCard
+            step={1}
             title="Shut down VMs at primary site"
             description="Gracefully (ACPI) shuts down QEMU VMs by id range on a primary (non-DR) Proxmox cluster. Preview first, this powers off real infrastructure."
             targets={primaryProxmoxes}
@@ -419,7 +590,31 @@ export default function FailoverSection({
             actionUrl="/api/admin/failover/shutdown"
             csrfToken={csrfToken}
             idPrefix="primary"
+            onDone={() => setStep1Done(true)}
           />
+          <PromoteMetroCard
+            step={2}
+            drPowerstores={drPowerstores}
+            csrfToken={csrfToken}
+            locked={!step1Done}
+            onSkip={() => setStep1Done(true)}
+            onDone={() => setStep2Done(true)}
+          />
+          <VmActionCard
+            step={3}
+            title="Start VMs at DR site"
+            description="Starts QEMU VMs by id range on the Proxmox cluster marked as the DR site. Preview first, this powers on real infrastructure."
+            targets={drProxmoxes}
+            emptyMessage="No Proxmox cluster is marked as the DR site. Mark one in the admin Proxmox tab first."
+            verb="start"
+            actionUrl="/api/admin/failover/start"
+            csrfToken={csrfToken}
+            idPrefix="dr"
+            locked={!step2Done}
+            onSkip={() => setStep2Done(true)}
+          />
+
+          <FailoverLog />
         </div>
       )}
     </div>

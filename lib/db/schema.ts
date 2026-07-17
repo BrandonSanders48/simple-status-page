@@ -146,6 +146,19 @@ export const pbsAcknowledgedTasks = sqliteTable(
   })
 );
 
+// Audit trail for the Failover tab's destructive actions (starting/shutting down VMs,
+// promoting/reprotecting a Metro session). targetName is denormalized so the log
+// still reads clearly after a target is renamed or removed.
+export const failoverActions = sqliteTable("failover_actions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  action: text("action").notNull(), // start_vms | shutdown_vms | promote_metro | reprotect_metro
+  targetName: text("target_name").notNull(),
+  detail: text("detail").notNull(),
+  outcome: text("outcome").notNull(), // success | error
+  errorMessage: text("error_message"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const incidents = sqliteTable("incidents", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull(),
