@@ -19,8 +19,8 @@ export interface PowerstoreMetroSession {
   id: string;
   name: string;
   state: string;
-  /** Raw `role` value as PowerStore reports it -- passed through untransformed since
-   * the exact strings it uses to distinguish source/destination aren't confirmed. */
+  /** Raw `role` value as PowerStore reports it -- confirmed values are
+   * "Metro_Preferred" and "Metro_Non_Preferred" (see lib/failover.ts). */
   role?: string;
 }
 

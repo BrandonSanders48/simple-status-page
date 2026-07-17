@@ -161,7 +161,7 @@ export default function ServiceTabs({
   const powerstoreHasIssue = powerstores.some((t) => !isPowerstoreHealthy(t.status));
   const proxmoxHasIssue = proxmoxes.some((t) => !isProxmoxHealthy(t.status));
   const pbsHasIssue = pbsTargets.some((t) => !isPbsHealthy(t.status));
-  const failoverRecommendation = computeFailoverStatus(storage).recommendation;
+  const failoverRecommendation = computeFailoverStatus(storage, services).recommendation;
   const failoverHasIssue = failoverRecommendation === "recommend" || failoverRecommendation === "caution";
 
   return (
@@ -263,7 +263,7 @@ export default function ServiceTabs({
             ))}
           </div>
         )}
-        {activeTab === "failover" && <FailoverSection storage={storage} isAdmin={isAdmin} csrfToken={csrfToken} />}
+        {activeTab === "failover" && <FailoverSection storage={storage} services={services} isAdmin={isAdmin} csrfToken={csrfToken} />}
       </div>
     </div>
   );

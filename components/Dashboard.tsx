@@ -10,6 +10,7 @@ import CreatePostModal from "./CreatePostModal";
 import RssPanel from "./RssPanel";
 import ServiceTabs from "./ServiceTabs";
 import { isStorageHealthy, isPbsAllHealthy, type StoragePayload, type PbsPayload } from "./StorageSections";
+import { isDrPreferred } from "@/lib/failover";
 import OutageHistoryModal from "./OutageHistoryModal";
 import DarkModeToggle from "./DarkModeToggle";
 import LoginModal from "./LoginModal";
@@ -219,7 +220,8 @@ export default function Dashboard({
       status.local.ok !== false &&
       status.wide.ok !== false &&
       isStorageHealthy(storage) &&
-      isPbsAllHealthy(pbs)
+      isPbsAllHealthy(pbs) &&
+      !isDrPreferred(storage)
     : null;
   const isAdmin = !!session?.authenticated;
 
@@ -238,6 +240,13 @@ export default function Dashboard({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <span
+              className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500"
+              title={`This page automatically refreshes every ${Math.round(refreshRateMs / 1000)} seconds`}
+            >
+              <i className="fa-solid fa-rotate text-[10px]" />
+              Auto-refreshes every {Math.round(refreshRateMs / 1000)}s
+            </span>
             <DarkModeToggle initialDark={initialDark} />
             {isAdmin ? (
               <>

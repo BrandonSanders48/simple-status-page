@@ -1,4 +1,4 @@
-import { isPowerstoreHealthy, isProxmoxHealthy, type StoragePayload } from "@/components/StorageSections";
+import { isPowerstoreHealthy, isProxmoxHealthy, isCriticalSeverity, type StoragePayload } from "@/components/StorageSections";
 
 export type FailoverRecommendation = "healthy" | "recommend" | "caution" | "unconfigured";
 
@@ -9,14 +9,45 @@ export interface FailoverStatus {
   drHealthy: boolean;
 }
 
+export interface FailoverServiceLike {
+  up: boolean;
+}
+
+/** Confirmed against a live array: PowerStore reports a Metro session's role as
+ * exactly "Metro_Preferred" or "Metro_Non_Preferred". */
+function roleIndicatesPreferred(role?: string): boolean {
+  return role?.toLowerCase() === "metro_preferred";
+}
+
 /**
- * Compares the health of whichever targets are flagged as the DR site against the
- * rest (the "primary" site) using data already fetched for the Storage/Proxmox tabs --
- * no separate polling needed. "recommend" only fires when the primary site looks
- * unhealthy AND the DR site looks healthy; if both are unhealthy this deliberately
- * stops short of recommending a failover into another bad environment.
+ * True once a DR-flagged PowerStore array's Metro session reports itself as
+ * "preferred" -- PowerStore's own Metro arbitration only shifts preference to the
+ * non-original side when it has detected a real problem with the other one, so this
+ * is treated as confirmation of an actual storage-level failover having occurred (not
+ * just a recommendation), strong enough to flip the whole site to "not operational"
+ * (see isDashboardDown in Dashboard.tsx) rather than just flagging the Failover tab.
  */
-export function computeFailoverStatus(storage: StoragePayload | null): FailoverStatus {
+export function isDrPreferred(storage: StoragePayload | null): boolean {
+  if (!storage?.enabled) return false;
+  return storage.powerstores.some((t) => t.isDr && t.status.metroSessions.some((m) => roleIndicatesPreferred(m.role)));
+}
+
+/**
+ * Compares the primary site's health against whichever targets are flagged as the DR
+ * site, using data already fetched for the Services/Storage/Proxmox tabs -- no
+ * separate polling needed. "recommend" only fires when the primary site looks down
+ * AND the DR site looks ready; if both look bad this deliberately stops short of
+ * recommending a failover into another bad environment.
+ *
+ * The primary site is only considered "down" for this purpose by specific, narrow
+ * signals: most internal services being down, a primary Proxmox host being
+ * unreachable/offline, a primary PowerStore array being unreachable or reporting a
+ * critical alert, or a DR PowerStore array having become Metro-preferred (see
+ * isDrPreferred). CPU% and storage usage% are excluded on purpose -- normal
+ * day-to-day noise (still visible as "Attention" on their own tabs) that shouldn't by
+ * itself recommend failing over an entire site.
+ */
+export function computeFailoverStatus(storage: StoragePayload | null, services: FailoverServiceLike[] = []): FailoverStatus {
   if (!storage?.enabled) {
     return { recommendation: "unconfigured", hasDr: false, primaryHealthy: true, drHealthy: false };
   }
@@ -31,9 +62,16 @@ export function computeFailoverStatus(storage: StoragePayload | null): FailoverS
     return { recommendation: "unconfigured", hasDr: false, primaryHealthy: true, drHealthy: false };
   }
 
-  const primaryHealthy =
-    primaryPowerstores.every((t) => isPowerstoreHealthy(t.status)) && primaryProxmoxes.every((t) => isProxmoxHealthy(t.status));
-  const drHealthy = drPowerstores.every((t) => isPowerstoreHealthy(t.status)) && drProxmoxes.every((t) => isProxmoxHealthy(t.status));
+  const downServices = services.filter((s) => !s.up).length;
+  const mostServicesDown = services.length > 0 && downServices > services.length / 2;
+  const primaryHostDown = primaryProxmoxes.some((t) => !t.status.ok || t.status.nodes.some((n) => !n.online));
+  const primaryPowerstoreDown = primaryPowerstores.some((t) => !t.status.ok || t.status.alerts.some((a) => isCriticalSeverity(a.severity)));
+  const primaryHealthy = !mostServicesDown && !primaryHostDown && !primaryPowerstoreDown && !isDrPreferred(storage);
+
+  // DR readiness prefers the DR PowerStore array's own health (Metro sync/alerts)
+  // when one is configured, only falling back to DR Proxmox health when it isn't.
+  const drHealthy =
+    drPowerstores.length > 0 ? drPowerstores.every((t) => isPowerstoreHealthy(t.status)) : drProxmoxes.every((t) => isProxmoxHealthy(t.status));
 
   if (primaryHealthy) return { recommendation: "healthy", hasDr, primaryHealthy, drHealthy };
   if (drHealthy) return { recommendation: "recommend", hasDr, primaryHealthy, drHealthy };

@@ -79,6 +79,7 @@ function LockedCard({ step, title, description, onSkip }: { step: number; title:
 function VmActionCard({
   title,
   description,
+  note,
   targets,
   emptyMessage,
   verb,
@@ -92,6 +93,7 @@ function VmActionCard({
 }: {
   title: string;
   description: string;
+  note?: string;
   targets: { id: number; name: string }[];
   emptyMessage: string;
   verb: "start" | "shutdown";
@@ -179,13 +181,30 @@ function VmActionCard({
 
   return (
     <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
-      <div>
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center">
-          {step !== undefined && <StepBadge step={step} />}
-          {title}
-        </p>
-        <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center">
+            {step !== undefined && <StepBadge step={step} />}
+            {title}
+          </p>
+          <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+        </div>
+        {onSkip && (
+          <button
+            type="button"
+            onClick={onSkip}
+            className="text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 whitespace-nowrap underline"
+          >
+            Skip this step
+          </button>
+        )}
       </div>
+
+      {note && (
+        <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+          <i className="fa-solid fa-triangle-exclamation" /> {note}
+        </p>
+      )}
 
       {targets.length === 0 ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">{emptyMessage}</p>
@@ -549,18 +568,24 @@ function FailoverLog() {
  */
 export default function FailoverSection({
   storage,
+  services,
   isAdmin,
   csrfToken,
 }: {
   storage: StoragePayload | null;
+  services: { up: boolean }[];
   isAdmin: boolean;
   csrfToken?: string;
 }) {
-  const failover = computeFailoverStatus(storage);
+  const failover = computeFailoverStatus(storage, services);
   const copy = RECOMMENDATION_COPY[failover.recommendation];
   const drProxmoxes = (storage?.proxmoxes ?? []).filter((t) => t.isDr);
   const primaryProxmoxes = (storage?.proxmoxes ?? []).filter((t) => !t.isDr);
   const drPowerstores = (storage?.powerstores ?? []).filter((t) => t.isDr);
+  // Nothing to gracefully shut down on a cluster we can't even reach -- likely already
+  // the reason a failover is happening. Step 1 only blocks Step 2 when at least one
+  // primary cluster is actually responding.
+  const primaryAccessible = primaryProxmoxes.some((t) => t.status.ok);
 
   const [step1Done, setStep1Done] = useState(false);
   const [step2Done, setStep2Done] = useState(false);
@@ -584,6 +609,11 @@ export default function FailoverSection({
             step={1}
             title="Shut down VMs at primary site"
             description="Gracefully (ACPI) shuts down QEMU VMs by id range on a primary (non-DR) Proxmox cluster. Preview first, this powers off real infrastructure."
+            note={
+              primaryProxmoxes.length > 0 && !primaryAccessible
+                ? "The primary cluster already appears unreachable, so this step likely isn't necessary."
+                : undefined
+            }
             targets={primaryProxmoxes}
             emptyMessage="No primary Proxmox cluster is available (either none is configured, or every configured cluster is marked as the DR site)."
             verb="shutdown"
@@ -591,12 +621,13 @@ export default function FailoverSection({
             csrfToken={csrfToken}
             idPrefix="primary"
             onDone={() => setStep1Done(true)}
+            onSkip={() => setStep1Done(true)}
           />
           <PromoteMetroCard
             step={2}
             drPowerstores={drPowerstores}
             csrfToken={csrfToken}
-            locked={!step1Done}
+            locked={primaryAccessible && !step1Done}
             onSkip={() => setStep1Done(true)}
             onDone={() => setStep2Done(true)}
           />
