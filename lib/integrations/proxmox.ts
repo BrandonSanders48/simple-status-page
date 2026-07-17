@@ -60,6 +60,24 @@ async function get(cfg: ProxmoxConfig, path: string, timeoutMs = 6000): Promise<
   }
 }
 
+async function post(cfg: ProxmoxConfig, path: string, timeoutMs = 10000): Promise<GetResult> {
+  try {
+    const res = await undiciFetch(`${baseUrl(cfg.host)}${path}`, {
+      method: "POST",
+      headers: { Authorization: `PVEAPIToken=${cfg.tokenId}=${cfg.tokenSecret}` },
+      dispatcher: insecureAgent,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return { data: null, error: `${path} returned HTTP ${res.status}${body ? `: ${body.slice(0, 200)}` : ""}` };
+    }
+    return { data: await res.json(), error: null };
+  } catch (err) {
+    return { data: null, error: err instanceof Error ? `${path}: ${err.message}` : `${path}: request failed` };
+  }
+}
+
 function rowsOf(result: GetResult): JsonRecord[] {
   if (result.error) return [];
   const body = result.data as { data?: JsonRecord[] };
@@ -139,4 +157,34 @@ export async function fetchProxmoxStorageStatus(cfg: ProxmoxConfig): Promise<Pro
       diagnostics,
     };
   }
+}
+
+export interface ProxmoxVm {
+  vmid: number;
+  name: string;
+  node: string;
+  status: string; // "running" | "stopped" | ...
+}
+
+/** Every QEMU VM in the cluster, wherever it currently lives -- the Failover tab uses
+ * this to preview/start VMs by id range without needing to know in advance which node
+ * each one is on. */
+export async function listProxmoxVms(cfg: ProxmoxConfig): Promise<{ ok: boolean; error?: string; vms: ProxmoxVm[] }> {
+  const result = await get(cfg, "/api2/json/cluster/resources?type=qemu");
+  if (result.error) return { ok: false, error: result.error, vms: [] };
+  const vms = rowsOf(result).map((r) => ({
+    vmid: typeof r.vmid === "number" ? r.vmid : Number(r.vmid),
+    name: typeof r.name === "string" ? r.name : `vm-${r.vmid}`,
+    node: typeof r.node === "string" ? r.node : "unknown",
+    status: typeof r.status === "string" ? r.status : "unknown",
+  }));
+  return { ok: true, vms };
+}
+
+/** Starts one VM by id. The caller looks up which node it's currently on (via
+ * listProxmoxVms) since this endpoint is scoped to a specific node. */
+export async function startProxmoxVm(cfg: ProxmoxConfig, node: string, vmid: number): Promise<{ ok: boolean; error?: string }> {
+  const result = await post(cfg, `/api2/json/nodes/${node}/qemu/${vmid}/status/start`);
+  if (result.error) return { ok: false, error: result.error };
+  return { ok: true };
 }

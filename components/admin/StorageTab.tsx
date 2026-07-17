@@ -56,6 +56,10 @@ function PowerstoreTargetCard({
           <input type="checkbox" checked={target.enabled} onChange={(e) => onChange({ enabled: e.target.checked })} className="w-4 h-4 accent-indigo-600" />
           Enabled
         </label>
+        <label className="flex items-center gap-2 cursor-pointer text-xs whitespace-nowrap" title="Feeds the Failover tab's fail-over recommendation">
+          <input type="checkbox" checked={target.isDr} onChange={(e) => onChange({ isDr: e.target.checked })} className="w-4 h-4 accent-amber-600" />
+          DR site
+        </label>
         <button type="button" onClick={onRemove} aria-label="Remove target" className="p-1.5 text-red-400 hover:text-red-600">
           <i className="fa fa-trash text-xs" />
         </button>
@@ -115,7 +119,7 @@ export default function StorageTab({
     if (powerstoreTargets.length >= MAX_TARGETS) return;
     onPowerstoreTargetsChange([
       ...powerstoreTargets,
-      { name: "", host: "", username: "", password: "", enabled: true, sortOrder: powerstoreTargets.length },
+      { name: "", host: "", username: "", password: "", enabled: true, isDr: false, sortOrder: powerstoreTargets.length },
     ]);
   }
 

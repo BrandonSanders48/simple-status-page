@@ -115,15 +115,16 @@ export default function AdminDashboard() {
       rssFeeds: rssFeeds.map(({ name, host, tag, description }) => ({ name, host, tag, description })),
       ispMap: ispMap.map(({ ip, name }) => ({ ip, name })),
       statusCategories: statusCategories.map(({ key, label, color }) => ({ key, label, color })),
-      powerstoreTargets: powerstoreTargets.map(({ id, name, host, username, password, enabled }) => ({
+      powerstoreTargets: powerstoreTargets.map(({ id, name, host, username, password, enabled, isDr }) => ({
         id,
         name,
         host,
         username,
         password,
         enabled,
+        isDr,
       })),
-      proxmoxTargets: proxmoxTargets.map(({ id, name, host, tokenId, tokenSecret, storageId, enabled }) => ({
+      proxmoxTargets: proxmoxTargets.map(({ id, name, host, tokenId, tokenSecret, storageId, enabled, isDr }) => ({
         id,
         name,
         host,
@@ -131,6 +132,7 @@ export default function AdminDashboard() {
         tokenSecret,
         storageId,
         enabled,
+        isDr,
       })),
       pbsTargets: pbsTargets.map(({ id, name, host, tokenId, tokenSecret, enabled }) => ({
         id,

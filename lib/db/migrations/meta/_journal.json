@@ -50,6 +50,13 @@
       "when": 1784303591535,
       "tag": "0006_crazy_scarlet_spider",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1784304894079,
+      "tag": "0007_last_marvel_apes",
+      "breakpoints": true
     }
   ]
 }

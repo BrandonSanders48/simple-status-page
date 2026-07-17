@@ -44,12 +44,14 @@ export interface ProxmoxStatus {
 export interface PowerstoreTarget {
   id: number;
   name: string;
+  isDr: boolean;
   status: PowerstoreStatus;
 }
 
 export interface ProxmoxTarget {
   id: number;
   name: string;
+  isDr: boolean;
   status: ProxmoxStatus;
 }
 
@@ -163,15 +165,25 @@ export function CapacityBar({ percent }: { percent: number }) {
   );
 }
 
+function DrBadge() {
+  return (
+    <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">
+      DR Site
+    </span>
+  );
+}
+
 export function PowerstoreSection({
   name,
   status,
+  isDr = false,
   canAcknowledge = false,
   acknowledgingId = null,
   onAcknowledge,
 }: {
   name: string;
   status: PowerstoreStatus;
+  isDr?: boolean;
   canAcknowledge?: boolean;
   acknowledgingId?: string | null;
   onAcknowledge?: (alertId: string) => void;
@@ -192,6 +204,7 @@ export function PowerstoreSection({
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
         <Pill ok={!hasCriticalAlert} label={hasCriticalAlert ? "Attention" : "Healthy"} />
+        {isDr && <DrBadge />}
         {status.clusterState && <span className="text-xs text-slate-400">{status.clusterState}</span>}
       </div>
 
@@ -243,7 +256,7 @@ export function PowerstoreSection({
   );
 }
 
-export function ProxmoxSection({ name, status }: { name: string; status: ProxmoxStatus }) {
+export function ProxmoxSection({ name, status, isDr = false }: { name: string; status: ProxmoxStatus; isDr?: boolean }) {
   if (!status.ok) {
     return (
       <div>
@@ -264,6 +277,7 @@ export function ProxmoxSection({ name, status }: { name: string; status: Proxmox
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
         {status.quorate !== null && <Pill ok={status.quorate} label={status.quorate ? "Quorate" : "No Quorum"} />}
+        {isDr && <DrBadge />}
       </div>
 
       {status.nodes.length > 0 ? (

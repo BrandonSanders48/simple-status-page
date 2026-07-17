@@ -12,9 +12,11 @@ import {
   type StoragePayload,
   type PbsPayload,
 } from "./StorageSections";
+import FailoverSection from "./FailoverSection";
+import { computeFailoverStatus } from "@/lib/failover";
 import type { StatusServicePayload } from "@/lib/statusCache";
 
-type TabKey = "services" | "storage" | "proxmox" | "backups";
+type TabKey = "services" | "storage" | "proxmox" | "backups" | "failover";
 
 interface DayUptime {
   date: string;
@@ -128,13 +130,21 @@ export default function ServiceTabs({
     );
   }
 
+  const hasFailover = hasPowerstore || hasProxmox;
   const activeTab =
-    (tab === "storage" && !hasPowerstore) || (tab === "proxmox" && !hasProxmox) || (tab === "backups" && !hasPbs) ? "services" : tab;
+    (tab === "storage" && !hasPowerstore) ||
+    (tab === "proxmox" && !hasProxmox) ||
+    (tab === "backups" && !hasPbs) ||
+    (tab === "failover" && !hasFailover)
+      ? "services"
+      : tab;
 
   const servicesHaveIssue = services.some((s) => !s.up);
   const powerstoreHasIssue = powerstores.some((t) => !isPowerstoreHealthy(t.status));
   const proxmoxHasIssue = proxmoxes.some((t) => !isProxmoxHealthy(t.status));
   const pbsHasIssue = pbsTargets.some((t) => !isPbsHealthy(t.status));
+  const failoverRecommendation = computeFailoverStatus(storage).recommendation;
+  const failoverHasIssue = failoverRecommendation === "recommend" || failoverRecommendation === "caution";
 
   return (
     <div className="mb-5">
@@ -173,6 +183,15 @@ export default function ServiceTabs({
             hasIssue={pbsHasIssue}
           />
         )}
+        {hasFailover && (
+          <TabButton
+            active={activeTab === "failover"}
+            onClick={() => setTab("failover")}
+            icon="fa-tower-broadcast"
+            label="Failover"
+            hasIssue={failoverHasIssue}
+          />
+        )}
       </div>
 
       {activeTab === "services" && (
@@ -191,6 +210,7 @@ export default function ServiceTabs({
               <PowerstoreSection
                 name={t.name}
                 status={t.status}
+                isDr={t.isDr}
                 canAcknowledge={isAdmin}
                 acknowledgingId={acknowledging?.targetId === t.id ? acknowledging.alertId : null}
                 onAcknowledge={(alertId) => handleAcknowledge(t.id, alertId)}
@@ -203,7 +223,7 @@ export default function ServiceTabs({
         <div className="space-y-4">
           {proxmoxes.map((t) => (
             <div key={t.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">
-              <ProxmoxSection name={t.name} status={t.status} />
+              <ProxmoxSection name={t.name} status={t.status} isDr={t.isDr} />
             </div>
           ))}
         </div>
@@ -217,6 +237,7 @@ export default function ServiceTabs({
           ))}
         </div>
       )}
+      {activeTab === "failover" && <FailoverSection storage={storage} isAdmin={isAdmin} csrfToken={csrfToken} />}
     </div>
   );
 }

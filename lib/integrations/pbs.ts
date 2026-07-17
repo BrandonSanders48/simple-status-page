@@ -40,7 +40,10 @@ function baseUrl(host: string): string {
 async function get(cfg: PbsConfig, path: string, timeoutMs = 8000): Promise<GetResult> {
   try {
     const res = await undiciFetch(`${baseUrl(cfg.host)}${path}`, {
-      headers: { Authorization: `PVEAPIToken=${cfg.tokenId}=${cfg.tokenSecret}` },
+      // PBS shares Proxmox VE's task/node API shapes, but NOT its auth header -- PBS
+      // uses its own "PBSAPIToken" scheme with a `:` before the secret (PVE uses
+      // "PVEAPIToken" with `=`). Mixing these up authenticates as nobody -> 401.
+      headers: { Authorization: `PBSAPIToken=${cfg.tokenId}:${cfg.tokenSecret}` },
       dispatcher: insecureAgent,
       signal: AbortSignal.timeout(timeoutMs),
     });

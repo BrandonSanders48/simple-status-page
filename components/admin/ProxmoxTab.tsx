@@ -62,6 +62,10 @@ function ProxmoxTargetCard({
           <input type="checkbox" checked={target.enabled} onChange={(e) => onChange({ enabled: e.target.checked })} className="w-4 h-4 accent-indigo-600" />
           Enabled
         </label>
+        <label className="flex items-center gap-2 cursor-pointer text-xs whitespace-nowrap" title="Feeds the Failover tab's recommendation, and is the only cluster the Failover tab will let you start VMs on">
+          <input type="checkbox" checked={target.isDr} onChange={(e) => onChange({ isDr: e.target.checked })} className="w-4 h-4 accent-amber-600" />
+          DR site
+        </label>
         <button type="button" onClick={onRemove} aria-label="Remove target" className="p-1.5 text-red-400 hover:text-red-600">
           <i className="fa fa-trash text-xs" />
         </button>
@@ -138,7 +142,7 @@ export default function ProxmoxTab({
     if (proxmoxTargets.length >= MAX_TARGETS) return;
     onProxmoxTargetsChange([
       ...proxmoxTargets,
-      { name: "", host: "", tokenId: "", tokenSecret: "", storageId: null, enabled: true, sortOrder: proxmoxTargets.length },
+      { name: "", host: "", tokenId: "", tokenSecret: "", storageId: null, enabled: true, isDr: false, sortOrder: proxmoxTargets.length },
     ]);
   }
 

@@ -98,6 +98,9 @@ export const powerstoreTargets = sqliteTable("powerstore_targets", {
   username: text("username").notNull(),
   password: text("password").notNull(),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  // Marks this array as living at the DR site, so the Failover tab's recommendation
+  // can compare its health against the (non-DR) primary targets.
+  isDr: integer("is_dr", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
@@ -109,6 +112,9 @@ export const proxmoxTargets = sqliteTable("proxmox_targets", {
   tokenSecret: text("token_secret").notNull(),
   storageId: text("storage_id"),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  // Marks this cluster as the DR site -- the only Proxmox targets the Failover tab
+  // will let an admin start VMs on.
+  isDr: integer("is_dr", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 

@@ -77,6 +77,7 @@ export const powerstoreTargetInputSchema = z.object({
   username: z.string().min(1).max(200),
   password: z.string().min(1).max(500),
   enabled: z.boolean(),
+  isDr: z.boolean(),
 });
 
 export const proxmoxTargetInputSchema = z.object({
@@ -87,6 +88,7 @@ export const proxmoxTargetInputSchema = z.object({
   tokenSecret: z.string().min(1).max(500),
   storageId: z.string().max(200).nullable().optional(),
   enabled: z.boolean(),
+  isDr: z.boolean(),
 });
 
 export const pbsTargetInputSchema = z.object({

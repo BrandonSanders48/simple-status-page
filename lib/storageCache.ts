@@ -7,12 +7,14 @@ import { fetchProxmoxStorageStatus, type ProxmoxStatus } from "./integrations/pr
 export interface PowerstoreTargetPayload {
   id: number;
   name: string;
+  isDr: boolean;
   status: PowerstoreStatus;
 }
 
 export interface ProxmoxTargetPayload {
   id: number;
   name: string;
+  isDr: boolean;
   status: ProxmoxStatus;
 }
 
@@ -44,6 +46,7 @@ async function computeStorage(): Promise<StoragePayload> {
       psTargets.map(async (t) => ({
         id: t.id,
         name: t.name,
+        isDr: t.isDr,
         status: await fetchPowerstoreStatus({ host: t.host, username: t.username, password: t.password }),
       }))
     ),
@@ -51,6 +54,7 @@ async function computeStorage(): Promise<StoragePayload> {
       pveTargets.map(async (t) => ({
         id: t.id,
         name: t.name,
+        isDr: t.isDr,
         status: await fetchProxmoxStorageStatus({ host: t.host, tokenId: t.tokenId, tokenSecret: t.tokenSecret, storageId: t.storageId }),
       }))
     ),
