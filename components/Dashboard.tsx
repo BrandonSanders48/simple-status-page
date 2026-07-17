@@ -300,6 +300,8 @@ export default function Dashboard({
           uptimeByService={uptimeByService}
         />
 
+        <div className="h-5 mb-4" />
+
         <RssPanel feeds={rss} loading={!rssLoaded} />
       </main>
 

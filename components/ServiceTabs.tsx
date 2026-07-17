@@ -40,19 +40,17 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+      className={`relative flex items-center gap-2 px-3.5 py-2.5 text-sm font-medium rounded-t-lg border border-b-0 transition-colors ${
         active
-          ? "bg-indigo-600 text-white"
-          : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+          ? "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 border-b-white dark:border-b-slate-800 text-indigo-600 dark:text-indigo-400 -mb-px"
+          : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-700/40"
       }`}
     >
       <i className={`fa-solid ${icon} text-xs`} /> {label}
       {hasIssue && (
         <span
           title="This tab has an active issue"
-          className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] ${
-            active ? "bg-white text-red-600" : "bg-red-500 text-white"
-          }`}
+          className="flex items-center justify-center w-4 h-4 rounded-full text-[10px] bg-red-500 text-white"
         >
           <i className="fa-solid fa-exclamation" />
         </span>
@@ -167,8 +165,8 @@ export default function ServiceTabs({
   const failoverHasIssue = failoverRecommendation === "recommend" || failoverRecommendation === "caution";
 
   return (
-    <div className="mb-5">
-      <div className="flex flex-wrap gap-2 mb-3">
+    <div className="mb-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
+      <div className="flex flex-wrap gap-1 px-3 pt-3 border-b border-slate-200 dark:border-slate-700">
         <TabButton
           active={activeTab === "services"}
           onClick={() => setTab("services")}
@@ -214,56 +212,59 @@ export default function ServiceTabs({
         )}
       </div>
 
-      {activeTab === "services" && (
-        <ServicesPanel
-          services={services}
-          visibleCount={visibleCount}
-          loading={loading}
-          onOpenOutageLog={onOpenOutageLog}
-          uptimeByService={uptimeByService}
-        />
-      )}
-      {activeTab === "storage" && (
-        <div className="space-y-4">
-          {powerstores.map((t) => (
-            <div key={t.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">
-              <PowerstoreSection
-                name={t.name}
-                status={t.status}
-                isDr={t.isDr}
-                canAcknowledge={isAdmin}
-                acknowledgingId={acknowledging?.targetId === t.id ? acknowledging.alertId : null}
-                onAcknowledge={(alertId) => handleAcknowledge(t.id, alertId)}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-      {activeTab === "proxmox" && (
-        <div className="space-y-4">
-          {proxmoxes.map((t) => (
-            <div key={t.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">
-              <ProxmoxSection name={t.name} status={t.status} isDr={t.isDr} />
-            </div>
-          ))}
-        </div>
-      )}
-      {activeTab === "backups" && (
-        <div className="space-y-4">
-          {pbsTargets.map((t) => (
-            <div key={t.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">
-              <PbsSection
-                name={t.name}
-                status={t.status}
-                canAcknowledge={isAdmin}
-                acknowledgingId={acknowledgingTask?.targetId === t.id ? acknowledgingTask.taskId : null}
-                onAcknowledge={(taskId) => handleAcknowledgeTask(t.id, taskId)}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-      {activeTab === "failover" && <FailoverSection storage={storage} isAdmin={isAdmin} csrfToken={csrfToken} />}
+      <div className="p-5">
+        {activeTab === "services" && (
+          <ServicesPanel
+            services={services}
+            visibleCount={visibleCount}
+            loading={loading}
+            onOpenOutageLog={onOpenOutageLog}
+            uptimeByService={uptimeByService}
+            bare
+          />
+        )}
+        {activeTab === "storage" && (
+          <div className="space-y-4">
+            {powerstores.map((t) => (
+              <div key={t.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+                <PowerstoreSection
+                  name={t.name}
+                  status={t.status}
+                  isDr={t.isDr}
+                  canAcknowledge={isAdmin}
+                  acknowledgingId={acknowledging?.targetId === t.id ? acknowledging.alertId : null}
+                  onAcknowledge={(alertId) => handleAcknowledge(t.id, alertId)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        {activeTab === "proxmox" && (
+          <div className="space-y-4">
+            {proxmoxes.map((t) => (
+              <div key={t.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+                <ProxmoxSection name={t.name} status={t.status} isDr={t.isDr} />
+              </div>
+            ))}
+          </div>
+        )}
+        {activeTab === "backups" && (
+          <div className="space-y-4">
+            {pbsTargets.map((t) => (
+              <div key={t.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+                <PbsSection
+                  name={t.name}
+                  status={t.status}
+                  canAcknowledge={isAdmin}
+                  acknowledgingId={acknowledgingTask?.targetId === t.id ? acknowledgingTask.taskId : null}
+                  onAcknowledge={(taskId) => handleAcknowledgeTask(t.id, taskId)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        {activeTab === "failover" && <FailoverSection storage={storage} isAdmin={isAdmin} csrfToken={csrfToken} />}
+      </div>
     </div>
   );
 }

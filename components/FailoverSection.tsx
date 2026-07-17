@@ -124,7 +124,7 @@ export default function FailoverSection({
       </div>
 
       {isAdmin && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5 space-y-4">
+        <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
           <div>
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Start VMs at DR site</p>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -140,8 +140,11 @@ export default function FailoverSection({
             <>
               <div className="flex flex-wrap items-end gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">DR cluster</label>
+                  <label htmlFor="failover-dr-cluster" className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                    DR cluster
+                  </label>
                   <select
+                    id="failover-dr-cluster"
                     value={targetId ?? ""}
                     onChange={(e) => setTargetId(Number(e.target.value))}
                     className="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
@@ -154,8 +157,11 @@ export default function FailoverSection({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Start VMID</label>
+                  <label htmlFor="failover-start-vmid" className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                    Start VMID
+                  </label>
                   <input
+                    id="failover-start-vmid"
                     type="number"
                     min={0}
                     value={startId}
@@ -164,8 +170,11 @@ export default function FailoverSection({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">End VMID</label>
+                  <label htmlFor="failover-end-vmid" className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                    End VMID
+                  </label>
                   <input
+                    id="failover-end-vmid"
                     type="number"
                     min={startId}
                     value={endId}

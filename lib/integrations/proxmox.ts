@@ -168,16 +168,20 @@ export interface ProxmoxVm {
 
 /** Every QEMU VM in the cluster, wherever it currently lives -- the Failover tab uses
  * this to preview/start VMs by id range without needing to know in advance which node
- * each one is on. */
+ * each one is on. /cluster/resources only accepts type=vm (which covers both QEMU VMs
+ * and LXC containers, each row tagged with its own r.type) -- there's no type=qemu, so
+ * containers are filtered out here rather than at the API. */
 export async function listProxmoxVms(cfg: ProxmoxConfig): Promise<{ ok: boolean; error?: string; vms: ProxmoxVm[] }> {
-  const result = await get(cfg, "/api2/json/cluster/resources?type=qemu");
+  const result = await get(cfg, "/api2/json/cluster/resources?type=vm");
   if (result.error) return { ok: false, error: result.error, vms: [] };
-  const vms = rowsOf(result).map((r) => ({
-    vmid: typeof r.vmid === "number" ? r.vmid : Number(r.vmid),
-    name: typeof r.name === "string" ? r.name : `vm-${r.vmid}`,
-    node: typeof r.node === "string" ? r.node : "unknown",
-    status: typeof r.status === "string" ? r.status : "unknown",
-  }));
+  const vms = rowsOf(result)
+    .filter((r) => r.type === "qemu")
+    .map((r) => ({
+      vmid: typeof r.vmid === "number" ? r.vmid : Number(r.vmid),
+      name: typeof r.name === "string" ? r.name : `vm-${r.vmid}`,
+      node: typeof r.node === "string" ? r.node : "unknown",
+      status: typeof r.status === "string" ? r.status : "unknown",
+    }));
   return { ok: true, vms };
 }
 

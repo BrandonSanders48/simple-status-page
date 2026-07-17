@@ -16,6 +16,10 @@ interface Props {
   loading: boolean;
   onOpenOutageLog: () => void;
   uptimeByService?: Record<number, DayUptime[]>;
+  /** Skips this panel's own card chrome (background/border/shadow/padding) -- used
+   * when it's rendered as a tab's content inside ServiceTabs, which already provides
+   * that chrome via its enclosing panel. */
+  bare?: boolean;
 }
 
 function ServiceCardSkeleton() {
@@ -31,13 +35,13 @@ function ServiceCardSkeleton() {
   );
 }
 
-export default function ServicesPanel({ services, visibleCount, loading, onOpenOutageLog, uptimeByService }: Props) {
+export default function ServicesPanel({ services, visibleCount, loading, onOpenOutageLog, uptimeByService, bare = false }: Props) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? services : services.slice(0, visibleCount);
   const hiddenCount = services.length - visibleCount;
 
-  return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5 mb-5">
+  const content = (
+    <>
       <div className="flex items-center justify-between mb-4">
         <h5 className="flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-200">
           <i className="fa-solid fa-server text-indigo-500" /> Internally Hosted Services
@@ -79,6 +83,10 @@ export default function ServicesPanel({ services, visibleCount, loading, onOpenO
           )}
         </>
       )}
-    </div>
+    </>
   );
+
+  if (bare) return content;
+
+  return <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5 mb-5">{content}</div>;
 }
