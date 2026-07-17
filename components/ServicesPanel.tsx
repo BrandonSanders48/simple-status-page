@@ -42,10 +42,7 @@ export default function ServicesPanel({ services, visibleCount, loading, onOpenO
 
   const content = (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h5 className="flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-200">
-          <i className="fa-solid fa-server text-indigo-500" /> Internally Hosted Services
-        </h5>
+      <div className="flex items-center justify-end mb-4">
         <button
           type="button"
           onClick={onOpenOutageLog}
