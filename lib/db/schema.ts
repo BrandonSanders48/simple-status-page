@@ -112,6 +112,16 @@ export const proxmoxTargets = sqliteTable("proxmox_targets", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
+export const pbsTargets = sqliteTable("pbs_targets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  host: text("host").notNull(),
+  tokenId: text("token_id").notNull(),
+  tokenSecret: text("token_secret").notNull(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
 export const incidents = sqliteTable("incidents", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull(),

@@ -11,6 +11,7 @@ import type {
   StatusCategoryRow,
   DraftPowerstoreTarget,
   DraftProxmoxTarget,
+  DraftPbsTarget,
 } from "@/lib/adminTypes";
 import GeneralTab from "./GeneralTab";
 import ServicesTab from "./ServicesTab";
@@ -20,6 +21,7 @@ import NotificationsTab from "./NotificationsTab";
 import SslTab from "./SslTab";
 import StorageTab from "./StorageTab";
 import ProxmoxTab from "./ProxmoxTab";
+import BackupsTab from "./BackupsTab";
 import StatusCategoriesTab from "./StatusCategoriesTab";
 
 const SECTIONS = [
@@ -30,6 +32,7 @@ const SECTIONS = [
   { key: "network", label: "Network", icon: "fa-network-wired", color: "text-sky-500" },
   { key: "storage", label: "Storage", icon: "fa-database", color: "text-cyan-500" },
   { key: "proxmox", label: "Proxmox", icon: "fa-cubes", color: "text-orange-500" },
+  { key: "backups", label: "Backups", icon: "fa-box-archive", color: "text-lime-600" },
   { key: "notifications", label: "Notifications", icon: "fa-bell", color: "text-violet-500" },
   { key: "ssl", label: "SSL", icon: "fa-lock", color: "text-emerald-500" },
 ] as const;
@@ -45,6 +48,7 @@ export default function AdminDashboard() {
   const [statusCategories, setStatusCategories] = useState<StatusCategoryRow[]>([]);
   const [powerstoreTargets, setPowerstoreTargets] = useState<DraftPowerstoreTarget[]>([]);
   const [proxmoxTargets, setProxmoxTargets] = useState<DraftProxmoxTarget[]>([]);
+  const [pbsTargets, setPbsTargets] = useState<DraftPbsTarget[]>([]);
   const [saveState, setSaveState] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -61,6 +65,7 @@ export default function AdminDashboard() {
       setStatusCategories(data.statusCategories);
       setPowerstoreTargets(data.powerstoreTargets);
       setProxmoxTargets(data.proxmoxTargets);
+      setPbsTargets(data.pbsTargets);
     }
     setLoading(false);
   }, []);
@@ -127,6 +132,14 @@ export default function AdminDashboard() {
         storageId,
         enabled,
       })),
+      pbsTargets: pbsTargets.map(({ id, name, host, tokenId, tokenSecret, enabled }) => ({
+        id,
+        name,
+        host,
+        tokenId,
+        tokenSecret,
+        enabled,
+      })),
     };
 
     try {
@@ -144,6 +157,7 @@ export default function AdminDashboard() {
       setStatusCategories(data.statusCategories);
       setPowerstoreTargets(data.powerstoreTargets);
       setProxmoxTargets(data.proxmoxTargets);
+      setPbsTargets(data.pbsTargets);
       setSaveState({ ok: true, text: "Configuration saved successfully." });
     } catch (err) {
       setSaveState({ ok: false, text: err instanceof Error ? err.message : "Failed to save." });
@@ -236,6 +250,8 @@ export default function AdminDashboard() {
                 onProxmoxTargetsChange={setProxmoxTargets}
                 csrfToken={session.csrfToken}
               />
+            ) : s.key === "backups" ? (
+              <BackupsTab pbsTargets={pbsTargets} onPbsTargetsChange={setPbsTargets} csrfToken={session.csrfToken} />
             ) : s.key === "notifications" ? (
               <NotificationsTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
             ) : (

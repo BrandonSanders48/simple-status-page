@@ -43,6 +43,13 @@
       "when": 1784297255217,
       "tag": "0005_spooky_nocturne",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1784303591535,
+      "tag": "0006_crazy_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }

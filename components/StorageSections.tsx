@@ -59,6 +59,32 @@ export interface StoragePayload {
   proxmoxes: ProxmoxTarget[];
 }
 
+export interface PbsTask {
+  id: string;
+  status: string;
+  startedAt?: string;
+  endedAt?: string;
+}
+
+export interface PbsStatus {
+  ok: boolean;
+  error?: string;
+  lastRunHealthy: boolean;
+  lastRunAt?: string;
+  tasks: PbsTask[];
+}
+
+export interface PbsTarget {
+  id: number;
+  name: string;
+  status: PbsStatus;
+}
+
+export interface PbsPayload {
+  enabled: boolean;
+  targets: PbsTarget[];
+}
+
 const CRITICAL_SEVERITIES = new Set(["critical", "major"]);
 const HEALTHY_METRO_STATES = new Set(["ok", "synchronized", "healthy"]);
 
@@ -99,6 +125,17 @@ export function isProxmoxHealthy(status: ProxmoxStatus): boolean {
 export function isStorageHealthy(payload: StoragePayload | null): boolean {
   if (!payload?.enabled) return true;
   return payload.powerstores.every((t) => isPowerstoreHealthy(t.status)) && payload.proxmoxes.every((t) => isProxmoxHealthy(t.status));
+}
+
+export function isPbsHealthy(status: PbsStatus): boolean {
+  return status.ok && status.lastRunHealthy;
+}
+
+/** True unless backup monitoring is enabled and the most recent run on some PBS
+ * target had failures -- same "invisible when off" fold-in as isStorageHealthy. */
+export function isPbsAllHealthy(payload: PbsPayload | null): boolean {
+  if (!payload?.enabled) return true;
+  return payload.targets.every((t) => isPbsHealthy(t.status));
 }
 
 export function Pill({ ok, label }: { ok: boolean; label: string }) {
@@ -284,6 +321,50 @@ export function ProxmoxSection({ name, status }: { name: string; status: Proxmox
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+function formatTaskTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+export function PbsSection({ name, status }: { name: string; status: PbsStatus }) {
+  if (!status.ok) {
+    return (
+      <div>
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">{name}</p>
+        <p className="text-sm text-red-500">Unable to connect to Proxmox Backup Server: {status.error ?? "unknown error"}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
+        <Pill ok={status.lastRunHealthy} label={status.lastRunHealthy ? "Last Run OK" : "Last Run Failed"} />
+        {status.lastRunAt && <span className="text-xs text-slate-400">{formatTaskTime(status.lastRunAt)}</span>}
+      </div>
+
+      <div>
+        <p className="text-xs text-slate-400 mb-1">Last backup run ({status.tasks.length} task(s))</p>
+        {status.tasks.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">No backup tasks found</p>
+        ) : (
+          <ul className="space-y-1">
+            {status.tasks.slice(0, 10).map((t, i) => (
+              <li key={i} className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                <Pill ok={t.status === "OK"} label={t.status} />
+                <span className="flex-1">{t.id}</span>
+                {t.endedAt && <span className="text-xs text-slate-400">{formatTaskTime(t.endedAt)}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

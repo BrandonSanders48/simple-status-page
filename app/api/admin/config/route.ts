@@ -4,6 +4,8 @@ import { verifyCsrf } from "@/lib/csrf";
 import { getFullConfig, saveFullConfig, configPayloadSchema } from "@/lib/adminConfig";
 import { invalidateStatusCache } from "@/lib/statusCache";
 import { invalidateRssCache } from "@/lib/rssCache";
+import { invalidateStorageCache } from "@/lib/storageCache";
+import { invalidatePbsCache } from "@/lib/pbsCache";
 
 export async function GET() {
   if (!(await requireAuth())) {
@@ -29,6 +31,8 @@ export async function PUT(request: Request) {
   const saved = saveFullConfig(parsed.data);
   invalidateStatusCache();
   invalidateRssCache();
+  invalidateStorageCache();
+  invalidatePbsCache();
 
   return NextResponse.json(saved);
 }

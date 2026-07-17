@@ -2,10 +2,19 @@
 
 import { useState } from "react";
 import ServicesPanel from "./ServicesPanel";
-import { PowerstoreSection, ProxmoxSection, isPowerstoreHealthy, isProxmoxHealthy, type StoragePayload } from "./StorageSections";
+import {
+  PowerstoreSection,
+  ProxmoxSection,
+  PbsSection,
+  isPowerstoreHealthy,
+  isProxmoxHealthy,
+  isPbsHealthy,
+  type StoragePayload,
+  type PbsPayload,
+} from "./StorageSections";
 import type { StatusServicePayload } from "@/lib/statusCache";
 
-type TabKey = "services" | "storage" | "proxmox";
+type TabKey = "services" | "storage" | "proxmox" | "backups";
 
 interface DayUptime {
   date: string;
@@ -52,10 +61,10 @@ function TabButton({
 
 /**
  * Tabs between the internally-hosted service tiles and, when configured, the
- * PowerStore and Proxmox storage panels. Falls back to plain (tab-less) Internal
- * Services when storage monitoring isn't enabled, so sites not using it see no change.
- * Each PowerStore array / Proxmox cluster is shown as its own named card, so
- * monitoring both a main site and a DR site (say) is just two cards in one tab.
+ * PowerStore, Proxmox, and PBS panels. Falls back to plain (tab-less) Internal
+ * Services when none of them are enabled, so sites not using them see no change.
+ * Each target is shown as its own named card, so monitoring both a main site and a
+ * DR site (say) is just two cards in one tab.
  */
 export default function ServiceTabs({
   services,
@@ -63,6 +72,7 @@ export default function ServiceTabs({
   loading,
   onOpenOutageLog,
   storage,
+  pbs,
   isAdmin,
   csrfToken,
   onStorageChanged,
@@ -73,6 +83,7 @@ export default function ServiceTabs({
   loading: boolean;
   onOpenOutageLog: () => void;
   storage: StoragePayload | null;
+  pbs: PbsPayload | null;
   isAdmin: boolean;
   csrfToken?: string;
   onStorageChanged: () => void;
@@ -83,8 +94,10 @@ export default function ServiceTabs({
 
   const powerstores = storage?.powerstores ?? [];
   const proxmoxes = storage?.proxmoxes ?? [];
+  const pbsTargets = pbs?.targets ?? [];
   const hasPowerstore = powerstores.length > 0;
   const hasProxmox = proxmoxes.length > 0;
+  const hasPbs = pbsTargets.length > 0;
 
   async function handleAcknowledge(targetId: number, alertId: string) {
     if (!csrfToken) return;
@@ -103,7 +116,7 @@ export default function ServiceTabs({
     }
   }
 
-  if (!hasPowerstore && !hasProxmox) {
+  if (!hasPowerstore && !hasProxmox && !hasPbs) {
     return (
       <ServicesPanel
         services={services}
@@ -115,11 +128,13 @@ export default function ServiceTabs({
     );
   }
 
-  const activeTab = (tab === "storage" && !hasPowerstore) || (tab === "proxmox" && !hasProxmox) ? "services" : tab;
+  const activeTab =
+    (tab === "storage" && !hasPowerstore) || (tab === "proxmox" && !hasProxmox) || (tab === "backups" && !hasPbs) ? "services" : tab;
 
   const servicesHaveIssue = services.some((s) => !s.up);
   const powerstoreHasIssue = powerstores.some((t) => !isPowerstoreHealthy(t.status));
   const proxmoxHasIssue = proxmoxes.some((t) => !isProxmoxHealthy(t.status));
+  const pbsHasIssue = pbsTargets.some((t) => !isPbsHealthy(t.status));
 
   return (
     <div className="mb-5">
@@ -147,6 +162,15 @@ export default function ServiceTabs({
             icon="fa-cubes"
             label="Proxmox"
             hasIssue={proxmoxHasIssue}
+          />
+        )}
+        {hasPbs && (
+          <TabButton
+            active={activeTab === "backups"}
+            onClick={() => setTab("backups")}
+            icon="fa-box-archive"
+            label="Backups"
+            hasIssue={pbsHasIssue}
           />
         )}
       </div>
@@ -180,6 +204,15 @@ export default function ServiceTabs({
           {proxmoxes.map((t) => (
             <div key={t.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">
               <ProxmoxSection name={t.name} status={t.status} />
+            </div>
+          ))}
+        </div>
+      )}
+      {activeTab === "backups" && (
+        <div className="space-y-4">
+          {pbsTargets.map((t) => (
+            <div key={t.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">
+              <PbsSection name={t.name} status={t.status} />
             </div>
           ))}
         </div>

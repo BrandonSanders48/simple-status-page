@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, notInArray } from "drizzle-orm";
 import { db } from "./db/client";
-import { settings, services, rssFeeds, ispMapEntries, statusCategories, powerstoreTargets, proxmoxTargets } from "./db/schema";
+import { settings, services, rssFeeds, ispMapEntries, statusCategories, powerstoreTargets, proxmoxTargets, pbsTargets } from "./db/schema";
 
 export const MAX_SERVICES = 20;
 export const MAX_RSS_FEEDS = 10;
@@ -89,6 +89,15 @@ export const proxmoxTargetInputSchema = z.object({
   enabled: z.boolean(),
 });
 
+export const pbsTargetInputSchema = z.object({
+  id: z.number().int().optional(),
+  name: z.string().min(1).max(100),
+  host: z.string().min(1).max(300),
+  tokenId: z.string().min(1).max(300),
+  tokenSecret: z.string().min(1).max(500),
+  enabled: z.boolean(),
+});
+
 export const configPayloadSchema = z.object({
   settings: settingsInputSchema,
   services: z.array(serviceInputSchema).max(MAX_SERVICES),
@@ -97,6 +106,7 @@ export const configPayloadSchema = z.object({
   statusCategories: z.array(statusCategoryInputSchema).max(20),
   powerstoreTargets: z.array(powerstoreTargetInputSchema).max(MAX_STORAGE_TARGETS),
   proxmoxTargets: z.array(proxmoxTargetInputSchema).max(MAX_STORAGE_TARGETS),
+  pbsTargets: z.array(pbsTargetInputSchema).max(MAX_STORAGE_TARGETS),
 });
 
 export type ConfigPayload = z.infer<typeof configPayloadSchema>;
@@ -109,6 +119,7 @@ export function getFullConfig() {
   const categories = db.select().from(statusCategories).all();
   const psTargets = db.select().from(powerstoreTargets).all();
   const pveTargets = db.select().from(proxmoxTargets).all();
+  const pbsTargetRows = db.select().from(pbsTargets).all();
   return {
     settings: cfg,
     services: svc,
@@ -117,6 +128,7 @@ export function getFullConfig() {
     statusCategories: categories,
     powerstoreTargets: psTargets,
     proxmoxTargets: pveTargets,
+    pbsTargets: pbsTargetRows,
   };
 }
 
@@ -217,6 +229,25 @@ export function saveFullConfig(payload: ConfigPayload) {
           .run();
       } else {
         tx.insert(proxmoxTargets)
+          .values({ ...t, sortOrder: index })
+          .run();
+      }
+    });
+
+    const incomingPbsIds = payload.pbsTargets.filter((t) => t.id !== undefined).map((t) => t.id!);
+    if (incomingPbsIds.length > 0) {
+      tx.delete(pbsTargets).where(notInArray(pbsTargets.id, incomingPbsIds)).run();
+    } else {
+      tx.delete(pbsTargets).run();
+    }
+    payload.pbsTargets.forEach((t, index) => {
+      if (t.id !== undefined) {
+        tx.update(pbsTargets)
+          .set({ ...t, sortOrder: index })
+          .where(eq(pbsTargets.id, t.id))
+          .run();
+      } else {
+        tx.insert(pbsTargets)
           .values({ ...t, sortOrder: index })
           .run();
       }
