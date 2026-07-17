@@ -57,6 +57,13 @@
       "when": 1784304894079,
       "tag": "0007_last_marvel_apes",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784307708779,
+      "tag": "0008_fresh_firebrand",
+      "breakpoints": true
     }
   ]
 }

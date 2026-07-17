@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db/client";
-import { pbsTargets } from "./db/schema";
+import { pbsTargets, pbsAcknowledgedTasks } from "./db/schema";
 import { fetchPbsStatus, type PbsStatus } from "./integrations/pbs";
 
 export interface PbsTargetPayload {
@@ -19,6 +19,20 @@ const TTL_MS = 60_000;
 let cache: { data: PbsPayload; expiresAt: number } | null = null;
 let inflight: Promise<PbsPayload> | null = null;
 
+/** Overlays this target's acknowledged-task ids onto a freshly fetched status, then
+ * recomputes lastRunHealthy so a cleared failure stops flipping the target (and the
+ * Backups tab badge) to unhealthy -- while still showing the task itself in the list. */
+function applyAcknowledgments(targetId: number, status: PbsStatus): PbsStatus {
+  if (status.tasks.length === 0) return status;
+  const acked = new Set(
+    db.select().from(pbsAcknowledgedTasks).where(eq(pbsAcknowledgedTasks.targetId, targetId)).all().map((r) => r.taskId)
+  );
+  if (acked.size === 0) return status;
+
+  const tasks = status.tasks.map((t) => (acked.has(t.id) ? { ...t, acknowledged: true } : t));
+  return { ...status, tasks, lastRunHealthy: tasks.every((t) => t.status === "OK" || t.acknowledged) };
+}
+
 async function computePbs(): Promise<PbsPayload> {
   const enabledTargets = db.select().from(pbsTargets).where(eq(pbsTargets.enabled, true)).all();
 
@@ -30,7 +44,7 @@ async function computePbs(): Promise<PbsPayload> {
     enabledTargets.map(async (t) => ({
       id: t.id,
       name: t.name,
-      status: await fetchPbsStatus({ host: t.host, tokenId: t.tokenId, tokenSecret: t.tokenSecret }),
+      status: applyAcknowledgments(t.id, await fetchPbsStatus({ host: t.host, tokenId: t.tokenId, tokenSecret: t.tokenSecret })),
     }))
   );
 

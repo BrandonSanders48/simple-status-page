@@ -128,6 +128,24 @@ export const pbsTargets = sqliteTable("pbs_targets", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
+// Lets an admin "Clear" a failed backup task from the Backups tab -- acknowledged
+// tasks no longer count toward that target's Last Run Failed health/tab badge, but
+// stay in the list (greyed out) as a record of what happened.
+export const pbsAcknowledgedTasks = sqliteTable(
+  "pbs_acknowledged_tasks",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    targetId: integer("target_id")
+      .notNull()
+      .references(() => pbsTargets.id, { onDelete: "cascade" }),
+    taskId: text("task_id").notNull(),
+    acknowledgedAt: text("acknowledged_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => ({
+    uniqueTargetTask: uniqueIndex("uniq_pbs_target_task").on(t.targetId, t.taskId),
+  })
+);
+
 export const incidents = sqliteTable("incidents", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull(),

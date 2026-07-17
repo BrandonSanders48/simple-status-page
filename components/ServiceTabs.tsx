@@ -78,6 +78,7 @@ export default function ServiceTabs({
   isAdmin,
   csrfToken,
   onStorageChanged,
+  onPbsChanged,
   uptimeByService,
 }: {
   services: StatusServicePayload[];
@@ -89,10 +90,12 @@ export default function ServiceTabs({
   isAdmin: boolean;
   csrfToken?: string;
   onStorageChanged: () => void;
+  onPbsChanged: () => void;
   uptimeByService?: Record<number, DayUptime[]>;
 }) {
   const [tab, setTab] = useState<TabKey>("services");
   const [acknowledging, setAcknowledging] = useState<{ targetId: number; alertId: string } | null>(null);
+  const [acknowledgingTask, setAcknowledgingTask] = useState<{ targetId: number; taskId: string } | null>(null);
 
   const powerstores = storage?.powerstores ?? [];
   const proxmoxes = storage?.proxmoxes ?? [];
@@ -115,6 +118,23 @@ export default function ServiceTabs({
       // Swallow -- the alert simply stays in the list, and the user can retry.
     } finally {
       setAcknowledging(null);
+    }
+  }
+
+  async function handleAcknowledgeTask(targetId: number, taskId: string) {
+    if (!csrfToken) return;
+    setAcknowledgingTask({ targetId, taskId });
+    try {
+      await fetch("/api/admin/pbs-task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+        body: JSON.stringify({ targetId, taskId }),
+      });
+      onPbsChanged();
+    } catch {
+      // Swallow -- the task simply stays unclear, and the user can retry.
+    } finally {
+      setAcknowledgingTask(null);
     }
   }
 
@@ -232,7 +252,13 @@ export default function ServiceTabs({
         <div className="space-y-4">
           {pbsTargets.map((t) => (
             <div key={t.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-5">
-              <PbsSection name={t.name} status={t.status} />
+              <PbsSection
+                name={t.name}
+                status={t.status}
+                canAcknowledge={isAdmin}
+                acknowledgingId={acknowledgingTask?.targetId === t.id ? acknowledgingTask.taskId : null}
+                onAcknowledge={(taskId) => handleAcknowledgeTask(t.id, taskId)}
+              />
             </div>
           ))}
         </div>

@@ -296,6 +296,7 @@ export default function Dashboard({
           isAdmin={isAdmin}
           csrfToken={session?.csrfToken}
           onStorageChanged={loadStorage}
+          onPbsChanged={loadPbs}
           uptimeByService={uptimeByService}
         />
 

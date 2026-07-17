@@ -12,6 +12,9 @@ export interface PbsTask {
   status: string;
   startedAt?: string;
   endedAt?: string;
+  /** Always false here -- this integration layer has no db access. The caller (see
+   * lib/pbsCache.ts) overlays acknowledgment state and recomputes lastRunHealthy. */
+  acknowledged: boolean;
 }
 
 export interface PbsStatus {
@@ -112,6 +115,7 @@ export async function fetchPbsStatus(cfg: PbsConfig): Promise<PbsStatus> {
       status: typeof t.status === "string" ? t.status : "running",
       startedAt: typeof t.starttime === "number" ? new Date(t.starttime * 1000).toISOString() : undefined,
       endedAt: typeof t.endtime === "number" ? new Date(t.endtime * 1000).toISOString() : undefined,
+      acknowledged: false,
     }));
 
     return {

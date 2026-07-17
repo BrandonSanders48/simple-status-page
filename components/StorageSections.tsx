@@ -66,6 +66,7 @@ export interface PbsTask {
   status: string;
   startedAt?: string;
   endedAt?: string;
+  acknowledged: boolean;
 }
 
 export interface PbsStatus {
@@ -345,7 +346,19 @@ function formatTaskTime(iso: string): string {
   return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-export function PbsSection({ name, status }: { name: string; status: PbsStatus }) {
+export function PbsSection({
+  name,
+  status,
+  canAcknowledge = false,
+  acknowledgingId = null,
+  onAcknowledge,
+}: {
+  name: string;
+  status: PbsStatus;
+  canAcknowledge?: boolean;
+  acknowledgingId?: string | null;
+  onAcknowledge?: (taskId: string) => void;
+}) {
   if (!status.ok) {
     return (
       <div>
@@ -369,13 +382,26 @@ export function PbsSection({ name, status }: { name: string; status: PbsStatus }
           <p className="text-sm text-slate-500 dark:text-slate-400">No backup tasks found</p>
         ) : (
           <ul className="space-y-1">
-            {status.tasks.slice(0, 10).map((t, i) => (
-              <li key={i} className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
-                <Pill ok={t.status === "OK"} label={t.status} />
-                <span className="flex-1">{t.id}</span>
-                {t.endedAt && <span className="text-xs text-slate-400">{formatTaskTime(t.endedAt)}</span>}
-              </li>
-            ))}
+            {status.tasks.slice(0, 10).map((t, i) => {
+              const needsClearing = t.status !== "OK" && !t.acknowledged;
+              return (
+                <li key={i} className={`text-sm flex items-center gap-2 ${t.acknowledged ? "opacity-50" : "text-slate-600 dark:text-slate-300"}`}>
+                  <Pill ok={t.status === "OK"} label={t.acknowledged ? `${t.status} (cleared)` : t.status} />
+                  <span className="flex-1">{t.id}</span>
+                  {t.endedAt && <span className="text-xs text-slate-400">{formatTaskTime(t.endedAt)}</span>}
+                  {canAcknowledge && needsClearing && (
+                    <button
+                      type="button"
+                      onClick={() => onAcknowledge?.(t.id)}
+                      disabled={acknowledgingId === t.id}
+                      className="text-xs font-medium text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {acknowledgingId === t.id ? "Clearing..." : "Clear"}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
