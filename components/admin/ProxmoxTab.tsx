@@ -1,23 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import type { DraftPowerstoreTarget } from "@/lib/adminTypes";
+import type { DraftProxmoxTarget } from "@/lib/adminTypes";
 import { inputCls, labelCls } from "./styles";
 import { SettingsGroup } from "./SettingsGroup";
 
 const MAX_TARGETS = 10;
 
-function PowerstoreTargetCard({
+function ProxmoxTargetCard({
   target,
   index,
   csrfToken,
   onChange,
   onRemove,
 }: {
-  target: DraftPowerstoreTarget;
+  target: DraftProxmoxTarget;
   index: number;
   csrfToken: string;
-  onChange: (patch: Partial<DraftPowerstoreTarget>) => void;
+  onChange: (patch: Partial<DraftProxmoxTarget>) => void;
   onRemove: () => void;
 }) {
   const [testing, setTesting] = useState(false);
@@ -30,7 +30,13 @@ function PowerstoreTargetCard({
       const res = await fetch("/api/admin/test-storage", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-        body: JSON.stringify({ target: "powerstore", host: target.host, username: target.username, password: target.password }),
+        body: JSON.stringify({
+          target: "proxmox",
+          host: target.host,
+          tokenId: target.tokenId,
+          tokenSecret: target.tokenSecret,
+          storageId: target.storageId,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Connection test failed.");
@@ -50,7 +56,7 @@ function PowerstoreTargetCard({
           className={`${inputCls} flex-1 font-semibold`}
           value={target.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          placeholder={`e.g. Main Site`}
+          placeholder="e.g. Main Site"
         />
         <label className="flex items-center gap-2 cursor-pointer text-xs whitespace-nowrap">
           <input type="checkbox" checked={target.enabled} onChange={(e) => onChange({ enabled: e.target.checked })} className="w-4 h-4 accent-indigo-600" />
@@ -62,25 +68,42 @@ function PowerstoreTargetCard({
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label htmlFor={`ps-host-${index}`} className={labelCls}>Management Host</label>
-          <input id={`ps-host-${index}`} className={inputCls} value={target.host} onChange={(e) => onChange({ host: e.target.value })} placeholder="10.0.0.10" />
+          <label htmlFor={`pve-host-${index}`} className={labelCls}>API Host</label>
+          <input id={`pve-host-${index}`} className={inputCls} value={target.host} onChange={(e) => onChange({ host: e.target.value })} placeholder="https://10.0.0.5:8006" />
         </div>
         <div>
-          <label htmlFor={`ps-user-${index}`} className={labelCls}>Username</label>
-          <input id={`ps-user-${index}`} className={inputCls} value={target.username} onChange={(e) => onChange({ username: e.target.value })} />
-        </div>
-        <div className="sm:col-span-2">
-          <label htmlFor={`ps-pass-${index}`} className={labelCls}>Password</label>
+          <label htmlFor={`pve-storage-${index}`} className={labelCls}>Storage ID</label>
           <input
-            id={`ps-pass-${index}`}
+            id={`pve-storage-${index}`}
+            className={inputCls}
+            value={target.storageId ?? ""}
+            onChange={(e) => onChange({ storageId: e.target.value })}
+            placeholder="powerstore-nfs"
+          />
+        </div>
+        <div>
+          <label htmlFor={`pve-token-id-${index}`} className={labelCls}>API Token ID</label>
+          <input
+            id={`pve-token-id-${index}`}
+            className={inputCls}
+            value={target.tokenId}
+            onChange={(e) => onChange({ tokenId: e.target.value })}
+            placeholder="statuspage@pve!monitor"
+          />
+        </div>
+        <div>
+          <label htmlFor={`pve-token-secret-${index}`} className={labelCls}>API Token Secret</label>
+          <input
+            id={`pve-token-secret-${index}`}
             type="password"
             className={inputCls}
-            value={target.password}
-            onChange={(e) => onChange({ password: e.target.value })}
+            value={target.tokenSecret}
+            onChange={(e) => onChange({ tokenSecret: e.target.value })}
             placeholder="********"
           />
         </div>
       </div>
+      <p className="text-xs text-slate-400">Leave Storage ID blank to show every storage the token can see.</p>
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -96,55 +119,55 @@ function PowerstoreTargetCard({
   );
 }
 
-export default function StorageTab({
-  powerstoreTargets,
-  onPowerstoreTargetsChange,
+export default function ProxmoxTab({
+  proxmoxTargets,
+  onProxmoxTargetsChange,
   csrfToken,
 }: {
-  powerstoreTargets: DraftPowerstoreTarget[];
-  onPowerstoreTargetsChange: (t: DraftPowerstoreTarget[]) => void;
+  proxmoxTargets: DraftProxmoxTarget[];
+  onProxmoxTargetsChange: (t: DraftProxmoxTarget[]) => void;
   csrfToken: string;
 }) {
-  function updatePowerstore(index: number, patch: Partial<DraftPowerstoreTarget>) {
-    const next = powerstoreTargets.slice();
-    next[index] = { ...next[index], ...patch } as DraftPowerstoreTarget;
-    onPowerstoreTargetsChange(next);
+  function updateProxmox(index: number, patch: Partial<DraftProxmoxTarget>) {
+    const next = proxmoxTargets.slice();
+    next[index] = { ...next[index], ...patch } as DraftProxmoxTarget;
+    onProxmoxTargetsChange(next);
   }
 
-  function addPowerstore() {
-    if (powerstoreTargets.length >= MAX_TARGETS) return;
-    onPowerstoreTargetsChange([
-      ...powerstoreTargets,
-      { name: "", host: "", username: "", password: "", enabled: true, sortOrder: powerstoreTargets.length },
+  function addProxmox() {
+    if (proxmoxTargets.length >= MAX_TARGETS) return;
+    onProxmoxTargetsChange([
+      ...proxmoxTargets,
+      { name: "", host: "", tokenId: "", tokenSecret: "", storageId: null, enabled: true, sortOrder: proxmoxTargets.length },
     ]);
   }
 
   return (
     <div>
       <SettingsGroup
-        title="Dell PowerStore"
-        description="Management IP/hostname and a read-only account for each array's REST API. Shows a dedicated panel on the public status page with health/Metro replication status. Add one target per array -- e.g. a main site and a DR site."
+        title="Proxmox"
+        description="Cluster API endpoint and an API token for each cluster, used to check its health and how it sees the PowerStore-backed storage. Add one target per cluster -- e.g. a main site and a DR site."
         wide
       >
         <div className="space-y-4">
-          {powerstoreTargets.map((t, i) => (
-            <PowerstoreTargetCard
-              key={t.id ?? `new-ps-${i}`}
+          {proxmoxTargets.map((t, i) => (
+            <ProxmoxTargetCard
+              key={t.id ?? `new-pve-${i}`}
               target={t}
               index={i}
               csrfToken={csrfToken}
-              onChange={(patch) => updatePowerstore(i, patch)}
-              onRemove={() => onPowerstoreTargetsChange(powerstoreTargets.filter((_, idx) => idx !== i))}
+              onChange={(patch) => updateProxmox(i, patch)}
+              onRemove={() => onProxmoxTargetsChange(proxmoxTargets.filter((_, idx) => idx !== i))}
             />
           ))}
         </div>
         <button
           type="button"
-          onClick={addPowerstore}
-          disabled={powerstoreTargets.length >= MAX_TARGETS}
+          onClick={addProxmox}
+          disabled={proxmoxTargets.length >= MAX_TARGETS}
           className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 disabled:opacity-40"
         >
-          <i className="fa-solid fa-plus text-xs" /> Add PowerStore Array
+          <i className="fa-solid fa-plus text-xs" /> Add Proxmox Cluster
         </button>
       </SettingsGroup>
     </div>

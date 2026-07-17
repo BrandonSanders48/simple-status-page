@@ -26,8 +26,6 @@ All configuration lives in the SQLite database and is managed entirely through t
 | Support Email / Phone | Shown in the footer |
 | Footer Message | Copyright/legal message displayed in the footer |
 
-**Theme Colors**: primary, accent, success, warning, error. Applied via CSS custom properties across the public page.
-
 **SLA Tracking**: enable/disable, uptime target percentage, and reporting period (weekly/monthly/quarterly). When enabled, the navbar shows a real uptime percentage computed from outage history over the selected period (simultaneous outages across multiple services count once, not per-service), colored green when it meets the target and red when it doesn't.
 
 **About / Meta**: description and author shown in the footer, plus a read-only config version that auto-increments on every save.

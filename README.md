@@ -41,7 +41,7 @@ A sleek, production-ready status page built with Next.js, TypeScript, Tailwind C
 - Tabs: General, Services, RSS Feeds, Network, Notifications, SSL
 - Add/remove/reorder services and RSS feeds (20 services max, 10 RSS feeds max)
 - Logo upload, self-signed certificate generation plus custom certificate upload (hot-swapped into the running HTTPS listener when possible)
-- Theme color pickers, announcement banner, SLA uptime badge computed from real outage history for the configured reporting period
+- Announcement banner, SLA uptime badge computed from real outage history for the configured reporting period
 
 **Other**
 - RSS / Atom feed integration (displays latest item from external status feeds)
@@ -113,7 +113,7 @@ Add a feed with a name, URL, format, and description from the RSS Feeds tab. For
 
 ### Branding & Theme
 
-Set business name, logo, company URL, support email, footer message, and theme colors (primary, accent, success, warning, error) from the General tab. The announcement banner shown on the public page is set from the Notifications tab, alongside alert sound and browser notification behaviour.
+Set business name, logo, company URL, support email, and footer message from the General tab. The announcement banner shown on the public page is set from the Notifications tab, alongside alert sound and browser notification behaviour.
 
 ### Email Notifications (SMTP)
 

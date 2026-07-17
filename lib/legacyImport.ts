@@ -112,7 +112,6 @@ export function importLegacyData(legacyDir: string): void {
 
   const cfg = readJson<Record<string, any>>(configPath, {});
   const branding = cfg.branding ?? {};
-  const theme = cfg.theme ?? {};
   const sla = cfg.sla ?? {};
   const network = cfg.network ?? {};
   const email = cfg.email ?? {};
@@ -131,11 +130,6 @@ export function importLegacyData(legacyDir: string): void {
       footerMessage: branding.footer_message ?? cfg.footer_message ?? null,
       announcementBanner: branding.announcement_banner ?? null,
       announcementType: branding.announcement_type ?? "info",
-      themePrimaryColor: theme.primary_color ?? "#4f46e5",
-      themeAccentColor: theme.accent_color ?? "#06b6d4",
-      themeSuccessColor: theme.success_color ?? "#059669",
-      themeWarningColor: theme.warning_color ?? "#d97706",
-      themeErrorColor: theme.error_color ?? "#dc2626",
       slaEnabled: !!sla.enabled,
       slaUptimeTarget: sla.uptime_target ?? 99.9,
       slaReportingPeriod: sla.reporting_period ?? "monthly",

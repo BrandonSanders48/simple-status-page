@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db/client";
-import { settings, powerstoreTargets, proxmoxTargets } from "./db/schema";
+import { powerstoreTargets, proxmoxTargets } from "./db/schema";
 import { fetchPowerstoreStatus, type PowerstoreStatus } from "./integrations/powerstore";
 import { fetchProxmoxStorageStatus, type ProxmoxStatus } from "./integrations/proxmox";
 
@@ -29,15 +29,15 @@ let inflight: Promise<StoragePayload> | null = null;
 
 /** Multiple PowerStore arrays / Proxmox clusters can be monitored at once (e.g. a main
  * site and a DR site) -- each enabled target is queried independently and shown as its
- * own named card, so one target being unreachable never hides the others. */
+ * own named card, so one target being unreachable never hides the others. There's no
+ * separate master toggle: the panel is active whenever at least one target is enabled. */
 async function computeStorage(): Promise<StoragePayload> {
-  const cfg = db.select().from(settings).get();
-  if (!cfg?.storageIntegrationEnabled) {
-    return { enabled: false, powerstores: [], proxmoxes: [], generatedAt: Date.now() };
-  }
-
   const psTargets = db.select().from(powerstoreTargets).where(eq(powerstoreTargets.enabled, true)).all();
   const pveTargets = db.select().from(proxmoxTargets).where(eq(proxmoxTargets.enabled, true)).all();
+
+  if (psTargets.length === 0 && pveTargets.length === 0) {
+    return { enabled: false, powerstores: [], proxmoxes: [], generatedAt: Date.now() };
+  }
 
   const [powerstores, proxmoxes] = await Promise.all([
     Promise.all(

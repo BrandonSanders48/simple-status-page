@@ -8,6 +8,8 @@ import { generateActionTokens } from "./emailTokens";
 import { resolvePageUrl } from "./pageUrl";
 import { isWebhookConfigured, sendWebhookNotification } from "./webhook";
 
+const EMAIL_ACCENT_COLOR = "#06b6d4";
+
 /**
  * Sends subscriber emails and/or a webhook (Slack/Discord/generic) notification for
  * service status transitions. Called from the periodic background job with the
@@ -45,7 +47,7 @@ export async function notifyTransitions(transitions: ServiceTransition[]): Promi
 
         const html = renderStatusChangeEmail({
           businessName: cfg.businessName,
-          accentColor: cfg.themeAccentColor,
+          accentColor: EMAIL_ACCENT_COLOR,
           serviceName: transition.serviceName,
           status: transition.curStatus,
           linkUrl: url,

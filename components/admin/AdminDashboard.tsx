@@ -19,6 +19,7 @@ import NetworkTab from "./NetworkTab";
 import NotificationsTab from "./NotificationsTab";
 import SslTab from "./SslTab";
 import StorageTab from "./StorageTab";
+import ProxmoxTab from "./ProxmoxTab";
 import StatusCategoriesTab from "./StatusCategoriesTab";
 
 const SECTIONS = [
@@ -28,6 +29,7 @@ const SECTIONS = [
   { key: "rss", label: "RSS Feeds", icon: "fa-rss", color: "text-orange-500" },
   { key: "network", label: "Network", icon: "fa-network-wired", color: "text-sky-500" },
   { key: "storage", label: "Storage", icon: "fa-database", color: "text-cyan-500" },
+  { key: "proxmox", label: "Proxmox", icon: "fa-cubes", color: "text-orange-500" },
   { key: "notifications", label: "Notifications", icon: "fa-bell", color: "text-violet-500" },
   { key: "ssl", label: "SSL", icon: "fa-lock", color: "text-emerald-500" },
 ] as const;
@@ -224,10 +226,12 @@ export default function AdminDashboard() {
               <NetworkTab settings={settings} onChange={setSettings} ispMap={ispMap} onIspChange={setIspMap} />
             ) : s.key === "storage" ? (
               <StorageTab
-                settings={settings}
-                onChange={setSettings}
                 powerstoreTargets={powerstoreTargets}
                 onPowerstoreTargetsChange={setPowerstoreTargets}
+                csrfToken={session.csrfToken}
+              />
+            ) : s.key === "proxmox" ? (
+              <ProxmoxTab
                 proxmoxTargets={proxmoxTargets}
                 onProxmoxTargetsChange={setProxmoxTargets}
                 csrfToken={session.csrfToken}

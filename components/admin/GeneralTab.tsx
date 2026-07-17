@@ -115,31 +115,6 @@ export default function GeneralTab({
         </div>
       </SettingsGroup>
 
-      <SettingsGroup title="Theme Colors" description="Applied via CSS custom properties across the public status page.">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {(
-            [
-              ["Primary", "themePrimaryColor"],
-              ["Accent", "themeAccentColor"],
-              ["Success", "themeSuccessColor"],
-              ["Warning", "themeWarningColor"],
-              ["Error", "themeErrorColor"],
-            ] as const
-          ).map(([label, key]) => (
-            <div key={key}>
-              <label htmlFor={`cfg-${key}`} className={labelCls}>{label}</label>
-              <input
-                id={`cfg-${key}`}
-                type="color"
-                className="w-full h-9 rounded-lg cursor-pointer border border-slate-200 dark:border-slate-600"
-                value={settings[key]}
-                onChange={(e) => set(key, e.target.value)}
-              />
-            </div>
-          ))}
-        </div>
-      </SettingsGroup>
-
       <SettingsGroup title="SLA Tracking" description="Show a real uptime badge in the navbar, computed from outage history.">
         <label className="flex items-center gap-3 cursor-pointer">
           <input type="checkbox" checked={settings.slaEnabled} onChange={(e) => set("slaEnabled", e.target.checked)} className="w-4 h-4 accent-indigo-600" />
