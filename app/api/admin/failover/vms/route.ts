@@ -5,9 +5,10 @@ import { db } from "@/lib/db/client";
 import { proxmoxTargets } from "@/lib/db/schema";
 import { listProxmoxVms } from "@/lib/integrations/proxmox";
 
-/** Live (uncached) VM listing for the admin Failover tab's preview step -- lets an
- * admin see exactly which VMs in a given id range exist and whether they're already
- * running before committing to starting anything. */
+/** Live (uncached) VM listing for the admin Failover tab's preview step -- used by
+ * both the "start at DR" and "shut down at primary" actions, so any Proxmox target
+ * can be listed here (the destructive action routes are what actually restrict which
+ * target -- DR-only or primary-only -- rather than this read-only listing). */
 export async function GET(request: Request) {
   if (!(await requireAuth())) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
@@ -24,9 +25,6 @@ export async function GET(request: Request) {
   const target = db.select().from(proxmoxTargets).where(eq(proxmoxTargets.id, targetId)).get();
   if (!target) {
     return NextResponse.json({ error: "Proxmox target not found" }, { status: 404 });
-  }
-  if (!target.isDr) {
-    return NextResponse.json({ error: "That Proxmox target isn't marked as the DR site." }, { status: 400 });
   }
 
   const result = await listProxmoxVms({ host: target.host, tokenId: target.tokenId, tokenSecret: target.tokenSecret });

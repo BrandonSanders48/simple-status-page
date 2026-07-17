@@ -16,8 +16,12 @@ export interface PowerstoreAlert {
 }
 
 export interface PowerstoreMetroSession {
+  id: string;
   name: string;
   state: string;
+  /** Raw `role` value as PowerStore reports it -- passed through untransformed since
+   * the exact strings it uses to distinguish source/destination aren't confirmed. */
+  role?: string;
 }
 
 export interface PowerstoreStatus {
@@ -80,6 +84,25 @@ async function patch(cfg: PowerstoreConfig, path: string, body: JsonRecord, time
   try {
     const res = await undiciFetch(`https://${cfg.host}/api/rest${path}`, {
       method: "PATCH",
+      headers: { Authorization: authHeader(cfg), Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      dispatcher: insecureAgent,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) {
+      const respBody = await res.text().catch(() => "");
+      return { ok: false, error: `${path} returned HTTP ${res.status}${respBody ? `: ${respBody.slice(0, 200)}` : ""}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? `${path}: ${err.message}` : `${path}: request failed` };
+  }
+}
+
+async function post(cfg: PowerstoreConfig, path: string, body: JsonRecord, timeoutMs = 30000): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await undiciFetch(`https://${cfg.host}/api/rest${path}`, {
+      method: "POST",
       headers: { Authorization: authHeader(cfg), Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify(body),
       dispatcher: insecureAgent,
@@ -217,11 +240,13 @@ export async function fetchPowerstoreStatus(cfg: PowerstoreConfig): Promise<Powe
       clusterState: typeof cluster?.state === "string" ? cluster.state : undefined,
       alerts,
       metroSessions: metroRows.map((m) => ({
+        id: typeof m.id === "string" ? m.id : "",
         name:
           (typeof m.role === "string" && typeof m.id === "string" && `${m.role} (${m.id})`) ||
           (typeof m.id === "string" && m.id) ||
           "Replication session",
         state: typeof m.state === "string" ? m.state : "Unknown",
+        role: typeof m.role === "string" ? m.role : undefined,
       })),
       diagnostics,
     };
@@ -239,4 +264,19 @@ export async function fetchPowerstoreStatus(cfg: PowerstoreConfig): Promise<Powe
 /** Acknowledges (clears) a PowerStore alert so it drops off the active-alerts list. */
 export async function acknowledgePowerstoreAlert(cfg: PowerstoreConfig, alertId: string): Promise<{ ok: boolean; error?: string }> {
   return patch(cfg, `/alert/${encodeURIComponent(alertId)}`, { is_acknowledged: true });
+}
+
+/**
+ * Promotes this array's side of a Metro replication session to read/write -- used to
+ * "promote the DR datastore" once an admin has confirmed the primary is unreachable.
+ * Uses the unplanned `failover` action (for when the primary is actually down), not
+ * `planned_failover` (which requires the primary to still be reachable and syncing).
+ *
+ * UNVERIFIED against a live Metro session: the action name/path below is a best guess
+ * from PowerStore's general REST conventions (POST /{resource}/{id}/{action}), not
+ * confirmed against a real failover call. If this errors, check the message it
+ * returns and cross-reference https://<mgmt-ip>/swaggerui for the actual action name.
+ */
+export async function promoteMetroSession(cfg: PowerstoreConfig, sessionId: string): Promise<{ ok: boolean; error?: string }> {
+  return post(cfg, `/replication_session/${encodeURIComponent(sessionId)}/failover`, {});
 }

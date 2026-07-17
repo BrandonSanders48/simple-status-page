@@ -6,8 +6,10 @@ export interface PowerstoreAlert {
 }
 
 export interface PowerstoreMetroSession {
+  id: string;
   name: string;
   state: string;
+  role?: string;
 }
 
 export interface PowerstoreStatus {

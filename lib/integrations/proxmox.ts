@@ -192,3 +192,13 @@ export async function startProxmoxVm(cfg: ProxmoxConfig, node: string, vmid: num
   if (result.error) return { ok: false, error: result.error };
   return { ok: true };
 }
+
+/** Gracefully (ACPI) shuts down one VM by id -- the other half of a manual failover,
+ * used to power down the primary site once DR is confirmed up. Same node lookup
+ * caveat as startProxmoxVm. A VM without ACPI support (or a stuck guest OS) may not
+ * respond to this -- Proxmox has a separate hard "stop" for that, not exposed here. */
+export async function shutdownProxmoxVm(cfg: ProxmoxConfig, node: string, vmid: number): Promise<{ ok: boolean; error?: string }> {
+  const result = await post(cfg, `/api2/json/nodes/${node}/qemu/${vmid}/status/shutdown`);
+  if (result.error) return { ok: false, error: result.error };
+  return { ok: true };
+}
