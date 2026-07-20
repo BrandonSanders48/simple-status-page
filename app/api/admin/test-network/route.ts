@@ -7,8 +7,9 @@ import { checkTcpDetailed, type TcpFailureReason } from "@/lib/checks/tcp";
 import { checkNtp } from "@/lib/checks/ntp";
 import { checkDhcp } from "@/lib/checks/dhcp";
 import { checkRadius } from "@/lib/checks/radius";
+import { isAdType } from "@/lib/checks/ad";
 import { db } from "@/lib/db/client";
-import { networkTestLog } from "@/lib/db/schema";
+import { networkTestLog, services, settings } from "@/lib/db/schema";
 
 const REASON_TEXT: Record<TcpFailureReason, string> = {
   refused: "Connection refused -- host is up, but nothing's listening on this port",
@@ -26,7 +27,9 @@ type CheckOutcome = { ok: boolean | null; detail?: string };
  * Kerberos broken"), authentication (Kerberos, RADIUS/NPS), and directory/network
  * config lookups (LDAP, SMB, Global Catalog, DHCP). Not exhaustive (e.g. no RPC
  * endpoint mapper), but the common set worth checking when diagnosing "why can't
- * this box talk to my DC".
+ * this box talk to my DC" -- also reused as-is against the WAN/gateway targets
+ * below, since a plain host just shows the AD-only ports (LDAP/Kerberos/etc) as
+ * failed, same as testing any other non-DC host would.
  *
  * `ok: null` means inconclusive, not a confirmed failure -- DHCP and RADIUS/NPS
  * can't give a definitive "down" from a plain UDP probe like NTP can: a DHCP server
@@ -107,32 +110,8 @@ const CHECKS: { name: string; port: number | null; run: (host: string) => Promis
   },
 ];
 
-/**
- * Ad-hoc network diagnostic: runs a fixed battery of AD/DC-style checks against a
- * caller-supplied host, timing each one. Not tied to any configured service --
- * purely a troubleshooting tool.
- *
- * Deliberately open to any visitor (no requireAuth), by request -- which means this
- * endpoint makes the server connect to whatever host/port a caller names. That's a
- * real SSRF/scanning-proxy surface (probing this server's internal network, or using
- * it to port-scan other targets while hiding the caller's origin), so it's rate
- * limited per IP to bound abuse; CSRF is still checked to stop cross-site triggering.
- */
-export async function POST(request: Request) {
-  if (!(await verifyCsrf(request))) {
-    return NextResponse.json({ error: "Invalid CSRF token" }, { status: 403 });
-  }
-  if (!rateLimit(`test-network:${clientIp(request)}`, 10, 5 * 60 * 1000)) {
-    return NextResponse.json({ error: "Too many network tests. Please wait and try again." }, { status: 429 });
-  }
-
-  const body = await request.json().catch(() => null);
-  const host = typeof body?.host === "string" ? body.host.trim() : "";
-  if (!host) {
-    return NextResponse.json({ error: "Host is required" }, { status: 400 });
-  }
-
-  const results = await Promise.all(
+async function runBattery(host: string) {
+  return Promise.all(
     CHECKS.map(async (c) => {
       const startedAt = Date.now();
       const outcome = await c.run(host).catch((): CheckOutcome => ({ ok: false }));
@@ -142,21 +121,54 @@ export async function POST(request: Request) {
       return { name: c.name, port: c.port, ok: outcome.ok, detail: outcome.ok === true ? undefined : outcome.detail, ms: Date.now() - startedAt };
     })
   );
+}
 
-  // Audit trail -- this endpoint is reachable without sign-in and makes the server
-  // connect to whatever host a caller names, so who ran what, when, from where, is
-  // worth keeping. `clientIp` is whatever the server actually sees the request
-  // arrive from (see the networkTestLog schema comment for what that does and
-  // doesn't guarantee about it being the caller's real LAN IP).
-  db.insert(networkTestLog)
-    .values({
-      host,
-      clientIp: clientIp(request),
-      okCount: results.filter((r) => r.ok === true).length,
-      failCount: results.filter((r) => r.ok === false).length,
-      inconclusiveCount: results.filter((r) => r.ok === null).length,
-    })
-    .run();
+/**
+ * Fixed, server-side-determined diagnostic: tests every configured domain
+ * controller (services with type "ad") plus this site's configured WAN targets
+ * (Settings > Network's Gateway Host and Public DNS Host) -- never a caller-supplied
+ * host. There's no free-form host field on this endpoint (or its modal) by design:
+ * letting any visitor name an arbitrary host/port for the server to connect to was a
+ * real SSRF/scanning-proxy surface, so the target list is now exactly what an admin
+ * already configured elsewhere, nothing else.
+ *
+ * Reachable without sign-in, by request -- still rate limited per IP (now mostly to
+ * bound load rather than abuse, since the target list is fixed) and CSRF-checked.
+ */
+export async function POST(request: Request) {
+  if (!(await verifyCsrf(request))) {
+    return NextResponse.json({ error: "Invalid CSRF token" }, { status: 403 });
+  }
+  if (!rateLimit(`test-network:${clientIp(request)}`, 10, 5 * 60 * 1000)) {
+    return NextResponse.json({ error: "Too many network tests. Please wait and try again." }, { status: 429 });
+  }
 
-  return NextResponse.json({ host, results });
+  const adServices = db.select().from(services).all().filter((s) => isAdType(s.type));
+  const cfg = db.select().from(settings).get();
+
+  const targets: { label: string; host: string }[] = [
+    ...adServices.map((s) => ({ label: s.name, host: s.host })),
+    ...(cfg?.gatewayHost ? [{ label: "Local Gateway", host: cfg.gatewayHost }] : []),
+    ...(cfg?.publicDnsHost ? [{ label: "Wide Network (Public DNS)", host: cfg.publicDnsHost }] : []),
+  ];
+
+  const groups = await Promise.all(
+    targets.map(async (t) => ({ label: t.label, host: t.host, results: await runBattery(t.host) }))
+  );
+
+  // Audit trail -- this endpoint is reachable without sign-in, so who ran a test,
+  // when, and from where, is worth keeping even though the target list is fixed.
+  for (const g of groups) {
+    db.insert(networkTestLog)
+      .values({
+        host: g.host,
+        clientIp: clientIp(request),
+        okCount: g.results.filter((r) => r.ok === true).length,
+        failCount: g.results.filter((r) => r.ok === false).length,
+        inconclusiveCount: g.results.filter((r) => r.ok === null).length,
+      })
+      .run();
+  }
+
+  return NextResponse.json({ groups });
 }
