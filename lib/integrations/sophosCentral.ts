@@ -44,15 +44,60 @@ const WHOAMI_URL = "https://api.central.sophos.com/whoami/v1";
 
 // Sophos Central alerts have no "critical" tier -- confirmed (independently,
 // via a community thread and the Cortex XSOAR Sophos Central integration
-// reference) that `severity` is one of "high" | "medium" | "low". Treating
-// "high" as the critical-equivalent for the healthy rollup below.
+// reference) that `severity` is one of "high" | "medium" | "low". Only "high"
+// counts as a real problem for the healthy rollup: Sophos's own "medium"/"low"
+// tiers cover plenty of routine/informational events (a blocked test app, a
+// certificate renewing successfully) alongside genuine ones, with no separate
+// field to tell those apart -- so they're shown neutrally (see mapAlertOk)
+// rather than reading as either a red flag or a clean bill of health.
 const CRITICAL_ALERT_SEVERITIES = new Set(["high"]);
 
+function mapAlertOk(severity: string): boolean | null {
+  if (CRITICAL_ALERT_SEVERITIES.has(severity)) return false;
+  return null;
+}
+
 // Endpoint health.overall values -- confirmed via a real example response
-// (health.overall / health.threats.status / health.services.status) surfaced
-// through Sophos Central Endpoint API discussion threads: "good" | "bad" |
-// "suspicious" | "unknown". Anything other than "good" is treated as unhealthy.
+// (health.overall / health.threats.status / health.services.status, including
+// a services.serviceDetails[] of individual service name/status pairs when
+// services.status is "bad") surfaced through Sophos Central Endpoint API
+// documentation: "good" | "bad" | "suspicious" | "unknown". Anything other
+// than "good" is treated as unhealthy.
 const HEALTHY_ENDPOINT_STATUSES = new Set(["good"]);
+
+/** Turns `health.overall: "bad"` into something a person can act on --
+ * "bad" alone doesn't say whether it's a live threat or just a stopped
+ * service, so this reads the threats/services sub-status (and, for services,
+ * which ones) to build a real reason string. Falls back to the bare overall
+ * status if neither sub-field explains it (e.g. an undocumented cause). */
+function describeEndpointHealth(health: JsonRecord | undefined): string {
+  if (!health) return "Unknown";
+  const overall = typeof health.overall === "string" ? health.overall : "unknown";
+  const reasons: string[] = [];
+
+  const threats = health.threats as JsonRecord | undefined;
+  if (typeof threats?.status === "string" && threats.status.toLowerCase() !== "good") {
+    reasons.push("active threat detected");
+  }
+
+  const services = health.services as JsonRecord | undefined;
+  if (typeof services?.status === "string" && services.status.toLowerCase() !== "good") {
+    const details = Array.isArray(services.serviceDetails) ? (services.serviceDetails as JsonRecord[]) : [];
+    const stopped = details
+      .filter((s) => typeof s.status === "string" && s.status.toLowerCase() !== "running")
+      .map((s) => (typeof s.name === "string" ? s.name : "service"));
+    reasons.push(stopped.length > 0 ? `${stopped.join(", ")} stopped` : "a service isn't running");
+  }
+
+  if (reasons.length === 0) return overall;
+  return `${overall} (${reasons.join("; ")})`;
+}
+
+function formatAlertTime(raisedAt: string): string {
+  const d = new Date(raisedAt);
+  if (isNaN(d.getTime())) return raisedAt;
+  return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 
 /**
  * OAuth2 client-credentials token exchange. HIGH confidence on shape: form-encoded
@@ -272,7 +317,7 @@ export async function fetchSophosCentralStatus(config: Record<string, string>): 
     }
 
     let criticalAlertCount = 0;
-    const alertItems: { label: string; value: string; ok: boolean }[] = [];
+    const alertItems: { label: string; value: string; ok: boolean | null }[] = [];
     if (alertsResult.error) {
       diagnostics.push(alertsResult.error);
     } else {
@@ -282,17 +327,17 @@ export async function fetchSophosCentralStatus(config: Record<string, string>): 
       // Central UI's Alerts view behaves) that resolved alerts simply drop out of
       // this list rather than staying with a resolved flag set.
       for (const a of alertsResult.items) {
-        const severity = typeof a.severity === "string" ? a.severity : "unknown";
+        const severity = typeof a.severity === "string" ? a.severity.toLowerCase() : "unknown";
         const description = typeof a.description === "string" ? a.description : typeof a.type === "string" ? a.type : "Sophos alert";
-        const isCritical = CRITICAL_ALERT_SEVERITIES.has(severity.toLowerCase());
-        if (isCritical) criticalAlertCount++;
-        alertItems.push({ label: description, value: severity, ok: !isCritical });
+        const raisedAt = typeof a.raisedAt === "string" ? formatAlertTime(a.raisedAt) : null;
+        if (CRITICAL_ALERT_SEVERITIES.has(severity)) criticalAlertCount++;
+        alertItems.push({ label: raisedAt ? `${description} (${raisedAt})` : description, value: severity, ok: mapAlertOk(severity) });
       }
     }
 
     let unhealthyEndpointCount = 0;
     let totalEndpointCount = 0;
-    const endpointItems: { label: string; value: string; ok: boolean }[] = [];
+    const endpointItems: { label: string; value: string; ok: boolean | null }[] = [];
     if (endpointsResult.error) {
       diagnostics.push(endpointsResult.error);
     } else {
@@ -304,7 +349,7 @@ export async function fetchSophosCentralStatus(config: Record<string, string>): 
         if (!isHealthy) {
           unhealthyEndpointCount++;
           const hostname = typeof e.hostname === "string" ? e.hostname : typeof e.id === "string" ? e.id : "Unknown endpoint";
-          endpointItems.push({ label: hostname, value: overall, ok: false });
+          endpointItems.push({ label: `${hostname} -- ${describeEndpointHealth(health)}`, value: overall, ok: false });
         }
       }
     }
