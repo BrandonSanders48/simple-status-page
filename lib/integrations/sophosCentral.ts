@@ -170,13 +170,56 @@ function itemsOf(data: unknown): JsonRecord[] {
   return Array.isArray(body?.items) ? body.items : [];
 }
 
-/** True if the response's `pages` object indicates there's more data beyond
- * the page we fetched -- used only to add a diagnostic note, not to paginate
- * (a status page only needs to know "is anything unhealthy right now", and
- * looping full pagination here would risk being slow on a large estate). */
-function hasMorePages(data: unknown): boolean {
+/** The `pages.nextKey` value to pass back as `pageFromKey` for the next page, or
+ * null once there isn't one -- confirmed via Sophos's key-based pagination scheme
+ * (community "Getting Started" examples): a response with no `nextKey` means this
+ * was the last page. */
+function nextPageKey(data: unknown): string | null {
   const body = data as { pages?: { nextKey?: unknown } };
-  return typeof body?.pages?.nextKey === "string" && body.pages.nextKey.length > 0;
+  return typeof body?.pages?.nextKey === "string" && body.pages.nextKey.length > 0 ? body.pages.nextKey : null;
+}
+
+// Upper bound on pages walked per list endpoint (100 items/page, Sophos's own max) --
+// a status page needs a real answer ("is anything unhealthy"), not just the first 100
+// of a multi-thousand-endpoint estate, but this still bounds worst-case latency/load
+// against a very large tenant. Hitting this cap is noted in diagnostics rather than
+// silently under-reporting.
+const MAX_PAGES = 25;
+
+/** Walks every page of a Sophos Central v1 list endpoint (key-based pagination via
+ * `pageFromKey`/`pages.nextKey`), returning every row across all pages up to
+ * MAX_PAGES. A page-fetch error partway through returns what was gathered so far
+ * plus a diagnostic, rather than discarding already-fetched pages. */
+async function getAllPages(
+  dataRegion: string,
+  token: string,
+  tenantHeader: string,
+  tenantId: string,
+  basePath: string,
+  label: string,
+  diagnostics: string[]
+): Promise<{ items: JsonRecord[]; error: string | null }> {
+  const items: JsonRecord[] = [];
+  let pageFromKey: string | null = null;
+  let firstPageError: string | null = null;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const path = pageFromKey ? `${basePath}&pageFromKey=${encodeURIComponent(pageFromKey)}` : basePath;
+    const result = await get(dataRegion, token, tenantHeader, tenantId, path);
+    if (result.error) {
+      if (page === 0) firstPageError = result.error;
+      else diagnostics.push(`${label}: stopped after ${page} page(s) -- ${result.error}`);
+      break;
+    }
+    items.push(...itemsOf(result.data));
+    pageFromKey = nextPageKey(result.data);
+    if (!pageFromKey) break;
+    if (page === MAX_PAGES - 1) {
+      diagnostics.push(`${label}: more data exists beyond ${MAX_PAGES * 100} items -- stopped there to bound request time.`);
+    }
+  }
+
+  return { items, error: firstPageError };
 }
 
 /**
@@ -212,12 +255,16 @@ export async function fetchSophosCentralStatus(config: Record<string, string>): 
 
     const [alertsResult, endpointsResult] = await Promise.all([
       // MEDIUM-HIGH confidence on path/shape: developer.sophos.com/docs/common-v1/1/routes/alerts/get,
-      // cross-checked against the XSOAR Sophos Central integration reference.
-      get(dataRegion, tokenResult.token, tenantHeader, tenantId, "/common/v1/alerts?pageSize=100"),
+      // cross-checked against the XSOAR Sophos Central integration reference. Walks
+      // every page (see getAllPages) rather than just the first 100 -- a tenant with
+      // more alerts than that would otherwise silently miss critical ones past page 1.
+      getAllPages(dataRegion, tokenResult.token, tenantHeader, tenantId, "/common/v1/alerts?pageSize=100", "common/v1/alerts", diagnostics),
       // MEDIUM-HIGH confidence on path; MEDIUM confidence on the health.* shape below
       // (seen as a real example response, not the primary docs page itself, which is
-      // a JS app that didn't return static content to a plain fetch).
-      get(dataRegion, tokenResult.token, tenantHeader, tenantId, "/endpoint/v1/endpoints?pageSize=100"),
+      // a JS app that didn't return static content to a plain fetch). Also fully
+      // paginated -- an estate of 100+ endpoints (a real reported case) would
+      // otherwise show "0 of 100 unhealthy" while endpoints past page 1 go unchecked.
+      getAllPages(dataRegion, tokenResult.token, tenantHeader, tenantId, "/endpoint/v1/endpoints?pageSize=100", "endpoint/v1/endpoints", diagnostics),
     ]);
 
     if (alertsResult.error && endpointsResult.error) {
@@ -229,15 +276,12 @@ export async function fetchSophosCentralStatus(config: Record<string, string>): 
     if (alertsResult.error) {
       diagnostics.push(alertsResult.error);
     } else {
-      if (hasMorePages(alertsResult.data)) {
-        diagnostics.push("common/v1/alerts: more alerts exist beyond the first 100 -- showing only the first page.");
-      }
       // NOTE (unverified assumption): /common/v1/alerts has no documented
       // "resolved"/"acknowledged" field in the rows it returns -- treating every
       // row here as a currently-active alert, on the assumption (matching how the
       // Central UI's Alerts view behaves) that resolved alerts simply drop out of
       // this list rather than staying with a resolved flag set.
-      for (const a of itemsOf(alertsResult.data)) {
+      for (const a of alertsResult.items) {
         const severity = typeof a.severity === "string" ? a.severity : "unknown";
         const description = typeof a.description === "string" ? a.description : typeof a.type === "string" ? a.type : "Sophos alert";
         const isCritical = CRITICAL_ALERT_SEVERITIES.has(severity.toLowerCase());
@@ -252,12 +296,8 @@ export async function fetchSophosCentralStatus(config: Record<string, string>): 
     if (endpointsResult.error) {
       diagnostics.push(endpointsResult.error);
     } else {
-      if (hasMorePages(endpointsResult.data)) {
-        diagnostics.push("endpoint/v1/endpoints: more endpoints exist beyond the first 100 -- summary/health below only covers that first page.");
-      }
-      const rows = itemsOf(endpointsResult.data);
-      totalEndpointCount = rows.length;
-      for (const e of rows) {
+      totalEndpointCount = endpointsResult.items.length;
+      for (const e of endpointsResult.items) {
         const health = e.health as JsonRecord | undefined;
         const overall = typeof health?.overall === "string" ? health.overall : "unknown";
         const isHealthy = HEALTHY_ENDPOINT_STATUSES.has(overall.toLowerCase());
