@@ -158,6 +158,25 @@ export const failoverActions = sqliteTable("failover_actions", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Audit trail for the "Test Network" tool -- it's reachable without sign-in (see
+// app/api/admin/test-network/route.ts) and makes this server connect to whatever
+// host a caller names, so knowing who ran what, when, from what IP, matters. `ip` is
+// whatever the server actually sees the request arrive from (X-Forwarded-For if
+// present, else the raw connection) -- on a LAN-only deployment with no reverse
+// proxy/NAT in front of it, that's the same as the client's real LAN IP; behind one,
+// it's that hop's IP instead. There's no reliable way for a webpage to learn a
+// visitor's true local IP otherwise (the old WebRTC ICE-candidate trick is blocked
+// by mDNS obfuscation in current Chrome/Firefox), so this isn't attempted.
+export const networkTestLog = sqliteTable("network_test_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  host: text("host").notNull(),
+  clientIp: text("client_ip").notNull(),
+  okCount: integer("ok_count").notNull(),
+  failCount: integer("fail_count").notNull(),
+  inconclusiveCount: integer("inconclusive_count").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const incidents = sqliteTable("incidents", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull(),

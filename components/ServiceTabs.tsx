@@ -15,6 +15,7 @@ import {
 import FailoverSection from "./FailoverSection";
 import { computeFailoverStatus } from "@/lib/failover";
 import { IntegrationCard, isIntegrationHealthy, type IntegrationsPayload } from "./IntegrationsSection";
+import TestNetworkModal from "./admin/TestNetworkModal";
 import type { StatusServicePayload } from "@/lib/statusCache";
 
 type TabKey = "services" | "integrations" | "failover";
@@ -101,6 +102,17 @@ export default function ServiceTabs({
   const [tab, setTab] = useState<TabKey>("services");
   const [acknowledging, setAcknowledging] = useState<{ targetId: number; alertId: string } | null>(null);
   const [acknowledgingTask, setAcknowledgingTask] = useState<{ targetId: number; taskId: string } | null>(null);
+  const [showTestNetwork, setShowTestNetwork] = useState(false);
+
+  const testNetworkButton = (
+    <button
+      type="button"
+      onClick={() => setShowTestNetwork(true)}
+      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-100 dark:bg-slate-800/70 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg whitespace-nowrap"
+    >
+      <i className="fa-solid fa-network-wired text-xs" /> Test Network
+    </button>
+  );
 
   const powerstores = storage?.powerstores ?? [];
   const proxmoxes = storage?.proxmoxes ?? [];
@@ -148,13 +160,17 @@ export default function ServiceTabs({
 
   if (!hasIntegrationsTab) {
     return (
-      <ServicesPanel
-        services={services}
-        visibleCount={visibleCount}
-        loading={loading}
-        onOpenOutageLog={onOpenOutageLog}
-        uptimeByService={uptimeByService}
-      />
+      <>
+        <div className="flex justify-end mb-2">{testNetworkButton}</div>
+        <ServicesPanel
+          services={services}
+          visibleCount={visibleCount}
+          loading={loading}
+          onOpenOutageLog={onOpenOutageLog}
+          uptimeByService={uptimeByService}
+        />
+        {showTestNetwork && csrfToken && <TestNetworkModal csrfToken={csrfToken} onClose={() => setShowTestNetwork(false)} />}
+      </>
     );
   }
 
@@ -173,32 +189,35 @@ export default function ServiceTabs({
 
   return (
     <div className="mb-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
-      <div className="flex flex-wrap gap-1 px-3 pt-3 border-b border-slate-200 dark:border-slate-700">
-        <TabButton
-          active={activeTab === "services"}
-          onClick={() => setTab("services")}
-          icon="fa-server"
-          label="Internal Services"
-          hasIssue={servicesHaveIssue}
-        />
-        {hasIntegrationsTab && (
+      <div className="flex items-center justify-between gap-2 px-3 pt-3 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex flex-wrap gap-1">
           <TabButton
-            active={activeTab === "integrations"}
-            onClick={() => setTab("integrations")}
-            icon="fa-store"
-            label="Integrations"
-            hasIssue={integrationsTabHasIssue}
+            active={activeTab === "services"}
+            onClick={() => setTab("services")}
+            icon="fa-server"
+            label="Internal Services"
+            hasIssue={servicesHaveIssue}
           />
-        )}
-        {hasFailover && (
-          <TabButton
-            active={activeTab === "failover"}
-            onClick={() => setTab("failover")}
-            icon="fa-tower-broadcast"
-            label="Failover"
-            hasIssue={failoverHasIssue}
-          />
-        )}
+          {hasIntegrationsTab && (
+            <TabButton
+              active={activeTab === "integrations"}
+              onClick={() => setTab("integrations")}
+              icon="fa-store"
+              label="Integrations"
+              hasIssue={integrationsTabHasIssue}
+            />
+          )}
+          {hasFailover && (
+            <TabButton
+              active={activeTab === "failover"}
+              onClick={() => setTab("failover")}
+              icon="fa-tower-broadcast"
+              label="Failover"
+              hasIssue={failoverHasIssue}
+            />
+          )}
+        </div>
+        {testNetworkButton}
       </div>
 
       <div className="p-5">
@@ -259,6 +278,7 @@ export default function ServiceTabs({
         )}
         {activeTab === "failover" && <FailoverSection storage={storage} services={services} isAdmin={isAdmin} csrfToken={csrfToken} />}
       </div>
+      {showTestNetwork && csrfToken && <TestNetworkModal csrfToken={csrfToken} onClose={() => setShowTestNetwork(false)} />}
     </div>
   );
 }
