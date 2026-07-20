@@ -146,6 +146,51 @@ async function get(accessToken: string, url: string, timeoutMs = 8000): Promise<
   }
 }
 
+// Upper bound on pages walked per list endpoint -- GoTo's Voice Admin API appears to
+// default to a 50-item page (per a real account hitting exactly that limit), so this
+// still covers a sizeable account without an unbounded worst case.
+const MAX_PAGES = 25;
+
+/** Walks every page of a Voice Admin API list endpoint. MEDIUM confidence only: GoTo's
+ * docs confirm the response's `nextPageMarker` field but don't show a worked example
+ * of submitting it back, so this assumes the common `nextPageMarker` (response) ->
+ * `pageMarker` (request) naming convention. Defensively bails if a page doesn't
+ * actually advance (the returned marker repeats), on the assumption the param name
+ * needs correcting rather than looping forever against a real account. */
+async function getAllPages(accessToken: string, baseUrl: string, diagnostics: string[]): Promise<JsonRecord[]> {
+  const items: JsonRecord[] = [];
+  let pageMarker: string | null = null;
+  let lastMarker: string | null = null;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const url = pageMarker ? `${baseUrl}&pageMarker=${encodeURIComponent(pageMarker)}` : baseUrl;
+    const result = await get(accessToken, url);
+    if (result.error !== null) {
+      diagnostics.push(page === 0 ? result.error : `${baseUrl}: stopped after ${page} page(s) -- ${result.error}`);
+      break;
+    }
+    const rows = Array.isArray(result.data.items) ? (result.data.items as JsonRecord[]) : [];
+    items.push(...rows);
+
+    const nextMarker = typeof result.data.nextPageMarker === "string" && result.data.nextPageMarker ? result.data.nextPageMarker : null;
+    if (!nextMarker) break;
+    if (nextMarker === lastMarker) {
+      diagnostics.push(
+        `${baseUrl}: nextPageMarker didn't change after submitting it back as pageMarker -- pagination may need a different query ` +
+          "param name for this account; stopped to avoid looping. Only the first page is reflected here."
+      );
+      break;
+    }
+    lastMarker = nextMarker;
+    pageMarker = nextMarker;
+    if (page === MAX_PAGES - 1) {
+      diagnostics.push(`${baseUrl}: more results exist beyond ${MAX_PAGES} pages -- stopped there to bound request time.`);
+    }
+  }
+
+  return items;
+}
+
 /** Every Voice Admin API call is scoped to an accountKey, resolved from whichever
  * GoTo accounts this token's owner belongs to. If `configured` is set (GoTo's own
  * setup docs have admins retrieve this once via the Admin API and pin it, rather
@@ -196,34 +241,33 @@ async function fetchAccountKey(accessToken: string, configured: string, diagnost
 }
 
 type Row = { label: string; value: string; ok: boolean; key: string };
+type ListResult = { total: number; unhealthy: Row[] };
 
 /** Phone numbers on the account, via the Voice Admin API's confirmed
- * /voice-admin/v1/phone-numbers endpoint. Field names (`name`, `number`, `status`)
- * match GoTo's documented example response; `status`'s actual enum values are not
- * documented, so anything outside HEALTHY_STATUSES is flagged as a diagnostic rather
- * than silently assumed to be down. */
-async function fetchPhoneNumbers(accessToken: string, accountKey: string, diagnostics: string[]): Promise<Row[]> {
-  const result = await get(accessToken, `${VOICE_HOST}/voice-admin/v1/phone-numbers?accountKey=${encodeURIComponent(accountKey)}`);
-  if (result.error !== null) {
-    diagnostics.push(result.error);
-    return [];
-  }
-  if (typeof result.data.nextPageMarker === "string" && result.data.nextPageMarker) {
-    diagnostics.push("Phone numbers list is paginated (nextPageMarker present) -- only the first page is shown here.");
-  }
-  const rows = Array.isArray(result.data.items) ? (result.data.items as JsonRecord[]) : [];
+ * /voice-admin/v1/phone-numbers endpoint (walking every page -- see getAllPages).
+ * Field names (`name`, `number`, `status`) match GoTo's documented example response;
+ * `status`'s actual enum values are not documented, so anything outside
+ * HEALTHY_STATUSES is flagged as a diagnostic rather than silently assumed to be
+ * down. Only unhealthy numbers are returned as items -- with a real account this can
+ * be hundreds of numbers, and nobody needs every healthy one listed individually;
+ * the total count still goes into the summary. */
+async function fetchPhoneNumbers(accessToken: string, accountKey: string, diagnostics: string[]): Promise<ListResult> {
+  const rows = await getAllPages(accessToken, `${VOICE_HOST}/voice-admin/v1/phone-numbers?accountKey=${encodeURIComponent(accountKey)}`, diagnostics);
 
   let unknownStatusSeen = false;
-  const items = rows.map((r, i): Row => {
+  const unhealthy: Row[] = [];
+  rows.forEach((r, i) => {
     const status = typeof r.status === "string" ? r.status : undefined;
-    if (status && !HEALTHY_STATUSES.has(status.toLowerCase())) unknownStatusSeen = true;
+    const ok = status ? HEALTHY_STATUSES.has(status.toLowerCase()) : true;
+    if (status && !ok) unknownStatusSeen = unknownStatusSeen || !HEALTHY_STATUSES.has(status.toLowerCase());
+    if (ok) return;
     const number = (typeof r.number === "string" && r.number) || null;
-    return {
+    unhealthy.push({
       label: (typeof r.name === "string" && r.name) || number || "Phone number",
       value: status ?? "Unknown",
-      ok: status ? HEALTHY_STATUSES.has(status.toLowerCase()) : true,
+      ok: false,
       key: `phone:${number ?? i}`,
-    };
+    });
   });
   if (unknownStatusSeen) {
     diagnostics.push(
@@ -231,45 +275,40 @@ async function fetchPhoneNumbers(accessToken: string, accountKey: string, diagno
         "so check the value shown against your account and adjust HEALTHY_STATUSES in gotoConnect.ts if it's actually fine."
     );
   }
-  return items;
+  return { total: rows.length, unhealthy };
 }
 
-/** Extensions on the account, via /voice-admin/v1/extensions. The endpoint's existence
- * and path are confirmed (it moved from api.jive.com to api.goto.com along with the
- * rest of the Voice Admin API), but GoTo's public docs did not surface a documented
- * response schema for it. `status`/`phone.status` are a guess mirroring the phone
- * numbers shape above; if an account's real response uses something else, every
- * extension will just show as "Configured" (no health signal) rather than a wrong
- * guess -- correct this against a real account's response. */
-async function fetchExtensions(accessToken: string, accountKey: string, diagnostics: string[]): Promise<Row[]> {
-  const result = await get(accessToken, `${VOICE_HOST}/voice-admin/v1/extensions?accountKey=${encodeURIComponent(accountKey)}`);
-  if (result.error !== null) {
-    diagnostics.push(result.error);
-    return [];
-  }
-  const rows = Array.isArray(result.data.items) ? (result.data.items as JsonRecord[]) : [];
+/** Extensions on the account, via /voice-admin/v1/extensions (walking every page --
+ * see getAllPages). The endpoint's existence and path are confirmed (it moved from
+ * api.jive.com to api.goto.com along with the rest of the Voice Admin API), but
+ * GoTo's public docs did not surface a documented response schema for it.
+ * `status`/`phone.status` are a guess mirroring the phone numbers shape above; if an
+ * account's real response uses something else, every extension looks "healthy" (no
+ * status field means no health signal, not an assumed problem) rather than a wrong
+ * guess -- correct this against a real account's response. Only unhealthy extensions
+ * are returned as items, same reasoning as fetchPhoneNumbers. */
+async function fetchExtensions(accessToken: string, accountKey: string, diagnostics: string[]): Promise<ListResult> {
+  const rows = await getAllPages(accessToken, `${VOICE_HOST}/voice-admin/v1/extensions?accountKey=${encodeURIComponent(accountKey)}`, diagnostics);
 
   let anyStatusFound = false;
-  const items = rows.map((r, i): Row => {
+  const unhealthy: Row[] = [];
+  rows.forEach((r, i) => {
     const phone = r.phone as JsonRecord | undefined;
     const status = typeof r.status === "string" ? r.status : typeof phone?.status === "string" ? (phone.status as string) : undefined;
     if (status) anyStatusFound = true;
+    const ok = status ? HEALTHY_STATUSES.has(status.toLowerCase()) : true;
+    if (ok) return;
     const extension = (typeof r.extension === "string" && r.extension) || null;
     const label = (typeof r.name === "string" && r.name) || extension || (typeof r.number === "string" && r.number) || "Extension";
-    return {
-      label,
-      value: status ?? "Configured",
-      ok: status ? HEALTHY_STATUSES.has(status.toLowerCase()) : true,
-      key: `ext:${extension ?? i}`,
-    };
+    unhealthy.push({ label, value: status ?? "Configured", ok: false, key: `ext:${extension ?? i}` });
   });
   if (rows.length > 0 && !anyStatusFound) {
     diagnostics.push(
       "Extensions API returned no field this integration recognizes as online/registered status (tried `status` and `phone.status`); " +
-        "listing extensions as configured only, with no real health signal -- see the UNCONFIRMED note in gotoConnect.ts."
+        "treating all extensions as healthy with no real health signal -- see the UNCONFIRMED note in gotoConnect.ts."
     );
   }
-  return items;
+  return { total: rows.length, unhealthy };
 }
 
 /**
@@ -332,13 +371,13 @@ export async function fetchGotoConnectStatus(config: Record<string, string>): Pr
       fetchExtensions(accessToken, accountKey, diagnostics),
     ]);
 
-    const items = [...phoneNumbers, ...extensions];
-    const downCount = items.filter((i) => !i.ok).length;
+    const items = [...phoneNumbers.unhealthy, ...extensions.unhealthy];
+    const downCount = items.length;
     const healthy = downCount === 0;
 
     const parts: string[] = [];
-    if (phoneNumbers.length) parts.push(`${phoneNumbers.length} phone number${phoneNumbers.length === 1 ? "" : "s"}`);
-    if (extensions.length) parts.push(`${extensions.length} extension${extensions.length === 1 ? "" : "s"}`);
+    if (phoneNumbers.total) parts.push(`${phoneNumbers.total} phone number${phoneNumbers.total === 1 ? "" : "s"}`);
+    if (extensions.total) parts.push(`${extensions.total} extension${extensions.total === 1 ? "" : "s"}`);
     const summary = parts.length
       ? `${parts.join(", ")}${downCount ? ` (${downCount} need attention)` : ""}`
       : "Connected to GoTo Connect, but no phone numbers or extensions were found";
