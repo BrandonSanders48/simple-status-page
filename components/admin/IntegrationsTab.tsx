@@ -30,6 +30,19 @@ function IntegrationTargetCard({
     onChange({ config: { ...target.config, [key]: value } });
   }
 
+  // GoTo Connect authenticates with EITHER a Personal Access Token OR a Refresh
+  // Token, never both -- showing both as plain fields alongside OAuth Client ID/
+  // Secret reads as "needs 3 different credential types," so this swaps them for a
+  // single toggle + one field instead (OAuth Client ID/Secret are still always
+  // required either way, and render normally via the generic field grid below).
+  const isGoto = entry.key === "goto_connect";
+  const genericFields = isGoto ? entry.fields.filter((f) => f.key !== "personalAccessToken" && f.key !== "refreshToken") : entry.fields;
+  const gotoAuthMethod: "pat" | "refresh" = target.config.refreshToken ? "refresh" : "pat";
+
+  function setGotoAuthMethod(method: "pat" | "refresh") {
+    onChange({ config: { ...target.config, [method === "pat" ? "refreshToken" : "personalAccessToken"]: "" } });
+  }
+
   async function test() {
     setTesting(true);
     setResult(null);
@@ -77,7 +90,7 @@ function IntegrationTargetCard({
         </button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {entry.fields.map((f) => (
+        {genericFields.map((f) => (
           <div key={f.key}>
             <label htmlFor={`${entry.key}-${f.key}-${index}`} className={labelCls}>
               {f.label}
@@ -92,6 +105,40 @@ function IntegrationTargetCard({
             />
           </div>
         ))}
+        {isGoto && (
+          <div className="sm:col-span-2 space-y-2">
+            <label className={labelCls}>Authentication Method</label>
+            <div className="flex gap-4 text-xs text-slate-600 dark:text-slate-300">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name={`goto-auth-${index}`}
+                  checked={gotoAuthMethod === "pat"}
+                  onChange={() => setGotoAuthMethod("pat")}
+                  className="accent-indigo-600"
+                />
+                Personal Access Token
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name={`goto-auth-${index}`}
+                  checked={gotoAuthMethod === "refresh"}
+                  onChange={() => setGotoAuthMethod("refresh")}
+                  className="accent-indigo-600"
+                />
+                Refresh Token
+              </label>
+            </div>
+            <input
+              type="password"
+              className={inputCls}
+              value={(gotoAuthMethod === "pat" ? target.config.personalAccessToken : target.config.refreshToken) ?? ""}
+              onChange={(e) => setField(gotoAuthMethod === "pat" ? "personalAccessToken" : "refreshToken", e.target.value)}
+              placeholder={gotoAuthMethod === "pat" ? "Personal Access Token" : "Refresh Token"}
+            />
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-3">
         <button
