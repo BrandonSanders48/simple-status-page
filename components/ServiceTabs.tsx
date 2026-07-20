@@ -14,9 +14,10 @@ import {
 } from "./StorageSections";
 import FailoverSection from "./FailoverSection";
 import { computeFailoverStatus } from "@/lib/failover";
+import { IntegrationCard, isIntegrationHealthy, type IntegrationsPayload } from "./IntegrationsSection";
 import type { StatusServicePayload } from "@/lib/statusCache";
 
-type TabKey = "services" | "storage" | "proxmox" | "backups" | "failover";
+type TabKey = "services" | "integrations" | "failover";
 
 interface DayUptime {
   date: string;
@@ -60,11 +61,13 @@ function TabButton({
 }
 
 /**
- * Tabs between the internally-hosted service tiles and, when configured, the
- * PowerStore, Proxmox, and PBS panels. Falls back to plain (tab-less) Internal
- * Services when none of them are enabled, so sites not using them see no change.
- * Each target is shown as its own named card, so monitoring both a main site and a
- * DR site (say) is just two cards in one tab.
+ * Tabs between the internally-hosted service tiles and, when configured, everything
+ * else: PowerStore, Proxmox, PBS, and marketplace integrations (UniFi, Sophos, GoTo
+ * Connect, etc) all live together under one "Integrations" tab, plus a separate
+ * Failover tab for the DR recommendation/actions. Falls back to plain (tab-less)
+ * Internal Services when none of them are enabled, so sites not using them see no
+ * change. Each target is shown as its own named card within the tab, so monitoring
+ * both a main site and a DR site (say) is just two cards, not two tabs.
  */
 export default function ServiceTabs({
   services,
@@ -73,6 +76,7 @@ export default function ServiceTabs({
   onOpenOutageLog,
   storage,
   pbs,
+  integrations,
   isAdmin,
   csrfToken,
   onStorageChanged,
@@ -85,6 +89,7 @@ export default function ServiceTabs({
   onOpenOutageLog: () => void;
   storage: StoragePayload | null;
   pbs: PbsPayload | null;
+  integrations: IntegrationsPayload | null;
   isAdmin: boolean;
   csrfToken?: string;
   onStorageChanged: () => void;
@@ -98,9 +103,12 @@ export default function ServiceTabs({
   const powerstores = storage?.powerstores ?? [];
   const proxmoxes = storage?.proxmoxes ?? [];
   const pbsTargets = pbs?.targets ?? [];
+  const integrationTargets = integrations?.targets ?? [];
   const hasPowerstore = powerstores.length > 0;
   const hasProxmox = proxmoxes.length > 0;
   const hasPbs = pbsTargets.length > 0;
+  const hasMarketplace = integrationTargets.length > 0;
+  const hasIntegrationsTab = hasPowerstore || hasProxmox || hasPbs || hasMarketplace;
 
   async function handleAcknowledge(targetId: number, alertId: string) {
     if (!csrfToken) return;
@@ -136,7 +144,7 @@ export default function ServiceTabs({
     }
   }
 
-  if (!hasPowerstore && !hasProxmox && !hasPbs) {
+  if (!hasIntegrationsTab) {
     return (
       <ServicesPanel
         services={services}
@@ -150,17 +158,14 @@ export default function ServiceTabs({
 
   const hasFailover = hasPowerstore || hasProxmox;
   const activeTab =
-    (tab === "storage" && !hasPowerstore) ||
-    (tab === "proxmox" && !hasProxmox) ||
-    (tab === "backups" && !hasPbs) ||
-    (tab === "failover" && !hasFailover)
-      ? "services"
-      : tab;
+    (tab === "integrations" && !hasIntegrationsTab) || (tab === "failover" && !hasFailover) ? "services" : tab;
 
   const servicesHaveIssue = services.some((s) => !s.up);
   const powerstoreHasIssue = powerstores.some((t) => !isPowerstoreHealthy(t.status));
   const proxmoxHasIssue = proxmoxes.some((t) => !isProxmoxHealthy(t.status));
   const pbsHasIssue = pbsTargets.some((t) => !isPbsHealthy(t.status));
+  const marketplaceHasIssue = integrationTargets.some((t) => !isIntegrationHealthy(t.status));
+  const integrationsTabHasIssue = powerstoreHasIssue || proxmoxHasIssue || pbsHasIssue || marketplaceHasIssue;
   const failoverRecommendation = computeFailoverStatus(storage, services).recommendation;
   const failoverHasIssue = failoverRecommendation === "recommend" || failoverRecommendation === "caution";
 
@@ -174,31 +179,13 @@ export default function ServiceTabs({
           label="Internal Services"
           hasIssue={servicesHaveIssue}
         />
-        {hasPowerstore && (
+        {hasIntegrationsTab && (
           <TabButton
-            active={activeTab === "storage"}
-            onClick={() => setTab("storage")}
-            icon="fa-database"
-            label="Storage"
-            hasIssue={powerstoreHasIssue}
-          />
-        )}
-        {hasProxmox && (
-          <TabButton
-            active={activeTab === "proxmox"}
-            onClick={() => setTab("proxmox")}
-            icon="fa-cubes"
-            label="Proxmox"
-            hasIssue={proxmoxHasIssue}
-          />
-        )}
-        {hasPbs && (
-          <TabButton
-            active={activeTab === "backups"}
-            onClick={() => setTab("backups")}
-            icon="fa-box-archive"
-            label="Backups"
-            hasIssue={pbsHasIssue}
+            active={activeTab === "integrations"}
+            onClick={() => setTab("integrations")}
+            icon="fa-store"
+            label="Integrations"
+            hasIssue={integrationsTabHasIssue}
           />
         )}
         {hasFailover && (
@@ -223,10 +210,10 @@ export default function ServiceTabs({
             bare
           />
         )}
-        {activeTab === "storage" && (
+        {activeTab === "integrations" && (
           <div className="space-y-4">
             {powerstores.map((t) => (
-              <div key={t.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+              <div key={`ps-${t.id}`} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
                 <PowerstoreSection
                   name={t.name}
                   status={t.status}
@@ -237,21 +224,13 @@ export default function ServiceTabs({
                 />
               </div>
             ))}
-          </div>
-        )}
-        {activeTab === "proxmox" && (
-          <div className="space-y-4">
             {proxmoxes.map((t) => (
-              <div key={t.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+              <div key={`pve-${t.id}`} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
                 <ProxmoxSection name={t.name} status={t.status} isDr={t.isDr} />
               </div>
             ))}
-          </div>
-        )}
-        {activeTab === "backups" && (
-          <div className="space-y-4">
             {pbsTargets.map((t) => (
-              <div key={t.id} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+              <div key={`pbs-${t.id}`} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
                 <PbsSection
                   name={t.name}
                   status={t.status}
@@ -259,6 +238,11 @@ export default function ServiceTabs({
                   acknowledgingId={acknowledgingTask?.targetId === t.id ? acknowledgingTask.taskId : null}
                   onAcknowledge={(taskId) => handleAcknowledgeTask(t.id, taskId)}
                 />
+              </div>
+            ))}
+            {integrationTargets.map((t) => (
+              <div key={`int-${t.id}`} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+                <IntegrationCard integration={t.integration} name={t.name} status={t.status} />
               </div>
             ))}
           </div>

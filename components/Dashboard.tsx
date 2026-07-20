@@ -10,6 +10,7 @@ import CreatePostModal from "./CreatePostModal";
 import RssPanel from "./RssPanel";
 import ServiceTabs from "./ServiceTabs";
 import { isStorageHealthy, isPbsAllHealthy, type StoragePayload, type PbsPayload } from "./StorageSections";
+import { isIntegrationsAllHealthy, type IntegrationsPayload } from "./IntegrationsSection";
 import { isDrPreferred } from "@/lib/failover";
 import OutageHistoryModal from "./OutageHistoryModal";
 import DarkModeToggle from "./DarkModeToggle";
@@ -81,6 +82,7 @@ export default function Dashboard({
   const [rssLoaded, setRssLoaded] = useState(false);
   const [storage, setStorage] = useState<StoragePayload | null>(null);
   const [pbs, setPbs] = useState<PbsPayload | null>(null);
+  const [integrations, setIntegrations] = useState<IntegrationsPayload | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [maintenanceWindows, setMaintenanceWindows] = useState<MaintenanceWindow[]>([]);
   const [categories, setCategories] = useState<StatusCategory[]>([]);
@@ -145,6 +147,13 @@ export default function Dashboard({
       .catch(() => {});
   }, []);
 
+  const loadIntegrations = useCallback(() => {
+    fetch("/api/integrations")
+      .then((r) => r.json())
+      .then(setIntegrations)
+      .catch(() => {});
+  }, []);
+
   const loadMaintenance = useCallback(() => {
     fetch("/api/maintenance")
       .then((r) => r.json())
@@ -179,15 +188,18 @@ export default function Dashboard({
     loadIncidents();
     loadStorage();
     loadPbs();
+    loadIntegrations();
     loadMaintenance();
     loadUptime();
     const statusTimer = setInterval(loadStatus, refreshRateMs);
     const rssTimer = setInterval(loadRss, refreshRateMs);
     const incidentsTimer = setInterval(loadIncidents, refreshRateMs);
-    // PowerStore/Proxmox/PBS are polled less often than the live service checks -- the
-    // server-side caches backing these endpoints only refresh every 60s anyway.
+    // PowerStore/Proxmox/PBS/marketplace integrations are polled less often than the
+    // live service checks -- the server-side caches backing these endpoints only
+    // refresh every 60s anyway.
     const storageTimer = setInterval(loadStorage, 60_000);
     const pbsTimer = setInterval(loadPbs, 60_000);
+    const integrationsTimer = setInterval(loadIntegrations, 60_000);
     // Maintenance schedules change rarely -- no need to poll as often as live status.
     const maintenanceTimer = setInterval(loadMaintenance, 60_000);
     // Uptime history only changes on the 2-min background check cycle.
@@ -198,10 +210,11 @@ export default function Dashboard({
       clearInterval(incidentsTimer);
       clearInterval(storageTimer);
       clearInterval(pbsTimer);
+      clearInterval(integrationsTimer);
       clearInterval(maintenanceTimer);
       clearInterval(uptimeTimer);
     };
-  }, [loadStatus, loadRss, loadIncidents, loadStorage, loadPbs, loadMaintenance, loadUptime, refreshRateMs]);
+  }, [loadStatus, loadRss, loadIncidents, loadStorage, loadPbs, loadIntegrations, loadMaintenance, loadUptime, refreshRateMs]);
 
   async function handleRemoveIncident(id: number) {
     if (!session) return;
@@ -221,6 +234,7 @@ export default function Dashboard({
       status.wide.ok !== false &&
       isStorageHealthy(storage) &&
       isPbsAllHealthy(pbs) &&
+      isIntegrationsAllHealthy(integrations) &&
       !isDrPreferred(storage)
     : null;
   const isAdmin = !!session?.authenticated;
@@ -302,6 +316,7 @@ export default function Dashboard({
           onOpenOutageLog={() => setShowOutageLog(true)}
           storage={storage}
           pbs={pbs}
+          integrations={integrations}
           isAdmin={isAdmin}
           csrfToken={session?.csrfToken}
           onStorageChanged={loadStorage}

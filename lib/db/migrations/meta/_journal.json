@@ -71,6 +71,13 @@
       "when": 1784311446600,
       "tag": "0009_slimy_skullbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1784556615345,
+      "tag": "0010_living_rocket_raccoon",
+      "breakpoints": true
     }
   ]
 }

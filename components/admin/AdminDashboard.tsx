@@ -12,6 +12,7 @@ import type {
   DraftPowerstoreTarget,
   DraftProxmoxTarget,
   DraftPbsTarget,
+  DraftIntegrationTarget,
 } from "@/lib/adminTypes";
 import GeneralTab from "./GeneralTab";
 import ServicesTab from "./ServicesTab";
@@ -22,6 +23,7 @@ import SslTab from "./SslTab";
 import StorageTab from "./StorageTab";
 import ProxmoxTab from "./ProxmoxTab";
 import BackupsTab from "./BackupsTab";
+import IntegrationsTab from "./IntegrationsTab";
 import StatusCategoriesTab from "./StatusCategoriesTab";
 
 const SECTIONS = [
@@ -30,9 +32,7 @@ const SECTIONS = [
   { key: "categories", label: "Status Labels", icon: "fa-tags", color: "text-pink-500" },
   { key: "rss", label: "RSS Feeds", icon: "fa-rss", color: "text-orange-500" },
   { key: "network", label: "Network", icon: "fa-network-wired", color: "text-sky-500" },
-  { key: "storage", label: "Storage", icon: "fa-database", color: "text-cyan-500" },
-  { key: "proxmox", label: "Proxmox", icon: "fa-cubes", color: "text-orange-500" },
-  { key: "backups", label: "Backups", icon: "fa-box-archive", color: "text-lime-600" },
+  { key: "integrations", label: "Integrations", icon: "fa-store", color: "text-fuchsia-500" },
   { key: "notifications", label: "Notifications", icon: "fa-bell", color: "text-violet-500" },
   { key: "ssl", label: "SSL", icon: "fa-lock", color: "text-emerald-500" },
 ] as const;
@@ -49,6 +49,7 @@ export default function AdminDashboard() {
   const [powerstoreTargets, setPowerstoreTargets] = useState<DraftPowerstoreTarget[]>([]);
   const [proxmoxTargets, setProxmoxTargets] = useState<DraftProxmoxTarget[]>([]);
   const [pbsTargets, setPbsTargets] = useState<DraftPbsTarget[]>([]);
+  const [integrationTargets, setIntegrationTargets] = useState<DraftIntegrationTarget[]>([]);
   const [saveState, setSaveState] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -66,6 +67,7 @@ export default function AdminDashboard() {
       setPowerstoreTargets(data.powerstoreTargets);
       setProxmoxTargets(data.proxmoxTargets);
       setPbsTargets(data.pbsTargets);
+      setIntegrationTargets(data.integrationTargets);
     }
     setLoading(false);
   }, []);
@@ -142,6 +144,13 @@ export default function AdminDashboard() {
         tokenSecret,
         enabled,
       })),
+      integrationTargets: integrationTargets.map(({ id, integration, name, config, enabled }) => ({
+        id,
+        integration,
+        name,
+        config,
+        enabled,
+      })),
     };
 
     try {
@@ -160,6 +169,7 @@ export default function AdminDashboard() {
       setPowerstoreTargets(data.powerstoreTargets);
       setProxmoxTargets(data.proxmoxTargets);
       setPbsTargets(data.pbsTargets);
+      setIntegrationTargets(data.integrationTargets);
       setSaveState({ ok: true, text: "Configuration saved successfully." });
     } catch (err) {
       setSaveState({ ok: false, text: err instanceof Error ? err.message : "Failed to save." });
@@ -240,20 +250,25 @@ export default function AdminDashboard() {
               <RssTab feeds={rssFeeds} onChange={setRssFeeds} />
             ) : s.key === "network" ? (
               <NetworkTab settings={settings} onChange={setSettings} ispMap={ispMap} onIspChange={setIspMap} />
-            ) : s.key === "storage" ? (
-              <StorageTab
-                powerstoreTargets={powerstoreTargets}
-                onPowerstoreTargetsChange={setPowerstoreTargets}
-                csrfToken={session.csrfToken}
-              />
-            ) : s.key === "proxmox" ? (
-              <ProxmoxTab
-                proxmoxTargets={proxmoxTargets}
-                onProxmoxTargetsChange={setProxmoxTargets}
-                csrfToken={session.csrfToken}
-              />
-            ) : s.key === "backups" ? (
-              <BackupsTab pbsTargets={pbsTargets} onPbsTargetsChange={setPbsTargets} csrfToken={session.csrfToken} />
+            ) : s.key === "integrations" ? (
+              <div className="space-y-8">
+                <StorageTab
+                  powerstoreTargets={powerstoreTargets}
+                  onPowerstoreTargetsChange={setPowerstoreTargets}
+                  csrfToken={session.csrfToken}
+                />
+                <ProxmoxTab
+                  proxmoxTargets={proxmoxTargets}
+                  onProxmoxTargetsChange={setProxmoxTargets}
+                  csrfToken={session.csrfToken}
+                />
+                <BackupsTab pbsTargets={pbsTargets} onPbsTargetsChange={setPbsTargets} csrfToken={session.csrfToken} />
+                <IntegrationsTab
+                  integrationTargets={integrationTargets}
+                  onIntegrationTargetsChange={setIntegrationTargets}
+                  csrfToken={session.csrfToken}
+                />
+              </div>
             ) : s.key === "notifications" ? (
               <NotificationsTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
             ) : (

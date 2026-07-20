@@ -205,6 +205,7 @@ export function PowerstoreSection({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
+        <i className="fa-solid fa-database text-cyan-500" />
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
         <Pill ok={!hasCriticalAlert} label={hasCriticalAlert ? "Attention" : "Healthy"} />
         {isDr && <DrBadge />}
@@ -278,7 +279,9 @@ export function ProxmoxSection({ name, status, isDr = false }: { name: string; s
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
+        <i className="fa-solid fa-cubes text-orange-500" />
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
+        <Pill ok={isProxmoxHealthy(status)} label={isProxmoxHealthy(status) ? "Healthy" : "Attention"} />
         {status.quorate !== null && <Pill ok={status.quorate} label={status.quorate ? "Quorate" : "No Quorum"} />}
         {isDr && <DrBadge />}
       </div>
@@ -373,9 +376,13 @@ export function PbsSection({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
+        <i className="fa-solid fa-box-archive text-lime-600" />
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
-        <Pill ok={status.lastRunHealthy} label={status.lastRunHealthy ? "Last Run OK" : "Last Run Failed"} />
-        {status.lastRunAt && <span className="text-xs text-slate-400">{formatTaskTime(status.lastRunAt)}</span>}
+        <Pill ok={status.lastRunHealthy} label={status.lastRunHealthy ? "Healthy" : "Attention"} />
+        <span className="text-xs text-slate-400">
+          Last run {status.lastRunHealthy ? "OK" : "failed"}
+          {status.lastRunAt && ` · ${formatTaskTime(status.lastRunAt)}`}
+        </span>
       </div>
 
       <div>

@@ -6,6 +6,7 @@ import { invalidateStatusCache } from "@/lib/statusCache";
 import { invalidateRssCache } from "@/lib/rssCache";
 import { invalidateStorageCache } from "@/lib/storageCache";
 import { invalidatePbsCache } from "@/lib/pbsCache";
+import { invalidateIntegrationsCache } from "@/lib/integrationsCache";
 
 export async function GET() {
   if (!(await requireAuth())) {
@@ -33,6 +34,7 @@ export async function PUT(request: Request) {
   invalidateRssCache();
   invalidateStorageCache();
   invalidatePbsCache();
+  invalidateIntegrationsCache();
 
   return NextResponse.json(saved);
 }

@@ -128,6 +128,20 @@ export const pbsTargets = sqliteTable("pbs_targets", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
+// Marketplace integrations (UniFi, Sophos Central/XGS, GoTo Connect, etc, see
+// lib/integrationRegistry.ts) all share this one table rather than getting a
+// dedicated table each -- `config` is a JSON-serialized Record<string,string> whose
+// shape is defined by that integration's catalog entry, since each needs different
+// credential fields.
+export const integrationTargets = sqliteTable("integration_targets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  integration: text("integration").notNull(),
+  name: text("name").notNull(),
+  config: text("config").notNull(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
 // Lets an admin "Clear" a failed backup task from the Backups tab -- acknowledged
 // tasks no longer count toward that target's Last Run Failed health/tab badge, but
 // stay in the list (greyed out) as a record of what happened.

@@ -1,11 +1,22 @@
 import { z } from "zod";
 import { eq, notInArray } from "drizzle-orm";
 import { db } from "./db/client";
-import { settings, services, rssFeeds, ispMapEntries, statusCategories, powerstoreTargets, proxmoxTargets, pbsTargets } from "./db/schema";
+import {
+  settings,
+  services,
+  rssFeeds,
+  ispMapEntries,
+  statusCategories,
+  powerstoreTargets,
+  proxmoxTargets,
+  pbsTargets,
+  integrationTargets,
+} from "./db/schema";
 
 export const MAX_SERVICES = 20;
 export const MAX_RSS_FEEDS = 10;
 export const MAX_STORAGE_TARGETS = 10;
+export const MAX_INTEGRATION_TARGETS = 20;
 
 export const settingsInputSchema = z.object({
   businessName: z.string().min(1).max(200),
@@ -100,6 +111,14 @@ export const pbsTargetInputSchema = z.object({
   enabled: z.boolean(),
 });
 
+export const integrationTargetInputSchema = z.object({
+  id: z.number().int().optional(),
+  integration: z.string().min(1).max(50),
+  name: z.string().min(1).max(100),
+  config: z.record(z.string().max(1000)),
+  enabled: z.boolean(),
+});
+
 export const configPayloadSchema = z.object({
   settings: settingsInputSchema,
   services: z.array(serviceInputSchema).max(MAX_SERVICES),
@@ -109,6 +128,7 @@ export const configPayloadSchema = z.object({
   powerstoreTargets: z.array(powerstoreTargetInputSchema).max(MAX_STORAGE_TARGETS),
   proxmoxTargets: z.array(proxmoxTargetInputSchema).max(MAX_STORAGE_TARGETS),
   pbsTargets: z.array(pbsTargetInputSchema).max(MAX_STORAGE_TARGETS),
+  integrationTargets: z.array(integrationTargetInputSchema).max(MAX_INTEGRATION_TARGETS),
 });
 
 export type ConfigPayload = z.infer<typeof configPayloadSchema>;
@@ -122,6 +142,7 @@ export function getFullConfig() {
   const psTargets = db.select().from(powerstoreTargets).all();
   const pveTargets = db.select().from(proxmoxTargets).all();
   const pbsTargetRows = db.select().from(pbsTargets).all();
+  const integrationRows = db.select().from(integrationTargets).all();
   return {
     settings: cfg,
     services: svc,
@@ -131,7 +152,19 @@ export function getFullConfig() {
     powerstoreTargets: psTargets,
     proxmoxTargets: pveTargets,
     pbsTargets: pbsTargetRows,
+    // config is stored as a JSON string (see lib/db/schema.ts) -- parsed here so the
+    // admin UI can bind to individual fields directly.
+    integrationTargets: integrationRows.map((t) => ({ ...t, config: parseIntegrationConfig(t.config) })),
   };
+}
+
+function parseIntegrationConfig(raw: string): Record<string, string> {
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 
 function bumpVersion(current: string): string {
@@ -252,6 +285,24 @@ export function saveFullConfig(payload: ConfigPayload) {
         tx.insert(pbsTargets)
           .values({ ...t, sortOrder: index })
           .run();
+      }
+    });
+
+    const incomingIntegrationIds = payload.integrationTargets.filter((t) => t.id !== undefined).map((t) => t.id!);
+    if (incomingIntegrationIds.length > 0) {
+      tx.delete(integrationTargets).where(notInArray(integrationTargets.id, incomingIntegrationIds)).run();
+    } else {
+      tx.delete(integrationTargets).run();
+    }
+    payload.integrationTargets.forEach((t, index) => {
+      const row = { ...t, config: JSON.stringify(t.config), sortOrder: index };
+      if (t.id !== undefined) {
+        tx.update(integrationTargets)
+          .set(row)
+          .where(eq(integrationTargets.id, t.id))
+          .run();
+      } else {
+        tx.insert(integrationTargets).values(row).run();
       }
     });
   });
