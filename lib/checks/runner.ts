@@ -5,6 +5,7 @@ import { checkHttp, httpSchemeFor, isHttpType } from "./http";
 import { checkDns, isDnsType } from "./dns";
 import { checkTcp } from "./tcp";
 import { checkPing } from "./ping";
+import { checkActiveDirectory, isAdType } from "./ad";
 
 export type Service = typeof services.$inferSelect;
 
@@ -29,8 +30,14 @@ export interface ServiceTransition {
   shouldNotify: boolean;
 }
 
-/** Dispatches a single service to the right protocol-aware check. */
+/** Dispatches a single service to the right protocol-aware check. AD is checked
+ * first since it ignores `port` entirely (it always checks a fixed set of ports on
+ * `host`), so it needs to run before the "no port -> ping" fallback below would
+ * otherwise catch a blank Port field. */
 export async function checkOneService(svc: Service): Promise<boolean> {
+  if (isAdType(svc.type)) {
+    return checkActiveDirectory(svc.host);
+  }
   if (svc.port === null) {
     return checkPing(svc.host);
   }

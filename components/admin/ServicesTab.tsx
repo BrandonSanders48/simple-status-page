@@ -49,7 +49,10 @@ export default function ServicesTab({
 
   return (
     <div>
-      <p className="text-xs text-slate-400 mb-3">Leave Port blank for ICMP ping. Type &quot;http&quot;/&quot;https&quot;/&quot;dns&quot; enables real protocol checks.</p>
+      <p className="text-xs text-slate-400 mb-3">
+        Leave Port blank for ICMP ping. Type &quot;http&quot;/&quot;https&quot;/&quot;dns&quot; enables real protocol checks. Type &quot;ad&quot; checks a
+        domain controller&apos;s core ports (DNS, Kerberos, LDAP/LDAPS, SMB, Global Catalog) and ignores Port.
+      </p>
       <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-xl px-3">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -86,8 +89,9 @@ export default function ServicesTab({
                 <td className="py-1 pr-2">
                   <input
                     aria-label="Port"
-                    className={tblInputCls}
-                    placeholder="ping"
+                    className={`${tblInputCls} disabled:opacity-40`}
+                    placeholder={svc.type.trim().toLowerCase() === "ad" ? "n/a" : "ping"}
+                    disabled={svc.type.trim().toLowerCase() === "ad"}
                     value={svc.port ?? ""}
                     onChange={(e) => update(i, { port: e.target.value === "" ? null : Number(e.target.value) })}
                   />
