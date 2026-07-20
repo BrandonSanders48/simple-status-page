@@ -24,8 +24,8 @@ async function fetchPowerstoreForCatalog(config: Record<string, string>): Promis
     return { ok: false, error: status.error ?? "Failed to connect to PowerStore", diagnostics: status.diagnostics, healthy: false, summary: "", items: [] };
   }
   const items = [
-    ...status.alerts.map((a) => ({ label: a.description, value: a.severity, ok: !isPowerstoreAlertCritical(a.severity) })),
-    ...status.metroSessions.map((m) => ({ label: m.name, value: m.state, ok: isMetroSessionHealthy(m.state) })),
+    ...status.alerts.map((a) => ({ label: a.description, value: a.severity, ok: !isPowerstoreAlertCritical(a.severity), key: a.id })),
+    ...status.metroSessions.map((m) => ({ label: m.name, value: m.state, ok: isMetroSessionHealthy(m.state), key: m.id })),
   ];
   return {
     ok: true,
@@ -48,8 +48,13 @@ async function fetchProxmoxForCatalog(config: Record<string, string>): Promise<I
   }
   const offlineNodes = status.nodes.filter((n) => !n.online).length;
   const items = [
-    ...status.nodes.map((n) => ({ label: n.name, value: n.online ? "Online" : "Offline", ok: n.online })),
-    ...status.storages.map((s) => ({ label: `${s.storage} (${s.node})`, value: s.active ? "Available" : "Unavailable", ok: s.active })),
+    ...status.nodes.map((n) => ({ label: n.name, value: n.online ? "Online" : "Offline", ok: n.online, key: `node:${n.name}` })),
+    ...status.storages.map((s) => ({
+      label: `${s.storage} (${s.node})`,
+      value: s.active ? "Available" : "Unavailable",
+      ok: s.active,
+      key: `storage:${s.node}:${s.storage}`,
+    })),
   ];
   const quorumText = status.quorate === null ? "" : status.quorate ? ", quorate" : ", NO QUORUM";
   return {
@@ -78,7 +83,7 @@ async function fetchPbsForCatalog(config: Record<string, string>): Promise<Integ
     diagnostics: status.diagnostics,
     healthy: status.lastRunHealthy,
     summary: `Last run ${status.lastRunHealthy ? "OK" : "failed"}${status.lastRunAt ? ` at ${status.lastRunAt}` : ""}, ${status.tasks.length} task(s).`,
-    items: status.tasks.map((t) => ({ label: t.id, value: t.status, ok: t.status === "OK" })),
+    items: status.tasks.map((t) => ({ label: t.id, value: t.status, ok: t.status === "OK", key: t.id })),
   };
 }
 

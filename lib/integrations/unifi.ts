@@ -143,19 +143,19 @@ export async function fetchUnifiStatus(config: Record<string, string>): Promise<
     // that's actually present and isn't "ok"/"unknown" is a real problem.
     const rawStatus = typeof subsystem.status === "string" ? subsystem.status : null;
     if (rawStatus === null || rawStatus.toLowerCase() === "unknown") {
-      items.push({ label: name, value: rawStatus ?? "N/A", ok: null });
+      items.push({ label: name, value: rawStatus ?? "N/A", ok: null, key: name });
       continue;
     }
     const ok = rawStatus === "ok";
     if (!ok) anyIssue = true;
-    items.push({ label: name, value: rawStatus, ok });
+    items.push({ label: name, value: rawStatus, ok, key: name });
   }
 
   const onlineDevices = deviceRows.filter((d) => d.state === 1).length;
   const totalDevices = deviceRows.length;
   const devicesOk = totalDevices === 0 || onlineDevices === totalDevices;
   if (!devicesOk) anyIssue = true;
-  items.push({ label: "Devices online", value: `${onlineDevices}/${totalDevices}`, ok: devicesOk });
+  items.push({ label: "Devices online", value: `${onlineDevices}/${totalDevices}`, ok: devicesOk, key: "devices-online" });
 
   return {
     ok: true,

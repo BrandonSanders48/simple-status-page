@@ -70,7 +70,7 @@ interface SophosXgsConfig {
   password: string;
 }
 
-type StatusRow = { label: string; value: string; ok: boolean };
+type StatusRow = { label: string; value: string; ok: boolean; key: string };
 
 type ApiResult = { ok: true; xml: string } | { ok: false; error: string; authFailure: boolean };
 
@@ -194,7 +194,7 @@ async function fetchSystemServices(cfg: SophosXgsConfig, diagnostics: string[]):
     const serviceBlock = getTagContent(block, service);
     if (serviceBlock === null) continue; // Not present -- likely just not licensed/enabled on this box, not an error.
     const statusText = (getTagContent(serviceBlock, "Status") ?? serviceBlock).trim();
-    rows.push({ label: `Service: ${service}`, value: statusText || "Unknown", ok: statusText ? !isServiceDown(statusText) : true });
+    rows.push({ label: `Service: ${service}`, value: statusText || "Unknown", ok: statusText ? !isServiceDown(statusText) : true, key: `service:${service}` });
   }
   return rows;
 }
@@ -240,7 +240,7 @@ async function fetchVpnConnections(cfg: SophosXgsConfig, diagnostics: string[]):
 
     if (liveStatus) {
       const down = /\b(not[\s-]?established|down|disconnect|disconnected|inactive|fail|failed)\b/i.test(liveStatus);
-      rows.push({ label: `VPN: ${name}`, value: liveStatus, ok: !down });
+      rows.push({ label: `VPN: ${name}`, value: liveStatus, ok: !down, key: `vpn:${name}` });
       continue;
     }
 
@@ -248,9 +248,9 @@ async function fetchVpnConnections(cfg: SophosXgsConfig, diagnostics: string[]):
     if (adminStatus) {
       usedFallback = true;
       const disabled = /deactive|inactive|disable/i.test(adminStatus);
-      rows.push({ label: `VPN: ${name}`, value: disabled ? "Disabled" : "Enabled", ok: true });
+      rows.push({ label: `VPN: ${name}`, value: disabled ? "Disabled" : "Enabled", ok: true, key: `vpn:${name}` });
     } else {
-      rows.push({ label: `VPN: ${name}`, value: "Unknown", ok: true });
+      rows.push({ label: `VPN: ${name}`, value: "Unknown", ok: true, key: `vpn:${name}` });
       diagnostics.push(`VPNIPSecConnection "${name}": no recognizable status field found.`);
     }
   }

@@ -122,6 +122,29 @@ export const pbsAcknowledgedTasks = sqliteTable(
   })
 );
 
+// Lets an admin "Ignore" a specific alerting/unhealthy row on a marketplace
+// integration's card (UniFi/Sophos Central/Sophos XGS/GoTo Connect/Meraki/etc) --
+// ignored items stay visible (dimmed, not hidden) but no longer count toward that
+// target's healthy rollup or the "Attention" pill, same "acknowledge, don't erase"
+// pattern as pbsAcknowledgedTasks above. `itemKey` is each integration's own stable
+// per-row identifier (see IntegrationStatus.items in lib/integrations/types.ts) --
+// not a DB foreign key of its own, since it points at a row inside a live API
+// response, not a row in this database.
+export const integrationIgnoredItems = sqliteTable(
+  "integration_ignored_items",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    targetId: integer("target_id")
+      .notNull()
+      .references(() => integrationTargets.id, { onDelete: "cascade" }),
+    itemKey: text("item_key").notNull(),
+    ignoredAt: text("ignored_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => ({
+    uniqueTargetItem: uniqueIndex("uniq_integration_target_item").on(t.targetId, t.itemKey),
+  })
+);
+
 // Audit trail for the Failover tab's destructive actions (starting/shutting down VMs,
 // promoting/reprotecting a Metro session). targetName is denormalized so the log
 // still reads clearly after a target is renamed or removed.

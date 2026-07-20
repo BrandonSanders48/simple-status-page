@@ -14,11 +14,25 @@ export function IntegrationLogo({ meta, className = "w-5 h-5" }: { meta: Integra
   return <i className={`fa-solid ${meta.icon} ${meta.color}`} />;
 }
 
+/** Same as IntegrationStatus.items' row shape, plus whether an admin has ignored it
+ * (computed server-side in lib/integrationsCache.ts, not by the integration itself). */
+export interface IntegrationItemPayload {
+  label: string;
+  value: string;
+  ok: boolean | null;
+  key: string;
+  ignored: boolean;
+}
+
+export interface IntegrationStatusPayload extends Omit<IntegrationStatus, "items"> {
+  items: IntegrationItemPayload[];
+}
+
 export interface IntegrationTargetPayload {
   id: number;
   integration: string;
   name: string;
-  status: IntegrationStatus;
+  status: IntegrationStatusPayload;
 }
 
 export interface IntegrationsPayload {
@@ -26,7 +40,7 @@ export interface IntegrationsPayload {
   targets: IntegrationTargetPayload[];
 }
 
-export function isIntegrationHealthy(status: IntegrationStatus): boolean {
+export function isIntegrationHealthy(status: IntegrationStatusPayload): boolean {
   return status.ok && status.healthy;
 }
 
@@ -57,13 +71,49 @@ function ExpandChevron({ expanded }: { expanded: boolean }) {
  * One card per configured marketplace target -- fully generic (no per-integration
  * display code) off the IntegrationStatus shape every catalog entry's fetch function
  * returns, so a new integration in lib/integrationCatalogMeta.ts never needs a new
- * component here.
+ * component here. Admins can "Ignore" any individual alerting row (e.g. a device
+ * that's expected to be offline) -- it stays visible, dimmed, and stops counting
+ * toward this card's healthy rollup until un-ignored.
  */
-export function IntegrationCard({ integration, name, status }: { integration: string; name: string; status: IntegrationStatus }) {
+export function IntegrationCard({
+  targetId,
+  integration,
+  name,
+  status,
+  isAdmin = false,
+  csrfToken,
+  onIgnoreChanged,
+}: {
+  targetId: number;
+  integration: string;
+  name: string;
+  status: IntegrationStatusPayload;
+  isAdmin?: boolean;
+  csrfToken?: string;
+  onIgnoreChanged?: () => void;
+}) {
   const meta = getIntegrationCatalogMeta(integration);
   // Overview by default -- expanded automatically when unhealthy, otherwise collapsed
   // to just the summary line.
   const [expanded, setExpanded] = useState(!status.healthy);
+  const [togglingKey, setTogglingKey] = useState<string | null>(null);
+
+  async function toggleIgnore(itemKey: string, ignored: boolean) {
+    if (!csrfToken) return;
+    setTogglingKey(itemKey);
+    try {
+      await fetch("/api/admin/integration-ignore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+        body: JSON.stringify({ targetId, itemKey, ignored }),
+      });
+      onIgnoreChanged?.();
+    } catch {
+      // Swallow -- the item simply keeps its old ignore state, and the admin can retry.
+    } finally {
+      setTogglingKey(null);
+    }
+  }
 
   if (!status.ok) {
     return (
@@ -97,10 +147,23 @@ export function IntegrationCard({ integration, name, status }: { integration: st
       </button>
       {expanded && status.items.length > 0 && (
         <ul className="space-y-1">
-          {status.items.map((item, i) => (
-            <li key={i} className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
-              <Pill ok={item.ok} label={item.value} />
-              <span>{item.label}</span>
+          {status.items.map((item) => (
+            <li
+              key={item.key}
+              className={`text-sm flex items-center gap-2 ${item.ignored ? "opacity-50" : "text-slate-600 dark:text-slate-300"}`}
+            >
+              <Pill ok={item.ignored ? null : item.ok} label={item.ignored ? `${item.value} (ignored)` : item.value} />
+              <span className="flex-1">{item.label}</span>
+              {isAdmin && item.ok === false && (
+                <button
+                  type="button"
+                  onClick={() => toggleIgnore(item.key, !item.ignored)}
+                  disabled={togglingKey === item.key}
+                  className="text-xs font-medium text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {togglingKey === item.key ? "Saving..." : item.ignored ? "Unignore" : "Ignore"}
+                </button>
+              )}
             </li>
           ))}
         </ul>

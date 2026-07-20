@@ -21,8 +21,13 @@ export interface IntegrationStatus {
    * `ok: null` means "no definitive reading" (e.g. a subsystem that isn't configured/
    * used, or a field an integration doesn't confirm exists) -- shown neutrally, never
    * counted as a failure. Prefer `ok !== false` over truthy-checking `ok` wherever a
-   * rollup is computed from items, so a null doesn't get miscounted as unhealthy. */
-  items: { label: string; value: string; ok: boolean | null }[];
+   * rollup is computed from items, so a null doesn't get miscounted as unhealthy.
+   * `key` is a stable per-row identifier scoped to this integration (e.g. a device
+   * serial, an alert id, a fixed subsystem name) used only to let an admin "Ignore"
+   * a specific alerting row (lib/integrationIgnore.ts) across polls -- it's never
+   * shown, so a value that's merely unique-enough (falling back to `label` when
+   * there's no better natural id) is fine. */
+  items: { label: string; value: string; ok: boolean | null; key: string }[];
 }
 
 export interface IntegrationField {

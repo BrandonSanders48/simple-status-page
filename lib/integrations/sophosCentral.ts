@@ -317,7 +317,7 @@ export async function fetchSophosCentralStatus(config: Record<string, string>): 
     }
 
     let criticalAlertCount = 0;
-    const alertItems: { label: string; value: string; ok: boolean | null }[] = [];
+    const alertItems: { label: string; value: string; ok: boolean | null; key: string }[] = [];
     if (alertsResult.error) {
       diagnostics.push(alertsResult.error);
     } else {
@@ -330,14 +330,15 @@ export async function fetchSophosCentralStatus(config: Record<string, string>): 
         const severity = typeof a.severity === "string" ? a.severity.toLowerCase() : "unknown";
         const description = typeof a.description === "string" ? a.description : typeof a.type === "string" ? a.type : "Sophos alert";
         const raisedAt = typeof a.raisedAt === "string" ? formatAlertTime(a.raisedAt) : null;
+        const key = typeof a.id === "string" ? a.id : description;
         if (CRITICAL_ALERT_SEVERITIES.has(severity)) criticalAlertCount++;
-        alertItems.push({ label: raisedAt ? `${description} (${raisedAt})` : description, value: severity, ok: mapAlertOk(severity) });
+        alertItems.push({ label: raisedAt ? `${description} (${raisedAt})` : description, value: severity, ok: mapAlertOk(severity), key });
       }
     }
 
     let unhealthyEndpointCount = 0;
     let totalEndpointCount = 0;
-    const endpointItems: { label: string; value: string; ok: boolean | null }[] = [];
+    const endpointItems: { label: string; value: string; ok: boolean | null; key: string }[] = [];
     if (endpointsResult.error) {
       diagnostics.push(endpointsResult.error);
     } else {
@@ -349,7 +350,8 @@ export async function fetchSophosCentralStatus(config: Record<string, string>): 
         if (!isHealthy) {
           unhealthyEndpointCount++;
           const hostname = typeof e.hostname === "string" ? e.hostname : typeof e.id === "string" ? e.id : "Unknown endpoint";
-          endpointItems.push({ label: `${hostname} -- ${describeEndpointHealth(health)}`, value: overall, ok: false });
+          const key = typeof e.id === "string" ? e.id : hostname;
+          endpointItems.push({ label: `${hostname} -- ${describeEndpointHealth(health)}`, value: overall, ok: false, key });
         }
       }
     }

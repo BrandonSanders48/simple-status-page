@@ -81,6 +81,7 @@ export default function ServiceTabs({
   csrfToken,
   onStorageChanged,
   onPbsChanged,
+  onIntegrationsChanged,
   uptimeByService,
 }: {
   services: StatusServicePayload[];
@@ -94,6 +95,7 @@ export default function ServiceTabs({
   csrfToken?: string;
   onStorageChanged: () => void;
   onPbsChanged: () => void;
+  onIntegrationsChanged: () => void;
   uptimeByService?: Record<number, DayUptime[]>;
 }) {
   const [tab, setTab] = useState<TabKey>("services");
@@ -242,7 +244,15 @@ export default function ServiceTabs({
             ))}
             {integrationTargets.map((t) => (
               <div key={`int-${t.id}`} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-                <IntegrationCard integration={t.integration} name={t.name} status={t.status} />
+                <IntegrationCard
+                  targetId={t.id}
+                  integration={t.integration}
+                  name={t.name}
+                  status={t.status}
+                  isAdmin={isAdmin}
+                  csrfToken={csrfToken}
+                  onIgnoreChanged={onIntegrationsChanged}
+                />
               </div>
             ))}
           </div>

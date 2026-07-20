@@ -175,7 +175,7 @@ async function fetchAccountKey(accessToken: string, diagnostics: string[]): Prom
   return null;
 }
 
-type Row = { label: string; value: string; ok: boolean };
+type Row = { label: string; value: string; ok: boolean; key: string };
 
 /** Phone numbers on the account, via the Voice Admin API's confirmed
  * /voice-admin/v1/phone-numbers endpoint. Field names (`name`, `number`, `status`)
@@ -194,13 +194,15 @@ async function fetchPhoneNumbers(accessToken: string, accountKey: string, diagno
   const rows = Array.isArray(result.data.items) ? (result.data.items as JsonRecord[]) : [];
 
   let unknownStatusSeen = false;
-  const items = rows.map((r): Row => {
+  const items = rows.map((r, i): Row => {
     const status = typeof r.status === "string" ? r.status : undefined;
     if (status && !HEALTHY_STATUSES.has(status.toLowerCase())) unknownStatusSeen = true;
+    const number = (typeof r.number === "string" && r.number) || null;
     return {
-      label: (typeof r.name === "string" && r.name) || (typeof r.number === "string" && r.number) || "Phone number",
+      label: (typeof r.name === "string" && r.name) || number || "Phone number",
       value: status ?? "Unknown",
       ok: status ? HEALTHY_STATUSES.has(status.toLowerCase()) : true,
+      key: `phone:${number ?? i}`,
     };
   });
   if (unknownStatusSeen) {
@@ -228,19 +230,17 @@ async function fetchExtensions(accessToken: string, accountKey: string, diagnost
   const rows = Array.isArray(result.data.items) ? (result.data.items as JsonRecord[]) : [];
 
   let anyStatusFound = false;
-  const items = rows.map((r): Row => {
+  const items = rows.map((r, i): Row => {
     const phone = r.phone as JsonRecord | undefined;
     const status = typeof r.status === "string" ? r.status : typeof phone?.status === "string" ? (phone.status as string) : undefined;
     if (status) anyStatusFound = true;
-    const label =
-      (typeof r.name === "string" && r.name) ||
-      (typeof r.extension === "string" && r.extension) ||
-      (typeof r.number === "string" && r.number) ||
-      "Extension";
+    const extension = (typeof r.extension === "string" && r.extension) || null;
+    const label = (typeof r.name === "string" && r.name) || extension || (typeof r.number === "string" && r.number) || "Extension";
     return {
       label,
       value: status ?? "Configured",
       ok: status ? HEALTHY_STATUSES.has(status.toLowerCase()) : true,
+      key: `ext:${extension ?? i}`,
     };
   });
   if (rows.length > 0 && !anyStatusFound) {

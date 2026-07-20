@@ -3,13 +3,29 @@ import { db } from "./db/client";
 import { integrationTargets } from "./db/schema";
 import { getIntegrationCatalogEntry } from "./integrationRegistry";
 import { getIntegrationCatalogMeta } from "./integrationCatalogMeta";
+import { getIgnoredKeys } from "./integrationIgnore";
 import type { IntegrationStatus } from "./integrations/types";
+
+/** Same shape as an integration's own item, plus whether an admin has ignored it --
+ * computed here (not by each integration's fetchStatus, which has no notion of
+ * ignore state), so it's a distinct payload type from IntegrationStatus.items. */
+export interface IntegrationItemPayload {
+  label: string;
+  value: string;
+  ok: boolean | null;
+  key: string;
+  ignored: boolean;
+}
+
+export interface IntegrationStatusPayload extends Omit<IntegrationStatus, "items"> {
+  items: IntegrationItemPayload[];
+}
 
 export interface IntegrationTargetPayload {
   id: number;
   integration: string;
   name: string;
-  status: IntegrationStatus;
+  status: IntegrationStatusPayload;
 }
 
 export interface IntegrationsPayload {
@@ -29,6 +45,23 @@ function parseConfig(raw: string): Record<string, string> {
   } catch {
     return {};
   }
+}
+
+/**
+ * Marks each item ignored/not (per lib/integrationIgnore.ts) and recomputes `healthy`
+ * from that, rather than trusting the integration's own `healthy` -- every integration
+ * that flows through this generic cache (unifi/sophos_central/sophos_xgs/goto_connect/
+ * meraki -- PowerStore/Proxmox/PBS have their own bespoke acknowledge system already
+ * and never reach here) derives `healthy` purely from `items.every(i => i.ok !== false)`,
+ * so recomputing it here after ignoring is equivalent to what each integration would
+ * report if the ignored row simply weren't unhealthy, without needing every
+ * integration's fetchStatus to know about ignore state at all.
+ */
+function applyIgnores(targetId: number, status: IntegrationStatus): IntegrationStatusPayload {
+  const ignoredKeys = getIgnoredKeys(targetId);
+  const items: IntegrationItemPayload[] = status.items.map((item) => ({ ...item, ignored: ignoredKeys.has(item.key) }));
+  const healthy = items.every((item) => item.ok !== false || item.ignored);
+  return { ...status, items, healthy };
 }
 
 /** Every enabled marketplace target is queried independently (one bad/misconfigured
@@ -52,9 +85,10 @@ async function computeIntegrations(): Promise<IntegrationsPayload> {
   const targets = await Promise.all(
     enabledTargets.map(async (t) => {
       const entry = getIntegrationCatalogEntry(t.integration);
-      const status: IntegrationStatus = entry
+      const rawStatus: IntegrationStatus = entry
         ? await entry.fetchStatus(parseConfig(t.config))
         : { ok: false, error: `Unknown integration "${t.integration}"`, diagnostics: [], healthy: false, summary: "", items: [] };
+      const status = applyIgnores(t.id, rawStatus);
       return { id: t.id, integration: t.integration, name: t.name, status };
     })
   );

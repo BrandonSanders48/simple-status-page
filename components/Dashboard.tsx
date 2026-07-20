@@ -317,6 +317,7 @@ export default function Dashboard({
           csrfToken={session?.csrfToken}
           onStorageChanged={loadStorage}
           onPbsChanged={loadPbs}
+          onIntegrationsChanged={loadIntegrations}
           uptimeByService={uptimeByService}
         />
 
