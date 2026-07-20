@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { IntegrationStatus } from "@/lib/integrations/types";
 import { getIntegrationCatalogMeta, type IntegrationCatalogMeta } from "@/lib/integrationCatalogMeta";
 
@@ -46,6 +49,10 @@ function Pill({ ok, label }: { ok: boolean | null; label: string }) {
   return <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${cls}`}>{label}</span>;
 }
 
+function ExpandChevron({ expanded }: { expanded: boolean }) {
+  return <i className={`fa-solid fa-chevron-down text-xs text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`} />;
+}
+
 /**
  * One card per configured marketplace target -- fully generic (no per-integration
  * display code) off the IntegrationStatus shape every catalog entry's fetch function
@@ -54,6 +61,9 @@ function Pill({ ok, label }: { ok: boolean | null; label: string }) {
  */
 export function IntegrationCard({ integration, name, status }: { integration: string; name: string; status: IntegrationStatus }) {
   const meta = getIntegrationCatalogMeta(integration);
+  // Overview by default -- expanded automatically when unhealthy, otherwise collapsed
+  // to just the summary line.
+  const [expanded, setExpanded] = useState(!status.healthy);
 
   if (!status.ok) {
     return (
@@ -71,14 +81,21 @@ export function IntegrationCard({ integration, name, status }: { integration: st
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        aria-expanded={expanded}
+        className="w-full flex flex-wrap items-center gap-2 text-left"
+        disabled={status.items.length === 0}
+      >
         {meta && <IntegrationLogo meta={meta} />}
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
         {meta && <span className="text-xs text-slate-400">{meta.label}</span>}
         <Pill ok={status.healthy} label={status.healthy ? "Healthy" : "Attention"} />
-      </div>
-      <p className="text-sm text-slate-500 dark:text-slate-400">{status.summary}</p>
-      {status.items.length > 0 && (
+        <span className="text-xs text-slate-400 ml-auto">{status.summary}</span>
+        {status.items.length > 0 && <ExpandChevron expanded={expanded} />}
+      </button>
+      {expanded && status.items.length > 0 && (
         <ul className="space-y-1">
           {status.items.map((item, i) => (
             <li key={i} className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">

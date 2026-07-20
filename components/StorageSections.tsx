@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 export interface PowerstoreAlert {
   id: string;
   severity: string;
@@ -168,6 +172,13 @@ export function CapacityBar({ percent }: { percent: number }) {
   );
 }
 
+/** Chevron toggle for the collapse/expand header row every Section below uses --
+ * `aria-expanded` on the wrapping header button (not here) drives the actual a11y
+ * state; this just renders the icon. */
+function ExpandChevron({ expanded }: { expanded: boolean }) {
+  return <i className={`fa-solid fa-chevron-down text-xs text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`} />;
+}
+
 function DrBadge() {
   return (
     <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">
@@ -196,6 +207,11 @@ export function PowerstoreSection({
   acknowledgingId?: string | null;
   onAcknowledge?: (alertId: string) => void;
 }) {
+  const hasCriticalAlert = status.alerts.some((a) => isCriticalSeverity(a.severity));
+  // Overview by default -- expanded automatically when there's something to look at
+  // (an alert needing attention), otherwise collapsed to a single summary line.
+  const [expanded, setExpanded] = useState(hasCriticalAlert);
+
   if (!status.ok) {
     return (
       <div>
@@ -205,68 +221,85 @@ export function PowerstoreSection({
     );
   }
 
-  const hasCriticalAlert = status.alerts.some((a) => isCriticalSeverity(a.severity));
-
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        aria-expanded={expanded}
+        className="w-full flex flex-wrap items-center gap-2 text-left"
+      >
         <BrandLogo src="/logos/dell.svg" alt="Dell PowerStore" />
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
         <span className="text-xs text-slate-400">PowerStore</span>
         <Pill ok={!hasCriticalAlert} label={hasCriticalAlert ? "Attention" : "Healthy"} />
         {isDr && <DrBadge />}
         {status.clusterState && <span className="text-xs text-slate-400">{status.clusterState}</span>}
-      </div>
+        <span className="text-xs text-slate-400 ml-auto">
+          {status.alerts.length} active alert{status.alerts.length === 1 ? "" : "s"}, {status.metroSessions.length} Metro session
+          {status.metroSessions.length === 1 ? "" : "s"}
+        </span>
+        <ExpandChevron expanded={expanded} />
+      </button>
 
-      <div>
-        <p className="text-xs text-slate-400 mb-1">Active alerts ({status.alerts.length})</p>
-        {status.alerts.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">No active alerts</p>
-        ) : (
-          <ul className="space-y-1">
-            {status.alerts.slice(0, 5).map((a, i) => (
-              <li key={a.id || i} className="text-sm text-slate-600 dark:text-slate-300 flex items-start gap-2">
-                <Pill ok={!isCriticalSeverity(a.severity)} label={a.severity} />
-                <span className="flex-1">
-                  {a.description}
-                  {a.raisedAt && <span className="block text-xs text-slate-400 dark:text-slate-500">{formatAlertTime(a.raisedAt)}</span>}
-                </span>
-                {canAcknowledge && a.id && (
-                  <button
-                    type="button"
-                    onClick={() => onAcknowledge?.(a.id)}
-                    disabled={acknowledgingId === a.id}
-                    className="text-xs font-medium text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-50 whitespace-nowrap"
-                  >
-                    {acknowledgingId === a.id ? "Clearing..." : "Clear"}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {expanded && (
+        <>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Active alerts ({status.alerts.length})</p>
+            {status.alerts.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">No active alerts</p>
+            ) : (
+              <ul className="space-y-1">
+                {status.alerts.slice(0, 5).map((a, i) => (
+                  <li key={a.id || i} className="text-sm text-slate-600 dark:text-slate-300 flex items-start gap-2">
+                    <Pill ok={!isCriticalSeverity(a.severity)} label={a.severity} />
+                    <span className="flex-1">
+                      {a.description}
+                      {a.raisedAt && <span className="block text-xs text-slate-400 dark:text-slate-500">{formatAlertTime(a.raisedAt)}</span>}
+                    </span>
+                    {canAcknowledge && a.id && (
+                      <button
+                        type="button"
+                        onClick={() => onAcknowledge?.(a.id)}
+                        disabled={acknowledgingId === a.id}
+                        className="text-xs font-medium text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {acknowledgingId === a.id ? "Clearing..." : "Clear"}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-      <div>
-        <p className="text-xs text-slate-400 mb-1">Metro sync status</p>
-        {status.metroSessions.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">No Metro replication sessions found</p>
-        ) : (
-          <ul className="space-y-1">
-            {status.metroSessions.map((m, i) => (
-              <li key={i} className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
-                <Pill ok={isMetroSessionHealthy(m.state)} label={m.state} />
-                <span>{m.name}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Metro sync status</p>
+            {status.metroSessions.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">No Metro replication sessions found</p>
+            ) : (
+              <ul className="space-y-1">
+                {status.metroSessions.map((m, i) => (
+                  <li key={i} className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                    <Pill ok={isMetroSessionHealthy(m.state)} label={m.state} />
+                    <span>{m.name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 export function ProxmoxSection({ name, status, isDr = false }: { name: string; status: ProxmoxStatus; isDr?: boolean }) {
+  const healthy = isProxmoxHealthy(status);
+  // Overview by default -- expanded automatically when something needs attention,
+  // otherwise collapsed to a single summary line.
+  const [expanded, setExpanded] = useState(!healthy);
+
   if (!status.ok) {
     return (
       <div>
@@ -284,69 +317,83 @@ export function ProxmoxSection({ name, status, isDr = false }: { name: string; s
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        aria-expanded={expanded}
+        className="w-full flex flex-wrap items-center gap-2 text-left"
+      >
         <BrandLogo src="/logos/proxmox.svg" alt="Proxmox" />
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
         <span className="text-xs text-slate-400">Proxmox</span>
-        <Pill ok={isProxmoxHealthy(status)} label={isProxmoxHealthy(status) ? "Healthy" : "Attention"} />
+        <Pill ok={healthy} label={healthy ? "Healthy" : "Attention"} />
         {status.quorate !== null && <Pill ok={status.quorate} label={status.quorate ? "Quorate" : "No Quorum"} />}
         {isDr && <DrBadge />}
-      </div>
+        <span className="text-xs text-slate-400 ml-auto">
+          {status.nodes.length} node{status.nodes.length === 1 ? "" : "s"}, {status.storages.length} storage entr
+          {status.storages.length === 1 ? "y" : "ies"}
+        </span>
+        <ExpandChevron expanded={expanded} />
+      </button>
 
-      {status.nodes.length > 0 ? (
-        <div>
-          <p className="text-xs text-slate-400 mb-1">Nodes</p>
-          <ul className="space-y-2">
-            {status.nodes.map((n, i) => {
-              const storage = storageByNode.get(n.name);
-              return (
-                <li key={i} className="flex flex-wrap items-center gap-3">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-28 truncate">{n.name}</span>
-                  <Pill ok={n.online} label={n.online ? "Online" : "Offline"} />
-                  {n.cpuPercent !== undefined && <span className="text-xs text-slate-400">CPU {n.cpuPercent.toFixed(0)}%</span>}
-                  {n.memPercent !== undefined && (
-                    <div className="w-24 flex-shrink-0">
-                      <CapacityBar percent={n.memPercent} />
-                    </div>
-                  )}
-                  {storage && (
-                    <>
-                      <Pill ok={storage.active} label={storage.active ? "Storage Available" : "Storage Unavailable"} />
-                      {storage.usedPercent !== undefined && (
-                        <div className="flex-1 min-w-[100px]">
-                          <CapacityBar percent={storage.usedPercent} />
+      {expanded && (
+        <>
+          {status.nodes.length > 0 ? (
+            <div>
+              <p className="text-xs text-slate-400 mb-1">Nodes</p>
+              <ul className="space-y-2">
+                {status.nodes.map((n, i) => {
+                  const storage = storageByNode.get(n.name);
+                  return (
+                    <li key={i} className="flex flex-wrap items-center gap-3">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-28 truncate">{n.name}</span>
+                      <Pill ok={n.online} label={n.online ? "Online" : "Offline"} />
+                      {n.cpuPercent !== undefined && <span className="text-xs text-slate-400">CPU {n.cpuPercent.toFixed(0)}%</span>}
+                      {n.memPercent !== undefined && (
+                        <div className="w-24 flex-shrink-0">
+                          <CapacityBar percent={n.memPercent} />
                         </div>
                       )}
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : (
-        status.storages.length === 0 && (
-          <p className="text-sm text-slate-500 dark:text-slate-400">No matching storage found on the Proxmox cluster.</p>
-        )
-      )}
+                      {storage && (
+                        <>
+                          <Pill ok={storage.active} label={storage.active ? "Storage Available" : "Storage Unavailable"} />
+                          {storage.usedPercent !== undefined && (
+                            <div className="flex-1 min-w-[100px]">
+                              <CapacityBar percent={storage.usedPercent} />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : (
+            status.storages.length === 0 && (
+              <p className="text-sm text-slate-500 dark:text-slate-400">No matching storage found on the Proxmox cluster.</p>
+            )
+          )}
 
-      {unmatchedStorages.length > 0 && (
-        <div>
-          <p className="text-xs text-slate-400 mb-1">Storage</p>
-          <ul className="space-y-1.5">
-            {unmatchedStorages.map((s, i) => (
-              <li key={i} className="flex flex-wrap items-center gap-3">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-28 truncate">{s.node}</span>
-                <Pill ok={s.active} label={s.active ? "Available" : "Unavailable"} />
-                {s.usedPercent !== undefined && (
-                  <div className="flex-1 min-w-[120px]">
-                    <CapacityBar percent={s.usedPercent} />
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+          {unmatchedStorages.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 mb-1">Storage</p>
+              <ul className="space-y-1.5">
+                {unmatchedStorages.map((s, i) => (
+                  <li key={i} className="flex flex-wrap items-center gap-3">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-28 truncate">{s.node}</span>
+                    <Pill ok={s.active} label={s.active ? "Available" : "Unavailable"} />
+                    {s.usedPercent !== undefined && (
+                      <div className="flex-1 min-w-[120px]">
+                        <CapacityBar percent={s.usedPercent} />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -371,6 +418,10 @@ export function PbsSection({
   acknowledgingId?: string | null;
   onAcknowledge?: (taskId: string) => void;
 }) {
+  // Overview by default -- expanded automatically when the last run wasn't healthy,
+  // otherwise collapsed to a single summary line.
+  const [expanded, setExpanded] = useState(!status.lastRunHealthy);
+
   if (!status.ok) {
     return (
       <div>
@@ -382,46 +433,54 @@ export function PbsSection({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        aria-expanded={expanded}
+        className="w-full flex flex-wrap items-center gap-2 text-left"
+      >
         <BrandLogo src="/logos/proxmox.svg" alt="Proxmox" />
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
         <span className="text-xs text-slate-400">Backup Server</span>
         <Pill ok={status.lastRunHealthy} label={status.lastRunHealthy ? "Healthy" : "Attention"} />
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-slate-400 ml-auto">
           Last run {status.lastRunHealthy ? "OK" : "failed"}
-          {status.lastRunAt && ` · ${formatTaskTime(status.lastRunAt)}`}
+          {status.lastRunAt && ` · ${formatTaskTime(status.lastRunAt)}`} · {status.tasks.length} task{status.tasks.length === 1 ? "" : "s"}
         </span>
-      </div>
+        <ExpandChevron expanded={expanded} />
+      </button>
 
-      <div>
-        <p className="text-xs text-slate-400 mb-1">Last backup run ({status.tasks.length} task(s))</p>
-        {status.tasks.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">No backup tasks found</p>
-        ) : (
-          <ul className="space-y-1">
-            {status.tasks.slice(0, 10).map((t, i) => {
-              const needsClearing = t.status !== "OK" && !t.acknowledged;
-              return (
-                <li key={i} className={`text-sm flex items-center gap-2 ${t.acknowledged ? "opacity-50" : "text-slate-600 dark:text-slate-300"}`}>
-                  <Pill ok={t.status === "OK"} label={t.acknowledged ? `${t.status} (cleared)` : t.status} />
-                  <span className="flex-1">{t.id}</span>
-                  {t.endedAt && <span className="text-xs text-slate-400">{formatTaskTime(t.endedAt)}</span>}
-                  {canAcknowledge && needsClearing && (
-                    <button
-                      type="button"
-                      onClick={() => onAcknowledge?.(t.id)}
-                      disabled={acknowledgingId === t.id}
-                      className="text-xs font-medium text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-50 whitespace-nowrap"
-                    >
-                      {acknowledgingId === t.id ? "Clearing..." : "Clear"}
-                    </button>
+      {expanded && (
+        <div>
+          <p className="text-xs text-slate-400 mb-1">Last backup run ({status.tasks.length} task(s))</p>
+          {status.tasks.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">No backup tasks found</p>
+          ) : (
+            <ul className="space-y-1">
+              {status.tasks.slice(0, 10).map((t, i) => {
+                const needsClearing = t.status !== "OK" && !t.acknowledged;
+                return (
+                  <li key={i} className={`text-sm flex items-center gap-2 ${t.acknowledged ? "opacity-50" : "text-slate-600 dark:text-slate-300"}`}>
+                    <Pill ok={t.status === "OK"} label={t.acknowledged ? `${t.status} (cleared)` : t.status} />
+                    <span className="flex-1">{t.id}</span>
+                    {t.endedAt && <span className="text-xs text-slate-400">{formatTaskTime(t.endedAt)}</span>}
+                    {canAcknowledge && needsClearing && (
+                      <button
+                        type="button"
+                        onClick={() => onAcknowledge?.(t.id)}
+                        disabled={acknowledgingId === t.id}
+                        className="text-xs font-medium text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {acknowledgingId === t.id ? "Clearing..." : "Clear"}
+                      </button>
                   )}
                 </li>
               );
             })}
           </ul>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
