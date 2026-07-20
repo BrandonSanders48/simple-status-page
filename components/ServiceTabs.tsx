@@ -104,6 +104,11 @@ export default function ServiceTabs({
   const [acknowledgingTask, setAcknowledgingTask] = useState<{ targetId: number; taskId: string } | null>(null);
   const [showTestNetwork, setShowTestNetwork] = useState(false);
 
+  // Not imported from lib/checks/ad.ts's isAdType -- that file pulls in node:net/
+  // node:dgram (via checkTcp/checkDns), which can't end up in a client bundle. The
+  // match itself is a one-line string comparison, cheap enough to just duplicate.
+  const adServices = services.filter((s) => s.type.trim().toLowerCase() === "ad").map((s) => ({ name: s.name, host: s.host }));
+
   const testNetworkButton = (
     <button
       type="button"
@@ -169,7 +174,7 @@ export default function ServiceTabs({
           onOpenOutageLog={onOpenOutageLog}
           uptimeByService={uptimeByService}
         />
-        {showTestNetwork && csrfToken && <TestNetworkModal csrfToken={csrfToken} onClose={() => setShowTestNetwork(false)} />}
+        {showTestNetwork && csrfToken && <TestNetworkModal csrfToken={csrfToken} adServices={adServices} onClose={() => setShowTestNetwork(false)} />}
       </>
     );
   }
@@ -278,7 +283,7 @@ export default function ServiceTabs({
         )}
         {activeTab === "failover" && <FailoverSection storage={storage} services={services} isAdmin={isAdmin} csrfToken={csrfToken} />}
       </div>
-      {showTestNetwork && csrfToken && <TestNetworkModal csrfToken={csrfToken} onClose={() => setShowTestNetwork(false)} />}
+      {showTestNetwork && csrfToken && <TestNetworkModal csrfToken={csrfToken} adServices={adServices} onClose={() => setShowTestNetwork(false)} />}
     </div>
   );
 }
