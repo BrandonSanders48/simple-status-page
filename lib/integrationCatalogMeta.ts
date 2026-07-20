@@ -75,6 +75,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
     icon: "fa-shield-halved",
     color: "text-emerald-600",
     logo: "/logos/sophos.svg",
+    affectsOverallStatus: false,
     fields: [
       { key: "clientId", label: "API Client ID", type: "text" },
       { key: "clientSecret", label: "API Client Secret", type: "password" },

@@ -45,10 +45,14 @@ export function isIntegrationHealthy(status: IntegrationStatusPayload): boolean 
 }
 
 /** True unless marketplace integrations are enabled and something they're watching is
- * unhealthy -- same "invisible when off" fold-in as isStorageHealthy/isPbsAllHealthy. */
+ * unhealthy -- same "invisible when off" fold-in as isStorageHealthy/isPbsAllHealthy.
+ * Skips any target whose catalog entry has `affectsOverallStatus: false` (currently
+ * just sophos_central) -- its card still shows its own Healthy/Attention state, it
+ * just doesn't flip the site-wide banner, since a security/posture alert isn't the
+ * same thing as a service actually being down. */
 export function isIntegrationsAllHealthy(payload: IntegrationsPayload | null): boolean {
   if (!payload?.enabled) return true;
-  return payload.targets.every((t) => isIntegrationHealthy(t.status));
+  return payload.targets.every((t) => getIntegrationCatalogMeta(t.integration)?.affectsOverallStatus === false || isIntegrationHealthy(t.status));
 }
 
 /** `ok: null` renders neutral grey -- "no definitive reading" (not configured/used,

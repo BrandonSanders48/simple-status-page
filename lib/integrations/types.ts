@@ -58,6 +58,17 @@ export interface IntegrationCatalogEntry {
    * exists for these (used by the admin Test Connection button), it's just not
    * consumed by the public generic display. */
   hasBespokeDisplay?: boolean;
+  /** False for sophos_central: an unhealthy endpoint or a security alert is a
+   * posture/security signal, not an "our infrastructure is down" signal -- nothing
+   * about it (short of Sophos's own DNS Protection service itself failing, which
+   * isn't distinguishable from other alert types via the Alerts API; there's no
+   * documented category/product field that separates it out) means services are
+   * actually unavailable. The card still shows its own Healthy/Attention pill and
+   * item list unchanged; this only keeps it from flipping the site-wide "Issues
+   * Detected" banner, matching this app's existing convention that hygiene/security
+   * signals (like backups, CPU, storage %) don't drive availability rollups either.
+   * Defaults to true (affects the overall banner) for every other integration. */
+  affectsOverallStatus?: boolean;
   fields: IntegrationField[];
   fetchStatus: (config: Record<string, string>) => Promise<IntegrationStatus>;
 }
