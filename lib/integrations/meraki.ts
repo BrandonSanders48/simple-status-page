@@ -25,23 +25,29 @@ import type { IntegrationStatus } from "./types";
  *     5 minutes per the docs, so don't expect faster-than-that granularity. Only the
  *     first page (up to 1000 devices, the API's max perPage) is requested; an org with
  *     more devices than that will only show the first 1000, noted in `diagnostics`.
- *   - GET /organizations/{organizationId}/assurance/alerts -- MEDIUM confidence only:
- *     this is Meraki's "Alert Hub"/health-alerts API, which is where the *reason* a
- *     device is "alerting" actually lives (devices/availabilities only gives the bare
- *     status word). Confirmed to exist and return alert rows with an id/categoryType/
- *     startedAt/resolvedAt, but the exact field linking an alert to a specific device
- *     (serial vs a nested device object) wasn't pinned down from docs alone -- see
- *     deviceSerialOf() below, which defensively probes several plausible shapes rather
- *     than assuming one. If a device shows "Alerting" with no extra detail in
- *     parentheses, check `diagnostics`: either this endpoint returned nothing useful
- *     for that serial, or the field-probing here needs correcting against a real
- *     account's response. A failure calling this endpoint at all never fails the whole
- *     integration -- devices just show the bare status word, as before.
+ *   - GET /organizations/{organizationId}/assurance/alerts -- CONFIRMED against a real
+ *     account's response: this is Meraki's "Alert Hub"/health-alerts API, where the
+ *     *reason* a device is "alerting" actually lives (devices/availabilities only
+ *     gives the bare status word). Returns a bare array (not `{items: [...]}`) of
+ *     rows shaped like `{ id, categoryType, startedAt, resolvedAt, type, title,
+ *     description, severity, scope: { devices: [{ serial, name, ... }, ...] } }` --
+ *     note `scope.devices` is a plural array, since one alert (e.g. a VLAN mismatch)
+ *     can span more than one device (both ends of the mismatched link); every serial
+ *     in it gets this alert's `title` as its reason. `resolvedAt` non-null means the
+ *     alert is over and is skipped. A failure calling this endpoint at all never
+ *     fails the whole integration -- devices just show the bare status word, noted
+ *     in `diagnostics`.
  *
- * Status mapping: "online" is healthy, "offline"/"alerting" are not, and "dormant"
- * (configured but not actively deployed/claimed into a network) is shown neutrally --
- * same tri-state convention as this app's UniFi integration for a subsystem that isn't
- * really in use, not a real failure.
+ * Status mapping: only "offline" (device genuinely unreachable) counts as unhealthy.
+ * "alerting" does NOT -- confirmed via a real account's assurance/alerts data that it
+ * covers plenty of non-outage config warnings (e.g. a VLAN mismatch between two
+ * switch ports, categoryType "configuration") where the device is still up and
+ * passing traffic, not "down". Both "alerting" and "dormant" (configured but not
+ * actively deployed/claimed into a network) are shown neutrally -- same tri-state
+ * convention as this app's UniFi integration for a subsystem that isn't really in
+ * use, not a real failure. The alert's own reason still shows in parentheses either
+ * way, so a genuinely severe "alerting" device is still visible, just not miscounted
+ * as an outage on par with "offline".
  */
 
 type JsonRecord = Record<string, unknown>;
@@ -116,19 +122,17 @@ type Row = { label: string; value: string; ok: boolean | null; key: string };
 
 const STATUS_LABEL: Record<string, string> = { online: "Online", offline: "Offline", alerting: "Alerting", dormant: "Dormant" };
 
-/** Best-effort extraction of which device serial an assurance alert row is about --
- * tries every plausible shape rather than assuming one, since this wasn't confirmed
- * from docs alone (see the file-level comment). Returns null if none match, in which
- * case the alert is simply not used (not an error). */
-function deviceSerialOf(alert: JsonRecord): string | null {
-  const device = alert.device as JsonRecord | undefined;
-  const candidates = [alert.deviceSerial, alert.serial, device?.serial];
-  const found = candidates.find((c) => typeof c === "string" && c.length > 0);
-  return typeof found === "string" ? found : null;
+/** Every device serial an assurance alert row applies to -- confirmed shape is
+ * `alert.scope.devices[].serial` (see the file-level comment); an alert can name
+ * more than one device (e.g. both ends of a VLAN mismatch). */
+function deviceSerialsOf(alert: JsonRecord): string[] {
+  const scope = alert.scope as JsonRecord | undefined;
+  const devices = Array.isArray(scope?.devices) ? (scope.devices as JsonRecord[]) : [];
+  return devices.filter((d): d is JsonRecord & { serial: string } => typeof d.serial === "string").map((d) => d.serial);
 }
 
-/** A short human reason for an assurance alert row -- prefers a title-like field,
- * falls back to the alert's category. */
+/** A short human reason for an assurance alert row -- prefers `title` (confirmed
+ * present, e.g. "Port VLAN mismatch"), falling back to `type`/`categoryType`. */
 function describeAlert(alert: JsonRecord): string | null {
   const text = alert.title ?? alert.type ?? alert.categoryType;
   return typeof text === "string" && text.length > 0 ? text : null;
@@ -154,18 +158,20 @@ async function fetchAlertReasons(apiKey: string, organizationId: string, diagnos
   let unmatched = 0;
   for (const alert of alerts) {
     if (typeof alert.resolvedAt === "string" && alert.resolvedAt) continue; // already resolved -- not a current reason
-    const serial = deviceSerialOf(alert);
+    const serials = deviceSerialsOf(alert);
     const reason = describeAlert(alert);
-    if (!serial || !reason) {
+    if (serials.length === 0 || !reason) {
       unmatched++;
       continue;
     }
-    if (!reasons.has(serial)) reasons.set(serial, reason);
+    for (const serial of serials) {
+      if (!reasons.has(serial)) reasons.set(serial, reason);
+    }
   }
   if (alerts.length > 0 && reasons.size === 0) {
     diagnostics.push(
       `assurance/alerts: got ${alerts.length} alert(s) but couldn't match any to a device serial or reason -- ` +
-        `field-probing in deviceSerialOf()/describeAlert() likely needs correcting against this account's actual response shape.`
+        `field-probing in deviceSerialsOf()/describeAlert() likely needs correcting against this account's actual response shape.`
     );
   } else if (unmatched > 0) {
     diagnostics.push(`assurance/alerts: ${unmatched} alert(s) couldn't be matched to a device/reason and were skipped.`);
@@ -192,7 +198,9 @@ async function fetchDeviceAvailabilities(apiKey: string, organizationId: string,
     const status = rawStatus.toLowerCase();
     const serial = typeof d.serial === "string" ? d.serial : null;
     const label = (typeof d.name === "string" && d.name) || serial || "Device";
-    const ok = status === "dormant" ? null : status === "online";
+    // Only "offline" is a real outage -- "alerting" covers plenty of non-outage
+    // config warnings too (see the file-level comment), so it's neutral, not red.
+    const ok = status === "offline" ? false : status === "online" ? true : null;
     const statusText = STATUS_LABEL[status] || rawStatus || "Unknown";
     const reason = status !== "online" && serial ? alertReasons.get(serial) : undefined;
     return { label, value: reason ? `${statusText} (${reason})` : statusText, ok, key: serial ?? `device:${i}` };
@@ -223,7 +231,7 @@ export async function fetchMerakiStatus(config: Record<string, string>): Promise
     const summary =
       items.length === 0
         ? "Connected to Meraki, but no devices were found in this organization."
-        : `${items.length} device${items.length === 1 ? "" : "s"} checked${downCount ? `, ${downCount} offline/alerting` : ""}`;
+        : `${items.length} device${items.length === 1 ? "" : "s"} checked${downCount ? `, ${downCount} offline` : ""}`;
 
     return { ok: true, healthy, summary, items, diagnostics };
   } catch (err) {
