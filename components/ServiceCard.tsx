@@ -47,6 +47,23 @@ export default function ServiceCard({ service, uptime }: { service: StatusServic
       <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-200">
         {service.type}
       </span>
+      {service.adChecks && service.adChecks.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {service.adChecks.map((c) => (
+            <span
+              key={c.name}
+              title={`${c.name} (${c.port}): ${c.ok ? "OK" : "Failed"}`}
+              className={`inline-block text-[9.5px] font-medium px-1.5 py-0.5 rounded-full ${
+                c.ok
+                  ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                  : "bg-red-50 dark:bg-red-500/20 text-red-700 dark:text-red-300"
+              }`}
+            >
+              {c.name}
+            </span>
+          ))}
+        </div>
+      )}
       {service.description && (
         <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-snug mt-2">{service.description}</p>
       )}

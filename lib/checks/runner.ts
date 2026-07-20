@@ -5,7 +5,7 @@ import { checkHttp, httpSchemeFor, isHttpType } from "./http";
 import { checkDns, isDnsType } from "./dns";
 import { checkTcp } from "./tcp";
 import { checkPing } from "./ping";
-import { checkActiveDirectory, isAdType } from "./ad";
+import { checkActiveDirectoryDetailed, isAdType, type AdCheckResult } from "./ad";
 
 export type Service = typeof services.$inferSelect;
 
@@ -15,6 +15,10 @@ export interface ServiceCheckResult {
   wentDownAt: number | null;
   lastDownAt: number | null;
   lastDownDurationS: number | null;
+  /** Per-port breakdown, present only for type "ad" services -- lets the public
+   * page show which specific piece (DNS/Kerberos/LDAP/etc) failed instead of just
+   * an opaque "down". */
+  adChecks?: AdCheckResult[];
 }
 
 export interface ServiceTransition {
@@ -34,20 +38,21 @@ export interface ServiceTransition {
  * first since it ignores `port` entirely (it always checks a fixed set of ports on
  * `host`), so it needs to run before the "no port -> ping" fallback below would
  * otherwise catch a blank Port field. */
-export async function checkOneService(svc: Service): Promise<boolean> {
+export async function checkOneService(svc: Service): Promise<{ up: boolean; adChecks?: AdCheckResult[] }> {
   if (isAdType(svc.type)) {
-    return checkActiveDirectory(svc.host);
+    const { up, checks } = await checkActiveDirectoryDetailed(svc.host);
+    return { up, adChecks: checks };
   }
   if (svc.port === null) {
-    return checkPing(svc.host);
+    return { up: await checkPing(svc.host) };
   }
   if (isHttpType(svc.type)) {
-    return checkHttp(svc.host, svc.port, httpSchemeFor(svc.type, svc.port));
+    return { up: await checkHttp(svc.host, svc.port, httpSchemeFor(svc.type, svc.port)) };
   }
   if (isDnsType(svc.type)) {
-    return checkDns(svc.host, svc.port);
+    return { up: await checkDns(svc.host, svc.port) };
   }
-  return checkTcp(svc.host, svc.port);
+  return { up: await checkTcp(svc.host, svc.port) };
 }
 
 /**
@@ -74,7 +79,8 @@ export async function runServiceChecks(): Promise<{
   for (let i = 0; i < allServices.length; i++) {
     const svc = allServices[i]!;
     const outcome = checked[i];
-    const up = outcome !== undefined && outcome.status === "fulfilled" ? outcome.value : false;
+    const outcomeValue = outcome !== undefined && outcome.status === "fulfilled" ? outcome.value : { up: false };
+    const up = outcomeValue.up;
     const curStatus: "up" | "down" = up ? "up" : "down";
     const prev = db.select().from(serviceStatus).where(eq(serviceStatus.serviceId, svc.id)).get();
     const prevStatus = (prev?.status as "up" | "down" | null) ?? null;
@@ -141,7 +147,7 @@ export async function runServiceChecks(): Promise<{
       })
       .run();
 
-    results.push({ service: svc, up, wentDownAt, lastDownAt, lastDownDurationS });
+    results.push({ service: svc, up, wentDownAt, lastDownAt, lastDownDurationS, adChecks: outcomeValue.adChecks });
   }
 
   return { results, transitions };

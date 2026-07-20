@@ -3,6 +3,7 @@ import { settings, ispMapEntries } from "./db/schema";
 import { runServiceChecks } from "./checks/runner";
 import { checkLocalNetwork, checkWideNetwork, getPublicIp } from "./checks/network";
 import { notifyTransitions } from "./notifier";
+import type { AdCheckResult } from "./checks/ad";
 
 export interface StatusServicePayload {
   id: number;
@@ -16,6 +17,10 @@ export interface StatusServicePayload {
   wentDownAt: number | null;
   lastDownAt: number | null;
   lastDownDurationS: number | null;
+  /** Per-port breakdown, present only for type "ad" services (see lib/checks/ad.ts)
+   * -- lets the public page show which specific piece failed as its own tag,
+   * instead of just the single service-level Up/Down. */
+  adChecks?: AdCheckResult[];
 }
 
 export interface StatusPayload {
@@ -69,6 +74,7 @@ async function computeStatus(): Promise<StatusPayload> {
       wentDownAt: r.wentDownAt,
       lastDownAt: r.lastDownAt,
       lastDownDurationS: r.lastDownDurationS,
+      adChecks: r.adChecks,
     });
   }
 
