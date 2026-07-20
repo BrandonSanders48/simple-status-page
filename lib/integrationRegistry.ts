@@ -29,7 +29,7 @@ async function fetchPowerstoreForCatalog(config: Record<string, string>): Promis
   return {
     ok: true,
     diagnostics: status.diagnostics,
-    healthy: items.every((i) => i.ok),
+    healthy: items.every((i) => i.ok !== false),
     summary: `Cluster "${status.clusterName ?? "unknown"}" (${status.clusterState ?? "unknown state"}), ${status.alerts.length} active alert(s), ${status.metroSessions.length} Metro session(s).`,
     items,
   };
@@ -54,7 +54,7 @@ async function fetchProxmoxForCatalog(config: Record<string, string>): Promise<I
   return {
     ok: true,
     diagnostics: status.diagnostics,
-    healthy: status.quorate !== false && items.every((i) => i.ok),
+    healthy: status.quorate !== false && items.every((i) => i.ok !== false),
     summary: `${status.nodes.length} node(s)${quorumText}, ${offlineNodes} offline, ${status.storages.length} storage entr${status.storages.length === 1 ? "y" : "ies"}.`,
     items,
   };

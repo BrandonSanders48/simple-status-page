@@ -136,17 +136,19 @@ export async function fetchUnifiStatus(config: Record<string, string>): Promise<
 
   for (const subsystem of healthRows) {
     const name = typeof subsystem.subsystem === "string" ? subsystem.subsystem : "subsystem";
-    // A missing `status` field means this subsystem isn't configured/applicable on
-    // this controller (e.g. no VPN set up) -- not that it's down -- so it's shown as
-    // informational (N/A) rather than counted against health. Only a status that's
-    // actually present and isn't "ok" is a real problem.
-    if (typeof subsystem.status !== "string") {
-      items.push({ label: name, value: "N/A", ok: true });
+    // A missing `status` field, or UniFi's own literal "unknown" value, both mean "no
+    // definitive reading for this subsystem" -- e.g. wan/www/vpn commonly report
+    // "unknown" on a controller that doesn't use failover WAN or a VPN, not that
+    // anything is actually down -- so neither counts against health. Only a status
+    // that's actually present and isn't "ok"/"unknown" is a real problem.
+    const rawStatus = typeof subsystem.status === "string" ? subsystem.status : null;
+    if (rawStatus === null || rawStatus.toLowerCase() === "unknown") {
+      items.push({ label: name, value: rawStatus ?? "N/A", ok: null });
       continue;
     }
-    const ok = subsystem.status === "ok";
+    const ok = rawStatus === "ok";
     if (!ok) anyIssue = true;
-    items.push({ label: name, value: subsystem.status, ok });
+    items.push({ label: name, value: rawStatus, ok });
   }
 
   const onlineDevices = deviceRows.filter((d) => d.state === 1).length;

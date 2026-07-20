@@ -34,16 +34,16 @@ export function isIntegrationsAllHealthy(payload: IntegrationsPayload | null): b
   return payload.targets.every((t) => isIntegrationHealthy(t.status));
 }
 
-function Pill({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <span
-      className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-        ok ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : "bg-red-50 dark:bg-red-500/20 text-red-700 dark:text-red-300"
-      }`}
-    >
-      {label}
-    </span>
-  );
+/** `ok: null` renders neutral grey -- "no definitive reading" (not configured/used,
+ * or unconfirmed), distinct from both healthy (green) and unhealthy (red). */
+function Pill({ ok, label }: { ok: boolean | null; label: string }) {
+  const cls =
+    ok === null
+      ? "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+      : ok
+        ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+        : "bg-red-50 dark:bg-red-500/20 text-red-700 dark:text-red-300";
+  return <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${cls}`}>{label}</span>;
 }
 
 /**

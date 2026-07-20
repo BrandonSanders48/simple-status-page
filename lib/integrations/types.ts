@@ -17,8 +17,12 @@ export interface IntegrationStatus {
   healthy: boolean;
   /** One-line human summary shown next to the target's name, e.g. "42 devices online, 1 alert". */
   summary: string;
-  /** Generic key/value rows for display -- e.g. { label: "Firewall01", value: "Online", ok: true }. */
-  items: { label: string; value: string; ok: boolean }[];
+  /** Generic key/value rows for display -- e.g. { label: "Firewall01", value: "Online", ok: true }.
+   * `ok: null` means "no definitive reading" (e.g. a subsystem that isn't configured/
+   * used, or a field an integration doesn't confirm exists) -- shown neutrally, never
+   * counted as a failure. Prefer `ok !== false` over truthy-checking `ok` wherever a
+   * rollup is computed from items, so a null doesn't get miscounted as unhealthy. */
+  items: { label: string; value: string; ok: boolean | null }[];
 }
 
 export interface IntegrationField {
