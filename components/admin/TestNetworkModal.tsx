@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface CheckResult {
   name: string;
@@ -63,12 +63,24 @@ function PendingList() {
   );
 }
 
+interface SpeedTestState {
+  running: boolean;
+  downloadMbps: number | null;
+  uploadMbps: number | null;
+  error: string | null;
+}
+
+const SPEED_IDLE: SpeedTestState = { running: false, downloadMbps: null, uploadMbps: null, error: null };
+
 /**
  * Network diagnostic modal -- runs a fixed battery of AD/DC-style checks (ping,
  * DNS, NTP, Kerberos, NPS/RADIUS, DHCP, LDAP/LDAPS, SMB, Global Catalog) against
  * every domain controller configured under Services (type "ad") plus this site's
  * configured WAN targets (Settings > Network's Gateway Host and Public DNS Host),
- * automatically as soon as it opens.
+ * automatically as soon as it opens. A WAN download/upload speed test is available
+ * too, but only on manual request -- unlike the instant reachability checks above,
+ * it transfers real data and takes several seconds, so it shouldn't run just from
+ * opening the modal.
  *
  * Deliberately has no free-form host field -- letting a visitor test an arbitrary
  * host/port was a real SSRF/scanning-proxy surface (see the API route), so the
@@ -77,6 +89,8 @@ function PendingList() {
 export default function TestNetworkModal({ csrfToken, onClose }: { csrfToken: string; onClose: () => void }) {
   const [groups, setGroups] = useState<ResultGroup[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [speed, setSpeed] = useState<SpeedTestState>(SPEED_IDLE);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/admin/test-network", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken }, body: "{}" })
@@ -89,6 +103,32 @@ export default function TestNetworkModal({ csrfToken, onClose }: { csrfToken: st
     // Runs once per modal open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Scroll down to reveal the results (and the pass/fail rating below them) once
+  // the test finishes -- while "Testing..." the content is short and needs no
+  // scrolling, but the full results list often doesn't fit the modal's max height.
+  useEffect(() => {
+    if (groups === null) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }));
+  }, [groups]);
+
+  const allResults = groups?.flatMap((g) => g.results) ?? [];
+  const failCount = allResults.filter((r) => r.ok === false).length;
+  const overallPass = groups !== null && groups.length > 0 && failCount === 0;
+
+  async function runSpeedTest() {
+    setSpeed({ running: true, downloadMbps: null, uploadMbps: null, error: null });
+    try {
+      const res = await fetch("/api/admin/test-speed", { method: "POST", headers: { "X-CSRF-Token": csrfToken } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Speed test failed.");
+      setSpeed({ running: false, downloadMbps: data.downloadMbps, uploadMbps: data.uploadMbps, error: data.error ?? null });
+    } catch (err) {
+      setSpeed({ running: false, downloadMbps: null, uploadMbps: null, error: err instanceof Error ? err.message : "Speed test failed." });
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
@@ -105,7 +145,7 @@ export default function TestNetworkModal({ csrfToken, onClose }: { csrfToken: st
           </button>
         </div>
 
-        <div className="px-6 py-4 space-y-5 overflow-y-auto">
+        <div ref={scrollRef} className="px-6 py-4 space-y-5 overflow-y-auto">
           {error && <p className="text-sm text-red-500">{error}</p>}
 
           {!error && groups === null && (
@@ -130,6 +170,51 @@ export default function TestNetworkModal({ csrfToken, onClose }: { csrfToken: st
               <CheckResultsList results={g.results} />
             </div>
           ))}
+
+          {groups !== null && groups.length > 0 && (
+            <div
+              className={`rounded-xl px-4 py-3 text-center text-sm font-semibold ${
+                overallPass
+                  ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                  : "bg-red-50 dark:bg-red-500/20 text-red-700 dark:text-red-300"
+              }`}
+            >
+              <i className={`fa-solid ${overallPass ? "fa-circle-check" : "fa-circle-xmark"} mr-1.5`} />
+              {overallPass ? "Pass -- all checks succeeded" : `Fail -- ${failCount} check${failCount === 1 ? "" : "s"} failed`}
+            </div>
+          )}
+
+          <div className="border-t border-slate-100 dark:border-slate-700/60 pt-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <h6 className="text-xs font-semibold uppercase tracking-wide text-slate-400">WAN Speed Test</h6>
+              <button
+                type="button"
+                onClick={runSpeedTest}
+                disabled={speed.running}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg disabled:opacity-60"
+              >
+                {speed.running ? "Testing..." : "Run Speed Test"}
+              </button>
+            </div>
+            {speed.running && <p className="text-sm text-slate-400">Downloading and uploading ~15MB, this takes a few seconds...</p>}
+            {speed.error && <p className="text-sm text-red-500">{speed.error}</p>}
+            {(speed.downloadMbps !== null || speed.uploadMbps !== null) && (
+              <div className="flex gap-6 text-sm">
+                <div>
+                  <span className="text-slate-400">Download: </span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    {speed.downloadMbps !== null ? `${speed.downloadMbps.toFixed(1)} Mbps` : "--"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400">Upload: </span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    {speed.uploadMbps !== null ? `${speed.uploadMbps.toFixed(1)} Mbps` : "--"}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
