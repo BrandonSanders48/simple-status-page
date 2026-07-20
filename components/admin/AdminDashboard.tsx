@@ -3,14 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/useSession";
-import type { FullConfig, SettingsRow, DraftService, IspMapRow, StatusCategoryRow, DraftIntegrationTarget } from "@/lib/adminTypes";
+import type { FullConfig, SettingsRow, DraftService, IspMapRow, StatusCategoryRow } from "@/lib/adminTypes";
 import GeneralTab from "./GeneralTab";
 import ServicesTab from "./ServicesTab";
 import RssTab, { type DraftFeed } from "./RssTab";
 import NetworkTab from "./NetworkTab";
 import NotificationsTab from "./NotificationsTab";
 import SslTab from "./SslTab";
-import IntegrationsTab from "./IntegrationsTab";
 import StatusCategoriesTab from "./StatusCategoriesTab";
 
 const SECTIONS = [
@@ -19,10 +18,14 @@ const SECTIONS = [
   { key: "categories", label: "Status Labels", icon: "fa-tags", color: "text-pink-500" },
   { key: "rss", label: "RSS Feeds", icon: "fa-rss", color: "text-orange-500" },
   { key: "network", label: "Network", icon: "fa-network-wired", color: "text-sky-500" },
-  { key: "integrations", label: "Integrations", icon: "fa-store", color: "text-fuchsia-500" },
   { key: "notifications", label: "Notifications", icon: "fa-bell", color: "text-violet-500" },
   { key: "ssl", label: "SSL", icon: "fa-lock", color: "text-emerald-500" },
 ] as const;
+
+/** Lives on its own page (/admin/integrations, its own save endpoint) rather than as
+ * a scrolling section here -- linked from the sidebar like the other sections, but
+ * navigates instead of scrolling. */
+const INTEGRATIONS_LINK = { label: "Integrations", icon: "fa-store", color: "text-fuchsia-500", href: "/admin/integrations" } as const;
 
 export default function AdminDashboard() {
   const { session } = useSession();
@@ -33,7 +36,6 @@ export default function AdminDashboard() {
   const [rssFeeds, setRssFeeds] = useState<DraftFeed[]>([]);
   const [ispMap, setIspMap] = useState<IspMapRow[]>([]);
   const [statusCategories, setStatusCategories] = useState<StatusCategoryRow[]>([]);
-  const [integrationTargets, setIntegrationTargets] = useState<DraftIntegrationTarget[]>([]);
   const [saveState, setSaveState] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -48,7 +50,6 @@ export default function AdminDashboard() {
       setRssFeeds(data.rssFeeds);
       setIspMap(data.ispMap);
       setStatusCategories(data.statusCategories);
-      setIntegrationTargets(data.integrationTargets);
     }
     setLoading(false);
   }, []);
@@ -98,14 +99,8 @@ export default function AdminDashboard() {
       rssFeeds: rssFeeds.map(({ name, host, tag, description }) => ({ name, host, tag, description })),
       ispMap: ispMap.map(({ ip, name }) => ({ ip, name })),
       statusCategories: statusCategories.map(({ key, label, color }) => ({ key, label, color })),
-      integrationTargets: integrationTargets.map(({ id, integration, name, config, enabled, isDr }) => ({
-        id,
-        integration,
-        name,
-        config,
-        enabled,
-        isDr,
-      })),
+      // integrationTargets intentionally omitted -- edited on their own
+      // /admin/integrations page now (see configPayloadSchema).
     };
 
     try {
@@ -121,7 +116,6 @@ export default function AdminDashboard() {
       setRssFeeds(data.rssFeeds);
       setIspMap(data.ispMap);
       setStatusCategories(data.statusCategories);
-      setIntegrationTargets(data.integrationTargets);
       setSaveState({ ok: true, text: "Configuration saved successfully." });
     } catch (err) {
       setSaveState({ ok: false, text: err instanceof Error ? err.message : "Failed to save." });
@@ -168,6 +162,14 @@ export default function AdminDashboard() {
               {s.label}
             </button>
           ))}
+          <Link
+            href={INTEGRATIONS_LINK.href}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
+          >
+            <i className={`fa-solid ${INTEGRATIONS_LINK.icon} w-4 text-center ${INTEGRATIONS_LINK.color}`} />
+            {INTEGRATIONS_LINK.label}
+            <i className="fa-solid fa-arrow-up-right-from-square text-[10px] ml-auto text-slate-400" />
+          </Link>
         </nav>
 
         <div className="p-3 border-t border-slate-100 dark:border-slate-800/70">
@@ -202,12 +204,6 @@ export default function AdminDashboard() {
               <RssTab feeds={rssFeeds} onChange={setRssFeeds} />
             ) : s.key === "network" ? (
               <NetworkTab settings={settings} onChange={setSettings} ispMap={ispMap} onIspChange={setIspMap} />
-            ) : s.key === "integrations" ? (
-              <IntegrationsTab
-                integrationTargets={integrationTargets}
-                onIntegrationTargetsChange={setIntegrationTargets}
-                csrfToken={session.csrfToken}
-              />
             ) : s.key === "notifications" ? (
               <NotificationsTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
             ) : (

@@ -86,6 +86,13 @@ export const configPayloadSchema = z.object({
   rssFeeds: z.array(rssFeedInputSchema).max(MAX_RSS_FEEDS),
   ispMap: z.array(ispMapInputSchema),
   statusCategories: z.array(statusCategoryInputSchema).max(20),
+  // Optional -- integration targets are edited on their own /admin/integrations page
+  // (see saveIntegrationTargets below) and left untouched by a general config save
+  // when omitted, so the two pages can't stomp on each other's edits.
+  integrationTargets: z.array(integrationTargetInputSchema).max(MAX_INTEGRATION_TARGETS).optional(),
+});
+
+export const integrationTargetsPayloadSchema = z.object({
   integrationTargets: z.array(integrationTargetInputSchema).max(MAX_INTEGRATION_TARGETS),
 });
 
@@ -117,6 +124,37 @@ export function getFullConfig() {
     // admin UI can bind to individual fields directly.
     integrationTargets: integrationRows.map((t) => ({ ...t, config: parseIntegrationConfig(t.config) })),
   };
+}
+
+export function getIntegrationTargets() {
+  const integrationRows = db.select().from(integrationTargets).all();
+  return integrationRows.map((t) => ({ ...t, config: parseIntegrationConfig(t.config) }));
+}
+
+/**
+ * Saves just the integration_targets table, diffed by id like saveFullConfig does for
+ * services -- used by the standalone /admin/integrations page, which never touches
+ * settings/services/rssFeeds/ispMap/statusCategories, so it doesn't need (and shouldn't
+ * risk overwriting via a stale full-config payload) any of those.
+ */
+export function saveIntegrationTargets(targets: z.infer<typeof integrationTargetInputSchema>[]) {
+  db.transaction((tx) => {
+    const incomingIds = targets.filter((t) => t.id !== undefined).map((t) => t.id!);
+    if (incomingIds.length > 0) {
+      tx.delete(integrationTargets).where(notInArray(integrationTargets.id, incomingIds)).run();
+    } else {
+      tx.delete(integrationTargets).run();
+    }
+    targets.forEach((t, index) => {
+      const row = { ...t, config: JSON.stringify(t.config), sortOrder: index };
+      if (t.id !== undefined) {
+        tx.update(integrationTargets).set(row).where(eq(integrationTargets.id, t.id)).run();
+      } else {
+        tx.insert(integrationTargets).values(row).run();
+      }
+    });
+  });
+  return getIntegrationTargets();
 }
 
 function bumpVersion(current: string): string {
@@ -183,23 +221,28 @@ export function saveFullConfig(payload: ConfigPayload) {
         .run();
     });
 
-    const incomingIntegrationIds = payload.integrationTargets.filter((t) => t.id !== undefined).map((t) => t.id!);
-    if (incomingIntegrationIds.length > 0) {
-      tx.delete(integrationTargets).where(notInArray(integrationTargets.id, incomingIntegrationIds)).run();
-    } else {
-      tx.delete(integrationTargets).run();
-    }
-    payload.integrationTargets.forEach((t, index) => {
-      const row = { ...t, config: JSON.stringify(t.config), sortOrder: index };
-      if (t.id !== undefined) {
-        tx.update(integrationTargets)
-          .set(row)
-          .where(eq(integrationTargets.id, t.id))
-          .run();
+    // Omitted entirely -- rather than an empty array -- means "leave integration
+    // targets alone" (see configPayloadSchema): they're edited on their own
+    // /admin/integrations page now, via saveIntegrationTargets above.
+    if (payload.integrationTargets) {
+      const incomingIntegrationIds = payload.integrationTargets.filter((t) => t.id !== undefined).map((t) => t.id!);
+      if (incomingIntegrationIds.length > 0) {
+        tx.delete(integrationTargets).where(notInArray(integrationTargets.id, incomingIntegrationIds)).run();
       } else {
-        tx.insert(integrationTargets).values(row).run();
+        tx.delete(integrationTargets).run();
       }
-    });
+      payload.integrationTargets.forEach((t, index) => {
+        const row = { ...t, config: JSON.stringify(t.config), sortOrder: index };
+        if (t.id !== undefined) {
+          tx.update(integrationTargets)
+            .set(row)
+            .where(eq(integrationTargets.id, t.id))
+            .run();
+        } else {
+          tx.insert(integrationTargets).values(row).run();
+        }
+      });
+    }
   });
 
   return getFullConfig();
