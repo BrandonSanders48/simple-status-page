@@ -126,7 +126,6 @@ export function importLegacyData(legacyDir: string): void {
       companyUrl: branding.company_url ?? cfg.company_url ?? null,
       supportEmail: branding.support_email ?? null,
       supportPhone: branding.support_phone ?? null,
-      footerMessage: branding.footer_message ?? cfg.footer_message ?? null,
       announcementBanner: branding.announcement_banner ?? null,
       announcementType: branding.announcement_type ?? "info",
       slaEnabled: !!sla.enabled,

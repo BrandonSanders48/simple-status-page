@@ -37,6 +37,18 @@ export interface IntegrationCatalogEntry {
   /** Path under /public to a real brand logo (e.g. "/logos/unifi.svg"), shown instead
    * of the FontAwesome icon when present. */
   logo?: string;
+  /** Whether this integration's targets can be flagged as the DR site (only
+   * powerstore/proxmox -- it feeds the Failover tab). Shows a "DR site" checkbox in
+   * the admin marketplace form when true. */
+  supportsDr?: boolean;
+  /** True for powerstore/proxmox/pbs: they have their own bespoke public display
+   * (PowerstoreSection/ProxmoxSection/PbsSection, with alert-acknowledge/Metro/backup
+   * task actions the generic card can't do) and their own cache (storageCache.ts/
+   * pbsCache.ts), so lib/integrationsCache.ts's generic marketplace fetch excludes
+   * them -- otherwise they'd be queried twice and shown twice. `fetchStatus` still
+   * exists for these (used by the admin Test Connection button), it's just not
+   * consumed by the public generic display. */
+  hasBespokeDisplay?: boolean;
   fields: IntegrationField[];
   fetchStatus: (config: Record<string, string>) => Promise<IntegrationStatus>;
 }

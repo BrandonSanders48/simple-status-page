@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "./db/client";
-import { pbsTargets, pbsAcknowledgedTasks } from "./db/schema";
+import { integrationTargets, pbsAcknowledgedTasks } from "./db/schema";
 import { fetchPbsStatus, type PbsStatus } from "./integrations/pbs";
 
 export interface PbsTargetPayload {
@@ -19,6 +19,15 @@ const TTL_MS = 60_000;
 let cache: { data: PbsPayload; expiresAt: number } | null = null;
 let inflight: Promise<PbsPayload> | null = null;
 
+function parseConfig(raw: string): Record<string, string> {
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 /** Overlays this target's acknowledged-task ids onto a freshly fetched status, then
  * recomputes lastRunHealthy so a cleared failure stops flipping the target (and the
  * Backups tab badge) to unhealthy -- while still showing the task itself in the list. */
@@ -33,19 +42,31 @@ function applyAcknowledgments(targetId: number, status: PbsStatus): PbsStatus {
   return { ...status, tasks, lastRunHealthy: tasks.every((t) => t.status === "OK" || t.acknowledged) };
 }
 
+/** PBS lives in the shared integration_targets table (see lib/db/schema.ts), filtered
+ * by integration key, like any other marketplace integration. */
 async function computePbs(): Promise<PbsPayload> {
-  const enabledTargets = db.select().from(pbsTargets).where(eq(pbsTargets.enabled, true)).all();
+  const enabledTargets = db
+    .select()
+    .from(integrationTargets)
+    .where(and(eq(integrationTargets.integration, "pbs"), eq(integrationTargets.enabled, true)))
+    .all();
 
   if (enabledTargets.length === 0) {
     return { enabled: false, targets: [], generatedAt: Date.now() };
   }
 
   const targets = await Promise.all(
-    enabledTargets.map(async (t) => ({
-      id: t.id,
-      name: t.name,
-      status: applyAcknowledgments(t.id, await fetchPbsStatus({ host: t.host, tokenId: t.tokenId, tokenSecret: t.tokenSecret })),
-    }))
+    enabledTargets.map(async (t) => {
+      const cfg = parseConfig(t.config);
+      return {
+        id: t.id,
+        name: t.name,
+        status: applyAcknowledgments(
+          t.id,
+          await fetchPbsStatus({ host: cfg.host ?? "", tokenId: cfg.tokenId ?? "", tokenSecret: cfg.tokenSecret ?? "" })
+        ),
+      };
+    })
   );
 
   return { enabled: true, targets, generatedAt: Date.now() };

@@ -1,29 +1,17 @@
 import { z } from "zod";
 import { eq, notInArray } from "drizzle-orm";
 import { db } from "./db/client";
-import {
-  settings,
-  services,
-  rssFeeds,
-  ispMapEntries,
-  statusCategories,
-  powerstoreTargets,
-  proxmoxTargets,
-  pbsTargets,
-  integrationTargets,
-} from "./db/schema";
+import { settings, services, rssFeeds, ispMapEntries, statusCategories, integrationTargets } from "./db/schema";
 
 export const MAX_SERVICES = 20;
 export const MAX_RSS_FEEDS = 10;
-export const MAX_STORAGE_TARGETS = 10;
-export const MAX_INTEGRATION_TARGETS = 20;
+export const MAX_INTEGRATION_TARGETS = 40;
 
 export const settingsInputSchema = z.object({
   businessName: z.string().min(1).max(200),
   companyUrl: z.string().max(500).nullable().optional(),
   supportEmail: z.string().max(200).nullable().optional(),
   supportPhone: z.string().max(50).nullable().optional(),
-  footerMessage: z.string().max(500).nullable().optional(),
   announcementBanner: z.string().max(500).nullable().optional(),
   announcementType: z.enum(["info", "warning", "error"]),
   slaEnabled: z.boolean(),
@@ -79,42 +67,17 @@ export const statusCategoryInputSchema = z.object({
   color: z.string().min(1).max(30),
 });
 
-export const powerstoreTargetInputSchema = z.object({
-  id: z.number().int().optional(),
-  name: z.string().min(1).max(100),
-  host: z.string().min(1).max(300),
-  username: z.string().min(1).max(200),
-  password: z.string().min(1).max(500),
-  enabled: z.boolean(),
-  isDr: z.boolean(),
-});
-
-export const proxmoxTargetInputSchema = z.object({
-  id: z.number().int().optional(),
-  name: z.string().min(1).max(100),
-  host: z.string().min(1).max(300),
-  tokenId: z.string().min(1).max(300),
-  tokenSecret: z.string().min(1).max(500),
-  storageId: z.string().max(200).nullable().optional(),
-  enabled: z.boolean(),
-  isDr: z.boolean(),
-});
-
-export const pbsTargetInputSchema = z.object({
-  id: z.number().int().optional(),
-  name: z.string().min(1).max(100),
-  host: z.string().min(1).max(300),
-  tokenId: z.string().min(1).max(300),
-  tokenSecret: z.string().min(1).max(500),
-  enabled: z.boolean(),
-});
-
+// Every monitored external system -- PowerStore, Proxmox, PBS, and marketplace
+// integrations (UniFi, Sophos, GoTo Connect, etc) -- shares this one input shape.
+// `isDr` only means anything for powerstore/proxmox (it feeds the Failover tab), but
+// living here generically means adding a new integration never needs a schema change.
 export const integrationTargetInputSchema = z.object({
   id: z.number().int().optional(),
   integration: z.string().min(1).max(50),
   name: z.string().min(1).max(100),
   config: z.record(z.string().max(1000)),
   enabled: z.boolean(),
+  isDr: z.boolean().optional().default(false),
 });
 
 export const configPayloadSchema = z.object({
@@ -123,38 +86,10 @@ export const configPayloadSchema = z.object({
   rssFeeds: z.array(rssFeedInputSchema).max(MAX_RSS_FEEDS),
   ispMap: z.array(ispMapInputSchema),
   statusCategories: z.array(statusCategoryInputSchema).max(20),
-  powerstoreTargets: z.array(powerstoreTargetInputSchema).max(MAX_STORAGE_TARGETS),
-  proxmoxTargets: z.array(proxmoxTargetInputSchema).max(MAX_STORAGE_TARGETS),
-  pbsTargets: z.array(pbsTargetInputSchema).max(MAX_STORAGE_TARGETS),
   integrationTargets: z.array(integrationTargetInputSchema).max(MAX_INTEGRATION_TARGETS),
 });
 
 export type ConfigPayload = z.infer<typeof configPayloadSchema>;
-
-export function getFullConfig() {
-  const cfg = db.select().from(settings).get();
-  const svc = db.select().from(services).all();
-  const rss = db.select().from(rssFeeds).all();
-  const isp = db.select().from(ispMapEntries).all();
-  const categories = db.select().from(statusCategories).all();
-  const psTargets = db.select().from(powerstoreTargets).all();
-  const pveTargets = db.select().from(proxmoxTargets).all();
-  const pbsTargetRows = db.select().from(pbsTargets).all();
-  const integrationRows = db.select().from(integrationTargets).all();
-  return {
-    settings: cfg,
-    services: svc,
-    rssFeeds: rss,
-    ispMap: isp,
-    statusCategories: categories,
-    powerstoreTargets: psTargets,
-    proxmoxTargets: pveTargets,
-    pbsTargets: pbsTargetRows,
-    // config is stored as a JSON string (see lib/db/schema.ts) -- parsed here so the
-    // admin UI can bind to individual fields directly.
-    integrationTargets: integrationRows.map((t) => ({ ...t, config: parseIntegrationConfig(t.config) })),
-  };
-}
 
 function parseIntegrationConfig(raw: string): Record<string, string> {
   try {
@@ -165,6 +100,25 @@ function parseIntegrationConfig(raw: string): Record<string, string> {
   }
 }
 
+export function getFullConfig() {
+  const cfg = db.select().from(settings).get();
+  const svc = db.select().from(services).all();
+  const rss = db.select().from(rssFeeds).all();
+  const isp = db.select().from(ispMapEntries).all();
+  const categories = db.select().from(statusCategories).all();
+  const integrationRows = db.select().from(integrationTargets).all();
+  return {
+    settings: cfg,
+    services: svc,
+    rssFeeds: rss,
+    ispMap: isp,
+    statusCategories: categories,
+    // config is stored as a JSON string (see lib/db/schema.ts) -- parsed here so the
+    // admin UI can bind to individual fields directly.
+    integrationTargets: integrationRows.map((t) => ({ ...t, config: parseIntegrationConfig(t.config) })),
+  };
+}
+
 function bumpVersion(current: string): string {
   const parts = current.split(".");
   const major = parts[0] ?? "1";
@@ -173,9 +127,11 @@ function bumpVersion(current: string): string {
 }
 
 /**
- * Saves the whole admin config in one transaction. Services are diffed by id (rather
- * than delete-all-and-reinsert) so unrelated saves don't cascade-delete service_status
- * history/subscriptions for services that didn't actually change.
+ * Saves the whole admin config in one transaction. Services and integration targets
+ * are diffed by id (rather than delete-all-and-reinsert) so unrelated saves don't
+ * cascade-delete service_status history/subscriptions, or (for integration targets)
+ * break a target's id -- referenced when acknowledging a PowerStore alert/PBS task, or
+ * by the Failover tab's DR-flagged target lookups.
  */
 export function saveFullConfig(payload: ConfigPayload) {
   const current = db.select().from(settings).get();
@@ -225,65 +181,6 @@ export function saveFullConfig(payload: ConfigPayload) {
         .set({ label: cat.label, color: cat.color })
         .where(eq(statusCategories.key, cat.key))
         .run();
-    });
-
-    // Diffed by id (not delete-and-reinsert) so a target's id -- referenced when
-    // acknowledging a PowerStore alert -- stays stable across unrelated saves.
-    const incomingPsIds = payload.powerstoreTargets.filter((t) => t.id !== undefined).map((t) => t.id!);
-    if (incomingPsIds.length > 0) {
-      tx.delete(powerstoreTargets).where(notInArray(powerstoreTargets.id, incomingPsIds)).run();
-    } else {
-      tx.delete(powerstoreTargets).run();
-    }
-    payload.powerstoreTargets.forEach((t, index) => {
-      if (t.id !== undefined) {
-        tx.update(powerstoreTargets)
-          .set({ ...t, sortOrder: index })
-          .where(eq(powerstoreTargets.id, t.id))
-          .run();
-      } else {
-        tx.insert(powerstoreTargets)
-          .values({ ...t, sortOrder: index })
-          .run();
-      }
-    });
-
-    const incomingPveIds = payload.proxmoxTargets.filter((t) => t.id !== undefined).map((t) => t.id!);
-    if (incomingPveIds.length > 0) {
-      tx.delete(proxmoxTargets).where(notInArray(proxmoxTargets.id, incomingPveIds)).run();
-    } else {
-      tx.delete(proxmoxTargets).run();
-    }
-    payload.proxmoxTargets.forEach((t, index) => {
-      if (t.id !== undefined) {
-        tx.update(proxmoxTargets)
-          .set({ ...t, sortOrder: index })
-          .where(eq(proxmoxTargets.id, t.id))
-          .run();
-      } else {
-        tx.insert(proxmoxTargets)
-          .values({ ...t, sortOrder: index })
-          .run();
-      }
-    });
-
-    const incomingPbsIds = payload.pbsTargets.filter((t) => t.id !== undefined).map((t) => t.id!);
-    if (incomingPbsIds.length > 0) {
-      tx.delete(pbsTargets).where(notInArray(pbsTargets.id, incomingPbsIds)).run();
-    } else {
-      tx.delete(pbsTargets).run();
-    }
-    payload.pbsTargets.forEach((t, index) => {
-      if (t.id !== undefined) {
-        tx.update(pbsTargets)
-          .set({ ...t, sortOrder: index })
-          .where(eq(pbsTargets.id, t.id))
-          .run();
-      } else {
-        tx.insert(pbsTargets)
-          .values({ ...t, sortOrder: index })
-          .run();
-      }
     });
 
     const incomingIntegrationIds = payload.integrationTargets.filter((t) => t.id !== undefined).map((t) => t.id!);

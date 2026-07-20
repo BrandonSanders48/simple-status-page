@@ -109,10 +109,6 @@ export default function GeneralTab({
           <label htmlFor="cfg-support-phone" className={labelCls}>Support Phone</label>
           <input id="cfg-support-phone" className={inputCls} value={settings.supportPhone ?? ""} onChange={(e) => set("supportPhone", e.target.value)} />
         </div>
-        <div>
-          <label htmlFor="cfg-footer-message" className={labelCls}>Footer Message</label>
-          <input id="cfg-footer-message" className={inputCls} value={settings.footerMessage ?? ""} onChange={(e) => set("footerMessage", e.target.value)} />
-        </div>
       </SettingsGroup>
 
       <SettingsGroup title="SLA Tracking" description="Show a real uptime badge in the navbar, computed from outage history.">

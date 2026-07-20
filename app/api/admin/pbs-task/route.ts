@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { verifyCsrf } from "@/lib/csrf";
 import { db } from "@/lib/db/client";
-import { pbsTargets, pbsAcknowledgedTasks } from "@/lib/db/schema";
+import { pbsAcknowledgedTasks } from "@/lib/db/schema";
+import { getIntegrationTarget } from "@/lib/integrationTargets";
 import { invalidatePbsCache } from "@/lib/pbsCache";
 
 /** Clears (acknowledges) a failed PBS backup task from the admin-only "Clear" button
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "taskId and targetId are required" }, { status: 400 });
   }
 
-  const target = db.select().from(pbsTargets).where(eq(pbsTargets.id, targetId)).get();
+  const target = getIntegrationTarget(targetId, "pbs");
   if (!target) {
     return NextResponse.json({ error: "PBS target not found" }, { status: 404 });
   }

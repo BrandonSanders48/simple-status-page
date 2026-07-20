@@ -136,10 +136,17 @@ export async function fetchUnifiStatus(config: Record<string, string>): Promise<
 
   for (const subsystem of healthRows) {
     const name = typeof subsystem.subsystem === "string" ? subsystem.subsystem : "subsystem";
-    const status = typeof subsystem.status === "string" ? subsystem.status : "unknown";
-    const ok = status === "ok";
+    // A missing `status` field means this subsystem isn't configured/applicable on
+    // this controller (e.g. no VPN set up) -- not that it's down -- so it's shown as
+    // informational (N/A) rather than counted against health. Only a status that's
+    // actually present and isn't "ok" is a real problem.
+    if (typeof subsystem.status !== "string") {
+      items.push({ label: name, value: "N/A", ok: true });
+      continue;
+    }
+    const ok = subsystem.status === "ok";
     if (!ok) anyIssue = true;
-    items.push({ label: name, value: status, ok });
+    items.push({ label: name, value: subsystem.status, ok });
   }
 
   const onlineDevices = deviceRows.filter((d) => d.state === 1).length;

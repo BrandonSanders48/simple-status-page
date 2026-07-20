@@ -54,7 +54,6 @@ export default function Dashboard({
   alertSound = false,
   browserNotify = false,
   initialDark = false,
-  footerMessage = "",
   supportPhone = null,
   configVersion = null,
   debug = false,
@@ -67,7 +66,6 @@ export default function Dashboard({
   alertSound?: boolean;
   browserNotify?: boolean;
   initialDark?: boolean;
-  footerMessage?: string;
   supportPhone?: string | null;
   configVersion?: string | null;
   debug?: boolean;
@@ -327,7 +325,7 @@ export default function Dashboard({
         <RssPanel feeds={rss} loading={!rssLoaded} />
       </main>
 
-      <Footer footerMessage={footerMessage} supportPhone={supportPhone} configVersion={configVersion} />
+      <Footer supportPhone={supportPhone} configVersion={configVersion} />
 
       <div className="fixed bottom-5 right-5 z-30 flex flex-col gap-2.5 w-44">
         {isAdmin && (

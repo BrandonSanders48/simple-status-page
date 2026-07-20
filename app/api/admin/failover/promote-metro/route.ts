@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { verifyCsrf } from "@/lib/csrf";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
-import { db } from "@/lib/db/client";
-import { powerstoreTargets } from "@/lib/db/schema";
+import { getIntegrationTarget } from "@/lib/integrationTargets";
 import { promoteMetroSession } from "@/lib/integrations/powerstore";
 import { invalidateStorageCache } from "@/lib/storageCache";
 import { recordFailoverAction } from "@/lib/failoverLog";
@@ -33,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "targetId and sessionId are required" }, { status: 400 });
   }
 
-  const target = db.select().from(powerstoreTargets).where(eq(powerstoreTargets.id, targetId)).get();
+  const target = getIntegrationTarget(targetId, "powerstore");
   if (!target) {
     return NextResponse.json({ error: "PowerStore target not found" }, { status: 404 });
   }
@@ -41,7 +39,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "That PowerStore target isn't marked as the DR site." }, { status: 400 });
   }
 
-  const result = await promoteMetroSession({ host: target.host, username: target.username, password: target.password }, sessionId);
+  const result = await promoteMetroSession(
+    { host: target.config.host ?? "", username: target.config.username ?? "", password: target.config.password ?? "" },
+    sessionId
+  );
   recordFailoverAction({
     action: "promote_metro",
     targetName: target.name,

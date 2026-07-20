@@ -1,10 +1,9 @@
 interface Props {
-  footerMessage: string;
   supportPhone: string | null;
   configVersion: string | null;
 }
 
-export default function Footer({ footerMessage, supportPhone, configVersion }: Props) {
+export default function Footer({ supportPhone, configVersion }: Props) {
   return (
     <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-6 mt-6">
       <div className="max-w-screen-xl mx-auto px-4">
@@ -40,15 +39,11 @@ export default function Footer({ footerMessage, supportPhone, configVersion }: P
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-3 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800 pt-4">
-          {footerMessage && <span>{footerMessage}</span>}
-          {configVersion && (
-            <span>
-              {footerMessage && <span className="text-slate-400 dark:text-slate-600 mr-3">•</span>}
-              Config v{configVersion}
-            </span>
-          )}
-        </div>
+        {configVersion && (
+          <div className="flex justify-center text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800 pt-4">
+            <span>Config v{configVersion}</span>
+          </div>
+        )}
       </div>
     </footer>
   );

@@ -3,26 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/useSession";
-import type {
-  FullConfig,
-  SettingsRow,
-  DraftService,
-  IspMapRow,
-  StatusCategoryRow,
-  DraftPowerstoreTarget,
-  DraftProxmoxTarget,
-  DraftPbsTarget,
-  DraftIntegrationTarget,
-} from "@/lib/adminTypes";
+import type { FullConfig, SettingsRow, DraftService, IspMapRow, StatusCategoryRow, DraftIntegrationTarget } from "@/lib/adminTypes";
 import GeneralTab from "./GeneralTab";
 import ServicesTab from "./ServicesTab";
 import RssTab, { type DraftFeed } from "./RssTab";
 import NetworkTab from "./NetworkTab";
 import NotificationsTab from "./NotificationsTab";
 import SslTab from "./SslTab";
-import StorageTab from "./StorageTab";
-import ProxmoxTab from "./ProxmoxTab";
-import BackupsTab from "./BackupsTab";
 import IntegrationsTab from "./IntegrationsTab";
 import StatusCategoriesTab from "./StatusCategoriesTab";
 
@@ -46,9 +33,6 @@ export default function AdminDashboard() {
   const [rssFeeds, setRssFeeds] = useState<DraftFeed[]>([]);
   const [ispMap, setIspMap] = useState<IspMapRow[]>([]);
   const [statusCategories, setStatusCategories] = useState<StatusCategoryRow[]>([]);
-  const [powerstoreTargets, setPowerstoreTargets] = useState<DraftPowerstoreTarget[]>([]);
-  const [proxmoxTargets, setProxmoxTargets] = useState<DraftProxmoxTarget[]>([]);
-  const [pbsTargets, setPbsTargets] = useState<DraftPbsTarget[]>([]);
   const [integrationTargets, setIntegrationTargets] = useState<DraftIntegrationTarget[]>([]);
   const [saveState, setSaveState] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -64,9 +48,6 @@ export default function AdminDashboard() {
       setRssFeeds(data.rssFeeds);
       setIspMap(data.ispMap);
       setStatusCategories(data.statusCategories);
-      setPowerstoreTargets(data.powerstoreTargets);
-      setProxmoxTargets(data.proxmoxTargets);
-      setPbsTargets(data.pbsTargets);
       setIntegrationTargets(data.integrationTargets);
     }
     setLoading(false);
@@ -117,39 +98,13 @@ export default function AdminDashboard() {
       rssFeeds: rssFeeds.map(({ name, host, tag, description }) => ({ name, host, tag, description })),
       ispMap: ispMap.map(({ ip, name }) => ({ ip, name })),
       statusCategories: statusCategories.map(({ key, label, color }) => ({ key, label, color })),
-      powerstoreTargets: powerstoreTargets.map(({ id, name, host, username, password, enabled, isDr }) => ({
-        id,
-        name,
-        host,
-        username,
-        password,
-        enabled,
-        isDr,
-      })),
-      proxmoxTargets: proxmoxTargets.map(({ id, name, host, tokenId, tokenSecret, storageId, enabled, isDr }) => ({
-        id,
-        name,
-        host,
-        tokenId,
-        tokenSecret,
-        storageId,
-        enabled,
-        isDr,
-      })),
-      pbsTargets: pbsTargets.map(({ id, name, host, tokenId, tokenSecret, enabled }) => ({
-        id,
-        name,
-        host,
-        tokenId,
-        tokenSecret,
-        enabled,
-      })),
-      integrationTargets: integrationTargets.map(({ id, integration, name, config, enabled }) => ({
+      integrationTargets: integrationTargets.map(({ id, integration, name, config, enabled, isDr }) => ({
         id,
         integration,
         name,
         config,
         enabled,
+        isDr,
       })),
     };
 
@@ -166,9 +121,6 @@ export default function AdminDashboard() {
       setRssFeeds(data.rssFeeds);
       setIspMap(data.ispMap);
       setStatusCategories(data.statusCategories);
-      setPowerstoreTargets(data.powerstoreTargets);
-      setProxmoxTargets(data.proxmoxTargets);
-      setPbsTargets(data.pbsTargets);
       setIntegrationTargets(data.integrationTargets);
       setSaveState({ ok: true, text: "Configuration saved successfully." });
     } catch (err) {
@@ -251,24 +203,11 @@ export default function AdminDashboard() {
             ) : s.key === "network" ? (
               <NetworkTab settings={settings} onChange={setSettings} ispMap={ispMap} onIspChange={setIspMap} />
             ) : s.key === "integrations" ? (
-              <div className="space-y-8">
-                <StorageTab
-                  powerstoreTargets={powerstoreTargets}
-                  onPowerstoreTargetsChange={setPowerstoreTargets}
-                  csrfToken={session.csrfToken}
-                />
-                <ProxmoxTab
-                  proxmoxTargets={proxmoxTargets}
-                  onProxmoxTargetsChange={setProxmoxTargets}
-                  csrfToken={session.csrfToken}
-                />
-                <BackupsTab pbsTargets={pbsTargets} onPbsTargetsChange={setPbsTargets} csrfToken={session.csrfToken} />
-                <IntegrationsTab
-                  integrationTargets={integrationTargets}
-                  onIntegrationTargetsChange={setIntegrationTargets}
-                  csrfToken={session.csrfToken}
-                />
-              </div>
+              <IntegrationsTab
+                integrationTargets={integrationTargets}
+                onIntegrationTargetsChange={setIntegrationTargets}
+                csrfToken={session.csrfToken}
+              />
             ) : s.key === "notifications" ? (
               <NotificationsTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
             ) : (

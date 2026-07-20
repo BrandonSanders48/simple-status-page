@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { verifyCsrf } from "@/lib/csrf";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
-import { db } from "@/lib/db/client";
-import { proxmoxTargets } from "@/lib/db/schema";
+import { getIntegrationTarget } from "@/lib/integrationTargets";
 import { listProxmoxVms, shutdownProxmoxVm } from "@/lib/integrations/proxmox";
 import { recordFailoverAction } from "@/lib/failoverLog";
 
@@ -43,7 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `targetId, startId, and endId are required (range up to ${MAX_RANGE} VMs).` }, { status: 400 });
   }
 
-  const target = db.select().from(proxmoxTargets).where(eq(proxmoxTargets.id, targetId)).get();
+  const target = getIntegrationTarget(targetId, "proxmox");
   if (!target) {
     return NextResponse.json({ error: "Proxmox target not found" }, { status: 404 });
   }
@@ -54,7 +52,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const cfg = { host: target.host, tokenId: target.tokenId, tokenSecret: target.tokenSecret };
+  const cfg = { host: target.config.host ?? "", tokenId: target.config.tokenId ?? "", tokenSecret: target.config.tokenSecret ?? "" };
   const listing = await listProxmoxVms(cfg);
   if (!listing.ok) {
     recordFailoverAction({

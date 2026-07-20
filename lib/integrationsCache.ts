@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { integrationTargets } from "./db/schema";
 import { getIntegrationCatalogEntry } from "./integrationRegistry";
+import { getIntegrationCatalogMeta } from "./integrationCatalogMeta";
 import type { IntegrationStatus } from "./integrations/types";
 
 export interface IntegrationTargetPayload {
@@ -32,9 +33,17 @@ function parseConfig(raw: string): Record<string, string> {
 
 /** Every enabled marketplace target is queried independently (one bad/misconfigured
  * target never hides the others), dispatched by catalog key -- same "each target is
- * its own card, unreachable ones don't hide the rest" shape as storageCache/pbsCache. */
+ * its own card, unreachable ones don't hide the rest" shape as storageCache/pbsCache.
+ * PowerStore/Proxmox/PBS are excluded (see hasBespokeDisplay in lib/integrations/
+ * types.ts) since they have their own cache/display already; without this they'd be
+ * queried and shown twice. */
 async function computeIntegrations(): Promise<IntegrationsPayload> {
-  const enabledTargets = db.select().from(integrationTargets).where(eq(integrationTargets.enabled, true)).all();
+  const enabledTargets = db
+    .select()
+    .from(integrationTargets)
+    .where(eq(integrationTargets.enabled, true))
+    .all()
+    .filter((t) => !getIntegrationCatalogMeta(t.integration)?.hasBespokeDisplay);
 
   if (enabledTargets.length === 0) {
     return { enabled: false, targets: [], generatedAt: Date.now() };

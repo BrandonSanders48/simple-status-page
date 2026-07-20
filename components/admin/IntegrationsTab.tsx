@@ -63,6 +63,15 @@ function IntegrationTargetCard({
           <input type="checkbox" checked={target.enabled} onChange={(e) => onChange({ enabled: e.target.checked })} className="w-4 h-4 accent-indigo-600" />
           Enabled
         </label>
+        {entry.supportsDr && (
+          <label
+            className="flex items-center gap-2 cursor-pointer text-xs whitespace-nowrap"
+            title="Feeds the Failover tab's recommendation, and (for Proxmox) is the only cluster the Failover tab will let you start VMs on"
+          >
+            <input type="checkbox" checked={target.isDr} onChange={(e) => onChange({ isDr: e.target.checked })} className="w-4 h-4 accent-amber-600" />
+            DR site
+          </label>
+        )}
         <button type="button" onClick={onRemove} aria-label="Remove target" className="p-1.5 text-red-400 hover:text-red-600">
           <i className="fa fa-trash text-xs" />
         </button>
@@ -119,7 +128,7 @@ function IntegrationCatalogCard({
   function add() {
     if (targets.length >= MAX_TARGETS_PER_INTEGRATION) return;
     const config = Object.fromEntries(entry.fields.map((f) => [f.key, ""]));
-    onTargetsChange([...targets, { integration: entry.key, name: "", config, enabled: true, sortOrder: targets.length }]);
+    onTargetsChange([...targets, { integration: entry.key, name: "", config, enabled: true, isDr: false, sortOrder: targets.length }]);
   }
 
   return (

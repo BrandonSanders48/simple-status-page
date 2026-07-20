@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { verifyCsrf } from "@/lib/csrf";
-import { db } from "@/lib/db/client";
-import { powerstoreTargets } from "@/lib/db/schema";
+import { getIntegrationTarget } from "@/lib/integrationTargets";
 import { acknowledgePowerstoreAlert } from "@/lib/integrations/powerstore";
 import { invalidateStorageCache } from "@/lib/storageCache";
 
@@ -25,13 +23,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "alertId and targetId are required" }, { status: 400 });
   }
 
-  const target = db.select().from(powerstoreTargets).where(eq(powerstoreTargets.id, targetId)).get();
+  const target = getIntegrationTarget(targetId, "powerstore");
   if (!target) {
     return NextResponse.json({ error: "PowerStore target not found" }, { status: 404 });
   }
 
   const result = await acknowledgePowerstoreAlert(
-    { host: target.host, username: target.username, password: target.password },
+    { host: target.config.host ?? "", username: target.config.username ?? "", password: target.config.password ?? "" },
     alertId
   );
   if (!result.ok) {

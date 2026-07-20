@@ -10,6 +10,51 @@ export type IntegrationCatalogMeta = Omit<IntegrationCatalogEntry, "fetchStatus"
  */
 export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
   {
+    key: "powerstore",
+    label: "Dell PowerStore",
+    description: "Management IP/hostname and a read-only account for each array's REST API -- health, active alerts, and Metro replication status.",
+    icon: "fa-database",
+    color: "text-cyan-500",
+    logo: "/logos/dell.svg",
+    supportsDr: true,
+    hasBespokeDisplay: true,
+    fields: [
+      { key: "host", label: "Management Host", type: "text", placeholder: "10.0.0.10" },
+      { key: "username", label: "Username", type: "text" },
+      { key: "password", label: "Password", type: "password" },
+    ],
+  },
+  {
+    key: "proxmox",
+    label: "Proxmox",
+    description: "Cluster API endpoint and an API token -- node/quorum health and how the cluster sees its storage. Add one target per cluster, e.g. a main site and a DR site.",
+    icon: "fa-cubes",
+    color: "text-orange-500",
+    logo: "/logos/proxmox.svg",
+    supportsDr: true,
+    hasBespokeDisplay: true,
+    fields: [
+      { key: "host", label: "API Host", type: "text", placeholder: "https://10.0.0.5:8006" },
+      { key: "tokenId", label: "API Token ID", type: "text", placeholder: "statuspage@pve!monitor" },
+      { key: "tokenSecret", label: "API Token Secret", type: "password" },
+      { key: "storageId", label: "Storage ID (optional)", type: "text", placeholder: "powerstore-nfs" },
+    ],
+  },
+  {
+    key: "pbs",
+    label: "Proxmox Backup Server",
+    description: "API endpoint and token for each PBS instance -- whether the most recent backup run completed without errors.",
+    icon: "fa-box-archive",
+    color: "text-lime-600",
+    logo: "/logos/proxmox.svg",
+    hasBespokeDisplay: true,
+    fields: [
+      { key: "host", label: "API Host", type: "text", placeholder: "https://10.0.0.30:8007" },
+      { key: "tokenId", label: "API Token ID", type: "text", placeholder: "statuspage@pbs!monitor" },
+      { key: "tokenSecret", label: "API Token Secret", type: "password" },
+    ],
+  },
+  {
     key: "unifi",
     label: "UniFi",
     description: "Local UniFi Network controller (standalone or a UniFi OS console) -- subsystem health and device online/offline counts.",

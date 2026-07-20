@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
-import { db } from "@/lib/db/client";
-import { proxmoxTargets } from "@/lib/db/schema";
+import { getIntegrationTarget } from "@/lib/integrationTargets";
 import { listProxmoxVms } from "@/lib/integrations/proxmox";
 
 /** Live (uncached) VM listing for the admin Failover tab's preview step -- used by
@@ -22,12 +20,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "targetId, start, and end are required (end >= start >= 0)." }, { status: 400 });
   }
 
-  const target = db.select().from(proxmoxTargets).where(eq(proxmoxTargets.id, targetId)).get();
+  const target = getIntegrationTarget(targetId, "proxmox");
   if (!target) {
     return NextResponse.json({ error: "Proxmox target not found" }, { status: 404 });
   }
 
-  const result = await listProxmoxVms({ host: target.host, tokenId: target.tokenId, tokenSecret: target.tokenSecret });
+  const result = await listProxmoxVms({
+    host: target.config.host ?? "",
+    tokenId: target.config.tokenId ?? "",
+    tokenSecret: target.config.tokenSecret ?? "",
+  });
   if (!result.ok) {
     return NextResponse.json({ error: result.error ?? "Failed to query Proxmox" }, { status: 502 });
   }

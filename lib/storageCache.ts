@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "./db/client";
-import { powerstoreTargets, proxmoxTargets } from "./db/schema";
+import { integrationTargets } from "./db/schema";
 import { fetchPowerstoreStatus, type PowerstoreStatus } from "./integrations/powerstore";
 import { fetchProxmoxStorageStatus, type ProxmoxStatus } from "./integrations/proxmox";
 
@@ -29,13 +29,29 @@ const TTL_MS = 60_000;
 let cache: { data: StoragePayload; expiresAt: number } | null = null;
 let inflight: Promise<StoragePayload> | null = null;
 
+function parseConfig(raw: string): Record<string, string> {
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 /** Multiple PowerStore arrays / Proxmox clusters can be monitored at once (e.g. a main
  * site and a DR site) -- each enabled target is queried independently and shown as its
  * own named card, so one target being unreachable never hides the others. There's no
- * separate master toggle: the panel is active whenever at least one target is enabled. */
+ * separate master toggle: the panel is active whenever at least one target is enabled.
+ * Both live in the shared integration_targets table (see lib/db/schema.ts), filtered
+ * by integration key, since they're marketplace-integration citizens like any other. */
 async function computeStorage(): Promise<StoragePayload> {
-  const psTargets = db.select().from(powerstoreTargets).where(eq(powerstoreTargets.enabled, true)).all();
-  const pveTargets = db.select().from(proxmoxTargets).where(eq(proxmoxTargets.enabled, true)).all();
+  const rows = db
+    .select()
+    .from(integrationTargets)
+    .where(and(inArray(integrationTargets.integration, ["powerstore", "proxmox"]), eq(integrationTargets.enabled, true)))
+    .all();
+  const psTargets = rows.filter((r) => r.integration === "powerstore");
+  const pveTargets = rows.filter((r) => r.integration === "proxmox");
 
   if (psTargets.length === 0 && pveTargets.length === 0) {
     return { enabled: false, powerstores: [], proxmoxes: [], generatedAt: Date.now() };
@@ -43,20 +59,31 @@ async function computeStorage(): Promise<StoragePayload> {
 
   const [powerstores, proxmoxes] = await Promise.all([
     Promise.all(
-      psTargets.map(async (t) => ({
-        id: t.id,
-        name: t.name,
-        isDr: t.isDr,
-        status: await fetchPowerstoreStatus({ host: t.host, username: t.username, password: t.password }),
-      }))
+      psTargets.map(async (t) => {
+        const cfg = parseConfig(t.config);
+        return {
+          id: t.id,
+          name: t.name,
+          isDr: t.isDr,
+          status: await fetchPowerstoreStatus({ host: cfg.host ?? "", username: cfg.username ?? "", password: cfg.password ?? "" }),
+        };
+      })
     ),
     Promise.all(
-      pveTargets.map(async (t) => ({
-        id: t.id,
-        name: t.name,
-        isDr: t.isDr,
-        status: await fetchProxmoxStorageStatus({ host: t.host, tokenId: t.tokenId, tokenSecret: t.tokenSecret, storageId: t.storageId }),
-      }))
+      pveTargets.map(async (t) => {
+        const cfg = parseConfig(t.config);
+        return {
+          id: t.id,
+          name: t.name,
+          isDr: t.isDr,
+          status: await fetchProxmoxStorageStatus({
+            host: cfg.host ?? "",
+            tokenId: cfg.tokenId ?? "",
+            tokenSecret: cfg.tokenSecret ?? "",
+            storageId: cfg.storageId || null,
+          }),
+        };
+      })
     ),
   ]);
 

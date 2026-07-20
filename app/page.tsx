@@ -30,7 +30,6 @@ export default async function StatusPage({
       alertSound={cfg?.alertSound ?? false}
       browserNotify={cfg?.browserNotify ?? false}
       initialDark={initialDark}
-      footerMessage={cfg?.footerMessage ?? ""}
       supportPhone={cfg?.supportPhone ?? null}
       configVersion={cfg?.configVersion ?? null}
       debug={debug === "1"}

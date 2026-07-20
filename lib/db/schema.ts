@@ -10,7 +10,6 @@ export const settings = sqliteTable("settings", {
   companyUrl: text("company_url"),
   supportEmail: text("support_email"),
   supportPhone: text("support_phone"),
-  footerMessage: text("footer_message"),
   announcementBanner: text("announcement_banner"),
   announcementType: text("announcement_type").notNull().default("info"),
 
@@ -87,56 +86,21 @@ export const statusCategories = sqliteTable("status_categories", {
   color: text("color").notNull(),
 });
 
-// Multiple PowerStore arrays/Proxmox clusters can be monitored at once (e.g. a main
-// site and a DR site), each shown as its own named card under the Storage/Proxmox tabs.
-export const powerstoreTargets = sqliteTable("powerstore_targets", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  host: text("host").notNull(),
-  username: text("username").notNull(),
-  password: text("password").notNull(),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
-  // Marks this array as living at the DR site, so the Failover tab's recommendation
-  // can compare its health against the (non-DR) primary targets.
-  isDr: integer("is_dr", { mode: "boolean" }).notNull().default(false),
-  sortOrder: integer("sort_order").notNull().default(0),
-});
-
-export const proxmoxTargets = sqliteTable("proxmox_targets", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  host: text("host").notNull(),
-  tokenId: text("token_id").notNull(),
-  tokenSecret: text("token_secret").notNull(),
-  storageId: text("storage_id"),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
-  // Marks this cluster as the DR site -- the only Proxmox targets the Failover tab
-  // will let an admin start VMs on.
-  isDr: integer("is_dr", { mode: "boolean" }).notNull().default(false),
-  sortOrder: integer("sort_order").notNull().default(0),
-});
-
-export const pbsTargets = sqliteTable("pbs_targets", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  host: text("host").notNull(),
-  tokenId: text("token_id").notNull(),
-  tokenSecret: text("token_secret").notNull(),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
-  sortOrder: integer("sort_order").notNull().default(0),
-});
-
-// Marketplace integrations (UniFi, Sophos Central/XGS, GoTo Connect, etc, see
-// lib/integrationRegistry.ts) all share this one table rather than getting a
-// dedicated table each -- `config` is a JSON-serialized Record<string,string> whose
-// shape is defined by that integration's catalog entry, since each needs different
-// credential fields.
+// Every monitored external system (PowerStore, Proxmox, PBS, and marketplace
+// integrations like UniFi/Sophos/GoTo Connect, see lib/integrationRegistry.ts) shares
+// this one table rather than getting a dedicated table each -- `config` is a
+// JSON-serialized Record<string,string> whose shape is defined by that integration's
+// catalog entry, since each needs different credential fields. `isDr` is only
+// meaningful for powerstore/proxmox (it marks a target as living at the DR site, so
+// the Failover tab's recommendation and VM-start action can find it) but lives here
+// generically rather than needing a separate table.
 export const integrationTargets = sqliteTable("integration_targets", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   integration: text("integration").notNull(),
   name: text("name").notNull(),
   config: text("config").notNull(),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  isDr: integer("is_dr", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
@@ -149,7 +113,7 @@ export const pbsAcknowledgedTasks = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     targetId: integer("target_id")
       .notNull()
-      .references(() => pbsTargets.id, { onDelete: "cascade" }),
+      .references(() => integrationTargets.id, { onDelete: "cascade" }),
     taskId: text("task_id").notNull(),
     acknowledgedAt: text("acknowledged_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
