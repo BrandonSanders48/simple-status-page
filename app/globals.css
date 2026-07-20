@@ -2,16 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Small, unobtrusive scrollbar for horizontally-scrolling strips (e.g. the AD
-   per-check tags on a service card) -- the default browser scrollbar is too chunky
-   at that size. scrollbar-color covers Firefox's own thin-mode colors; the
-   ::-webkit-* rules cover Chrome/Safari/Edge. */
+/* Small, unobtrusive scrollbar for both horizontally-scrolling strips (e.g. the AD
+   per-check tags on a service card) and vertically-scrolling lists (e.g. a
+   marketplace integration's capped-height item list) -- the default browser
+   scrollbar is too chunky at that size. scrollbar-color covers Firefox's own
+   thin-mode colors; the ::-webkit-* rules cover Chrome/Safari/Edge. */
 .thin-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
 }
 .thin-scrollbar::-webkit-scrollbar {
   height: 5px;
+  width: 5px;
 }
 .thin-scrollbar::-webkit-scrollbar-track {
   background: transparent;

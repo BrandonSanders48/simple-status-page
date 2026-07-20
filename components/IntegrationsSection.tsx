@@ -150,7 +150,7 @@ export function IntegrationCard({
         {status.items.length > 0 && <ExpandChevron expanded={expanded} />}
       </button>
       {expanded && status.items.length > 0 && (
-        <ul className="space-y-1">
+        <ul className="thin-scrollbar space-y-1 max-h-[480px] overflow-y-auto pr-1">
           {status.items.map((item) => (
             <li
               key={item.key}
