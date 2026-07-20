@@ -147,32 +147,52 @@ async function get(accessToken: string, url: string, timeoutMs = 8000): Promise<
 }
 
 /** Every Voice Admin API call is scoped to an accountKey, resolved from whichever
- * GoTo accounts this token's owner belongs to. If there's more than one (e.g. a
- * reseller/multi-tenant login), the first is used and a diagnostic notes the choice --
- * there's no field in `config` today to pin a specific one. */
-async function fetchAccountKey(accessToken: string, diagnostics: string[]): Promise<string | null> {
+ * GoTo accounts this token's owner belongs to. If `configured` is set (GoTo's own
+ * setup docs have admins retrieve this once via the Admin API and pin it, rather
+ * than auto-detecting it every call), it's used as-is once confirmed to be one of
+ * the accounts this token can actually see; otherwise the first account is picked
+ * automatically (diagnosing the choice if there's more than one -- e.g. a
+ * reseller/multi-tenant login). Always calls /me either way, purely so a diagnostic
+ * can report every account this token can see, same reasoning as this app's Meraki
+ * organizationId auto-detect. */
+async function fetchAccountKey(accessToken: string, configured: string, diagnostics: string[]): Promise<string | null> {
   const result = await get(accessToken, `${ADMIN_HOST}/admin/rest/v1/me`);
   if (result.error !== null) {
     diagnostics.push(result.error);
-    return null;
+    return configured || null;
   }
   const accounts = Array.isArray(result.data.accounts) ? (result.data.accounts as JsonRecord[]) : [];
+  const keyOf = (a: JsonRecord): string | null => (typeof a.key === "string" ? a.key : typeof a.key === "number" ? String(a.key) : null);
+  const describe = (a: JsonRecord) => `${String(a.name ?? keyOf(a))} [${String(keyOf(a))}]`;
+
+  if (configured) {
+    const match = accounts.find((a) => keyOf(a) === configured);
+    if (match) {
+      diagnostics.push(`Using account ${describe(match)}.`);
+    } else {
+      diagnostics.push(
+        `Configured Account Key "${configured}" was not found among the ${accounts.length} account(s) this token can see` +
+          (accounts.length > 0 ? ` (${accounts.map(describe).join(", ")})` : "") +
+          " -- double-check it against the GoTo Admin API. Using it anyway in case this token can see it but not list it."
+      );
+    }
+    return configured;
+  }
+
   const firstAccount = accounts[0];
   if (!firstAccount) {
     diagnostics.push("/admin/rest/v1/me returned no accounts for this token");
     return null;
   }
-  if (accounts.length > 1) {
-    diagnostics.push(
-      `This token has access to ${accounts.length} GoTo accounts; using the first (${String(firstAccount.name ?? firstAccount.key)}). ` +
-        "There's currently no config field to pin a different one."
-    );
-  }
-  const key = firstAccount.key;
-  if (typeof key === "string") return key;
-  if (typeof key === "number") return String(key);
-  diagnostics.push("/admin/rest/v1/me's first account had no usable `key` field");
-  return null;
+  diagnostics.push(
+    `Using account ${describe(firstAccount)}` +
+      (accounts.length > 1
+        ? ` -- this token can see ${accounts.length} accounts total (${accounts.map(describe).join(", ")}); set Account Key in the integration's config to pin a different one.`
+        : ".")
+  );
+  const key = keyOf(firstAccount);
+  if (!key) diagnostics.push("/admin/rest/v1/me's first account had no usable `key` field");
+  return key;
 }
 
 type Row = { label: string; value: string; ok: boolean; key: string };
@@ -302,7 +322,7 @@ export async function fetchGotoConnectStatus(config: Record<string, string>): Pr
     if (tokenResult.error !== null) throw new Error(tokenResult.error);
     const accessToken = tokenResult.token;
 
-    const accountKey = await fetchAccountKey(accessToken, diagnostics);
+    const accountKey = await fetchAccountKey(accessToken, config.accountKey?.trim() ?? "", diagnostics);
     if (!accountKey) {
       throw new Error(diagnostics[diagnostics.length - 1] ?? "Could not determine a GoTo account key for this token");
     }

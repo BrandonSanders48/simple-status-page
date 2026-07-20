@@ -106,6 +106,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
       { key: "clientSecret", label: "OAuth Client Secret", type: "password" },
       { key: "personalAccessToken", label: "Personal Access Token", type: "password", placeholder: "Leave blank if using a Refresh Token" },
       { key: "refreshToken", label: "Refresh Token", type: "password", placeholder: "Leave blank if using a Personal Access Token" },
+      { key: "accountKey", label: "Account Key (optional)", type: "text", placeholder: "Leave blank to auto-detect" },
     ],
   },
   {
