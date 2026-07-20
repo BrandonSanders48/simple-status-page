@@ -7,13 +7,20 @@ import type { IntegrationStatus } from "./types";
  * own separate "GoTo Status" integration.
  *
  * This is a server-side background poller with no user present to run an interactive
- * OAuth consent flow, so the config here is a client id/secret plus a Personal Access
- * Token (PAT) an admin creates once, self-service, at https://myaccount.goto.com ->
- * Developer Tools -> Create token -- no OAuth authorization-code round trip required
- * to obtain it (unlike a refresh token). The OAuth Client itself still needs the
- * "Personal Access Token" grant type toggled on at
- * https://developer.logmeininc.com/clients. Every call exchanges the PAT for a
- * short-lived access token via the personal_access_token grant.
+ * OAuth consent flow, so `config` supports two mutually exclusive ways to authenticate
+ * -- an admin fills in exactly one, not both:
+ *   - Personal Access Token (PAT): self-service, created once at
+ *     https://myaccount.goto.com -> Developer Tools -> Create token, no
+ *     authorization-code round trip required. The OAuth Client itself still needs the
+ *     "Personal Access Token" grant type toggled on at
+ *     https://developer.logmeininc.com/clients. Simpler to set up; prefer this unless
+ *     there's a reason not to.
+ *   - Refresh token: a long-lived token obtained once, out of band, via GoTo's OAuth
+ *     authorization-code flow -- useful when PAT creation isn't available/allowed for
+ *     an account.
+ * Every call exchanges whichever one is configured for a short-lived access token
+ * (personal_access_token or refresh_token grant, respectively); clientId/clientSecret
+ * are required either way.
  *
  * Endpoints/fields below were checked against GoTo's current developer docs at
  * https://developer.goto.com/ (mid-2026):
@@ -23,6 +30,12 @@ import type { IntegrationStatus } from "./types";
  *     normal OAuth token response (access_token, expires_in ~3600s). (The older
  *     api.getgo.com/oauth/v2 token host from GoTo's own older guides was decommissioned
  *     September 30, 2025.)
+ *   - Refresh token exchange: https://developer.goto.com/guides/Authentication/05_HOW_refreshToken/
+ *     -- CONFIRMED: same token endpoint, grant_type=refresh_token&refresh_token=<token>.
+ *     GoTo may rotate the refresh token itself on use, returning a new one alongside
+ *     the access token -- this integration has no way to persist that back to `config`,
+ *     so if a previously-working refresh token starts being rejected, the fix is
+ *     re-running the authorization-code flow for a fresh one (or switching to a PAT).
  *   - Account key lookup: https://developer.goto.com/guides/GoToConnect/09_HOW_fetchAccountUsers/
  *     -- CONFIRMED: GET api.getgo.com/admin/rest/v1/me returns the accounts this token
  *     can act on; their `key` is the accountKey every Voice Admin API call needs.
@@ -86,6 +99,34 @@ async function exchangePersonalAccessToken(clientId: string, clientSecret: strin
     return { token: json.access_token, error: null };
   } catch (err) {
     return { token: null, error: err instanceof Error ? `PAT exchange: ${err.message}` : "PAT exchange failed" };
+  }
+}
+
+/** Exchanges the long-lived refresh token for a short-lived access token. Confirmed
+ * against https://developer.goto.com/guides/Authentication/05_HOW_refreshToken/ */
+async function exchangeRefreshToken(clientId: string, clientSecret: string, refreshToken: string): Promise<TokenResult> {
+  try {
+    const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+    const res = await undiciFetch(TOKEN_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basic}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}`,
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return { token: null, error: `Token refresh returned HTTP ${res.status}${body ? `: ${body.slice(0, 200)}` : ""}` };
+    }
+    const json = (await res.json()) as JsonRecord;
+    if (typeof json.access_token !== "string") {
+      return { token: null, error: "Token refresh response had no access_token field" };
+    }
+    return { token: json.access_token, error: null };
+  } catch (err) {
+    return { token: null, error: err instanceof Error ? `Token refresh: ${err.message}` : "Token refresh failed" };
   }
 }
 
@@ -212,19 +253,40 @@ async function fetchExtensions(accessToken: string, accountKey: string, diagnost
 }
 
 /**
- * Queries GoTo Connect's admin/voice APIs for phone-number and extension health:
- * Personal Access Token exchange followed by the Voice Admin API's phone-numbers and
- * extensions endpoints. See the file-level comment for exactly what's confirmed
- * against GoTo's public docs versus best-guessed.
+ * Queries GoTo Connect's admin/voice APIs for phone-number and extension health: a
+ * token exchange (PAT or refresh token, whichever is configured -- see the file-level
+ * comment) followed by the Voice Admin API's phone-numbers and extensions endpoints.
  */
 export async function fetchGotoConnectStatus(config: Record<string, string>): Promise<IntegrationStatus> {
   const clientId = config.clientId?.trim();
   const clientSecret = config.clientSecret?.trim();
   const personalAccessToken = config.personalAccessToken?.trim();
-  if (!clientId || !clientSecret || !personalAccessToken) {
+  const refreshToken = config.refreshToken?.trim();
+
+  if (!clientId || !clientSecret) {
     return {
       ok: false,
-      error: "Client ID, Client Secret, and Personal Access Token are required.",
+      error: "Client ID and Client Secret are required.",
+      diagnostics: [],
+      healthy: false,
+      summary: "",
+      items: [],
+    };
+  }
+  if (personalAccessToken && refreshToken) {
+    return {
+      ok: false,
+      error: "Provide either a Personal Access Token or a Refresh Token, not both.",
+      diagnostics: [],
+      healthy: false,
+      summary: "",
+      items: [],
+    };
+  }
+  if (!personalAccessToken && !refreshToken) {
+    return {
+      ok: false,
+      error: "Provide either a Personal Access Token or a Refresh Token.",
       diagnostics: [],
       healthy: false,
       summary: "",
@@ -234,7 +296,9 @@ export async function fetchGotoConnectStatus(config: Record<string, string>): Pr
 
   const diagnostics: string[] = [];
   try {
-    const tokenResult = await exchangePersonalAccessToken(clientId, clientSecret, personalAccessToken);
+    const tokenResult = personalAccessToken
+      ? await exchangePersonalAccessToken(clientId, clientSecret, personalAccessToken)
+      : await exchangeRefreshToken(clientId, clientSecret, refreshToken!);
     if (tokenResult.error !== null) throw new Error(tokenResult.error);
     const accessToken = tokenResult.token;
 
