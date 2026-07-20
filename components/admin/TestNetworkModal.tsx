@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from "react";
 interface CheckResult {
   name: string;
   port: number | null;
-  /** null = inconclusive (see DHCP/RADIUS `detail` -- a silent non-reply from those
-   * doesn't necessarily mean the service is down), not a confirmed pass or fail. */
+  /** null = inconclusive (see RADIUS's `detail` -- a silent non-reply doesn't
+   * necessarily mean the service is down), not a confirmed pass or fail. */
   ok: boolean | null;
   detail?: string;
   ms: number;
@@ -18,7 +18,7 @@ interface ResultGroup {
   results: CheckResult[];
 }
 
-const CHECK_NAMES = ["Ping (ICMP)", "DNS", "NTP", "Kerberos", "NPS / RADIUS", "DHCP", "LDAP", "SMB", "LDAPS", "Global Catalog", "Global Catalog (SSL)"];
+const CHECK_NAMES = ["Ping (ICMP)", "DNS", "NTP", "Kerberos", "NPS / RADIUS", "LDAP", "SMB", "LDAPS", "Global Catalog", "Global Catalog (SSL)"];
 
 function CheckResultsList({ results }: { results: CheckResult[] }) {
   return (
@@ -70,17 +70,15 @@ interface SpeedTestState {
   error: string | null;
 }
 
-const SPEED_IDLE: SpeedTestState = { running: false, downloadMbps: null, uploadMbps: null, error: null };
+const SPEED_PENDING: SpeedTestState = { running: true, downloadMbps: null, uploadMbps: null, error: null };
 
 /**
  * Network diagnostic modal -- runs a fixed battery of AD/DC-style checks (ping,
- * DNS, NTP, Kerberos, NPS/RADIUS, DHCP, LDAP/LDAPS, SMB, Global Catalog) against
- * every domain controller configured under Services (type "ad") plus this site's
+ * DNS, NTP, Kerberos, NPS/RADIUS, LDAP/LDAPS, SMB, Global Catalog) against every
+ * domain controller configured under Services (type "ad") plus this site's
  * configured WAN targets (Settings > Network's Gateway Host and Public DNS Host),
- * automatically as soon as it opens. A WAN download/upload speed test is available
- * too, but only on manual request -- unlike the instant reachability checks above,
- * it transfers real data and takes several seconds, so it shouldn't run just from
- * opening the modal.
+ * plus a WAN download/upload speed test -- all automatically, as soon as it opens,
+ * running in parallel rather than gating one on the other.
  *
  * Deliberately has no free-form host field -- letting a visitor test an arbitrary
  * host/port was a real SSRF/scanning-proxy surface (see the API route), so the
@@ -89,7 +87,7 @@ const SPEED_IDLE: SpeedTestState = { running: false, downloadMbps: null, uploadM
 export default function TestNetworkModal({ csrfToken, onClose }: { csrfToken: string; onClose: () => void }) {
   const [groups, setGroups] = useState<ResultGroup[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [speed, setSpeed] = useState<SpeedTestState>(SPEED_IDLE);
+  const [speed, setSpeed] = useState<SpeedTestState>(SPEED_PENDING);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -100,7 +98,15 @@ export default function TestNetworkModal({ csrfToken, onClose }: { csrfToken: st
         setGroups(data.groups);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Test failed."));
-    // Runs once per modal open.
+
+    fetch("/api/admin/test-speed", { method: "POST", headers: { "X-CSRF-Token": csrfToken } })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Speed test failed.");
+        setSpeed({ running: false, downloadMbps: data.downloadMbps, uploadMbps: data.uploadMbps, error: data.error ?? null });
+      })
+      .catch((err) => setSpeed({ running: false, downloadMbps: null, uploadMbps: null, error: err instanceof Error ? err.message : "Speed test failed." }));
+    // Both run once per modal open, in parallel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -117,18 +123,6 @@ export default function TestNetworkModal({ csrfToken, onClose }: { csrfToken: st
   const allResults = groups?.flatMap((g) => g.results) ?? [];
   const failCount = allResults.filter((r) => r.ok === false).length;
   const overallPass = groups !== null && groups.length > 0 && failCount === 0;
-
-  async function runSpeedTest() {
-    setSpeed({ running: true, downloadMbps: null, uploadMbps: null, error: null });
-    try {
-      const res = await fetch("/api/admin/test-speed", { method: "POST", headers: { "X-CSRF-Token": csrfToken } });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Speed test failed.");
-      setSpeed({ running: false, downloadMbps: data.downloadMbps, uploadMbps: data.uploadMbps, error: data.error ?? null });
-    } catch (err) {
-      setSpeed({ running: false, downloadMbps: null, uploadMbps: null, error: err instanceof Error ? err.message : "Speed test failed." });
-    }
-  }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
@@ -187,16 +181,12 @@ export default function TestNetworkModal({ csrfToken, onClose }: { csrfToken: st
           <div className="border-t border-slate-100 dark:border-slate-700/60 pt-4 space-y-2">
             <div className="flex items-center justify-between">
               <h6 className="text-xs font-semibold uppercase tracking-wide text-slate-400">WAN Speed Test</h6>
-              <button
-                type="button"
-                onClick={runSpeedTest}
-                disabled={speed.running}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg disabled:opacity-60"
-              >
-                {speed.running ? "Testing..." : "Run Speed Test"}
-              </button>
+              {speed.running && (
+                <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                  <i className="fa-solid fa-circle-notch fa-spin" /> Testing...
+                </span>
+              )}
             </div>
-            {speed.running && <p className="text-sm text-slate-400">Downloading and uploading ~15MB, this takes a few seconds...</p>}
             {speed.error && <p className="text-sm text-red-500">{speed.error}</p>}
             {(speed.downloadMbps !== null || speed.uploadMbps !== null) && (
               <div className="flex gap-6 text-sm">

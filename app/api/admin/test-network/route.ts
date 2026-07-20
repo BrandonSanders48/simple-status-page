@@ -5,7 +5,6 @@ import { checkPing } from "@/lib/checks/ping";
 import { checkDns } from "@/lib/checks/dns";
 import { checkTcpDetailed, type TcpFailureReason } from "@/lib/checks/tcp";
 import { checkNtp } from "@/lib/checks/ntp";
-import { checkDhcp } from "@/lib/checks/dhcp";
 import { checkRadius } from "@/lib/checks/radius";
 import { isAdType } from "@/lib/checks/ad";
 import { db } from "@/lib/db/client";
@@ -30,20 +29,21 @@ const DNS: Check = { name: "DNS", port: 53, run: async (host) => ({ ok: await ch
  * AD-integrated app typically depends on: time sync (Kerberos fails outright on
  * >5min clock skew, so NTP is directly diagnostic of "why is Kerberos broken"),
  * authentication (Kerberos, RADIUS/NPS), and directory/network config lookups
- * (LDAP, SMB, Global Catalog, DHCP). Not exhaustive (e.g. no RPC endpoint mapper),
+ * (LDAP, SMB, Global Catalog). Not exhaustive (e.g. no RPC endpoint mapper, no
+ * DHCP -- removed by request, since it's typically a separate box in most estates
+ * anyway and its inconclusive-on-silence nature made it more noise than signal),
  * but the common set worth checking when diagnosing "why can't this box talk to my
  * DC". Only run against services with type "ad" -- a plain gateway/DNS resolver
  * has no reason to run any of these, and testing them there was just noise (a wall
  * of "Failed" for ports that were never expected to be open).
  *
- * `ok: null` means inconclusive, not a confirmed failure -- DHCP and RADIUS/NPS
- * can't give a definitive "down" from a plain UDP probe like NTP can: a DHCP server
- * normally only unicasts a reply by ARPing the offered address or via broadcast
- * (RFC 2131), and NPS only replies to requests from IPs it has configured as known
- * RADIUS clients -- from anywhere else (almost certainly including this server),
- * both silently drop the probe with no reply, which looks identical to "not
- * running". A reply is trusted as a real "yes"; no reply is shown as inconclusive
- * rather than misreported as an outage. See lib/checks/dhcp.ts and radius.ts.
+ * `ok: null` means inconclusive, not a confirmed failure -- RADIUS/NPS can't give a
+ * definitive "down" from a plain UDP probe like NTP can: NPS only replies to
+ * requests from IPs it has configured as known RADIUS clients -- from anywhere else
+ * (almost certainly including this server), it silently drops the probe with no
+ * reply, which looks identical to "not running". A reply is trusted as a real
+ * "yes"; no reply is shown as inconclusive rather than misreported as an outage.
+ * See lib/checks/radius.ts.
  */
 const AD_ONLY_CHECKS: Check[] = [
   { name: "NTP", port: 123, run: async (host) => ({ ok: await checkNtp(host) }) },
@@ -61,14 +61,6 @@ const AD_ONLY_CHECKS: Check[] = [
     run: async (host) => ({
       ok: await checkRadius(host),
       detail: "No reply doesn't necessarily mean it's down -- NPS silently ignores requests from IPs it hasn't configured as a RADIUS client",
-    }),
-  },
-  {
-    name: "DHCP",
-    port: 67,
-    run: async (host) => ({
-      ok: await checkDhcp(host),
-      detail: "No reply doesn't necessarily mean it's down -- DHCP servers often can't unicast a reply back to a non-relay probe like this one",
     }),
   },
   {
