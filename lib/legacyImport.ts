@@ -116,7 +116,6 @@ export function importLegacyData(legacyDir: string): void {
   const network = cfg.network ?? {};
   const email = cfg.email ?? {};
   const smtp = email.smtp ?? {};
-  const meta = cfg.meta ?? {};
 
   console.log(`[legacy-import] importing from ${legacyDir}...`);
 
@@ -133,8 +132,6 @@ export function importLegacyData(legacyDir: string): void {
       slaEnabled: !!sla.enabled,
       slaUptimeTarget: sla.uptime_target ?? 99.9,
       slaReportingPeriod: sla.reporting_period ?? "monthly",
-      metaDescription: meta.description ?? null,
-      metaAuthor: meta.author ?? null,
       refreshRateMs: cfg.refresh_rate ?? 12000,
       alertSound: !!cfg.alert_sound,
       browserNotify: cfg.browser_notify ?? true,

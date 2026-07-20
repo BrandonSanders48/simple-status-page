@@ -18,8 +18,6 @@ export const settings = sqliteTable("settings", {
   slaUptimeTarget: real("sla_uptime_target").notNull().default(99.9),
   slaReportingPeriod: text("sla_reporting_period").notNull().default("monthly"),
 
-  metaDescription: text("meta_description"),
-  metaAuthor: text("meta_author"),
   configVersion: text("config_version").notNull().default("1.0.0"),
 
   refreshRateMs: integer("refresh_rate_ms").notNull().default(12000),

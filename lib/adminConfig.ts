@@ -29,8 +29,6 @@ export const settingsInputSchema = z.object({
   slaEnabled: z.boolean(),
   slaUptimeTarget: z.number().min(0).max(100),
   slaReportingPeriod: z.enum(["weekly", "monthly", "quarterly"]),
-  metaDescription: z.string().max(500).nullable().optional(),
-  metaAuthor: z.string().max(200).nullable().optional(),
   refreshRateMs: z.number().int().min(3000),
   alertSound: z.boolean(),
   browserNotify: z.boolean(),

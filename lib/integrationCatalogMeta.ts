@@ -15,6 +15,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
     description: "Local UniFi Network controller (standalone or a UniFi OS console) -- subsystem health and device online/offline counts.",
     icon: "fa-wifi",
     color: "text-sky-500",
+    logo: "/logos/unifi.svg",
     fields: [
       { key: "host", label: "Controller Host", type: "text", placeholder: "https://10.0.0.1" },
       { key: "username", label: "Username", type: "text" },
@@ -28,6 +29,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
     description: "Cloud-managed endpoint/firewall security -- device health and active alerts.",
     icon: "fa-shield-halved",
     color: "text-emerald-600",
+    logo: "/logos/sophos.svg",
     fields: [
       { key: "clientId", label: "API Client ID", type: "text" },
       { key: "clientSecret", label: "API Client Secret", type: "password" },
@@ -39,6 +41,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
     description: "On-prem Sophos Firewall (XGS series) -- device status and active alerts.",
     icon: "fa-fire-flame-curved",
     color: "text-red-500",
+    logo: "/logos/sophos.svg",
     fields: [
       { key: "host", label: "Firewall Host", type: "text", placeholder: "https://10.0.0.1:4444" },
       { key: "username", label: "Username", type: "text" },
@@ -51,10 +54,11 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
     description: "Hosted phone system -- line/extension and system status.",
     icon: "fa-phone",
     color: "text-orange-500",
+    logo: "/logos/goto.svg",
     fields: [
       { key: "clientId", label: "OAuth Client ID", type: "text" },
       { key: "clientSecret", label: "OAuth Client Secret", type: "password" },
-      { key: "refreshToken", label: "Refresh Token", type: "password" },
+      { key: "personalAccessToken", label: "Personal Access Token", type: "password" },
     ],
   },
 ];

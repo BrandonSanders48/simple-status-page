@@ -282,9 +282,9 @@ export default function AdminDashboard() {
               ref={(el) => {
                 sectionRefs.current[s.key] = el;
               }}
-              className="scroll-mt-6"
+              className="scroll-mt-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6"
             >
-              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-1 pb-3 border-b-2 border-slate-200 dark:border-slate-700">
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4 pb-3 border-b-2 border-slate-200 dark:border-slate-700">
                 <i className={`fa-solid ${s.icon} ${s.color}`} />
                 {s.label}
               </h2>

@@ -1,5 +1,15 @@
 import type { IntegrationStatus } from "@/lib/integrations/types";
-import { getIntegrationCatalogMeta } from "@/lib/integrationCatalogMeta";
+import { getIntegrationCatalogMeta, type IntegrationCatalogMeta } from "@/lib/integrationCatalogMeta";
+
+/** Real brand logo when the catalog entry has one, falling back to the generic
+ * FontAwesome icon otherwise -- shared by the public card and the admin marketplace. */
+export function IntegrationLogo({ meta, className = "w-5 h-5" }: { meta: IntegrationCatalogMeta; className?: string }) {
+  if (meta.logo) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={meta.logo} alt={meta.label} className={`${className} object-contain`} />;
+  }
+  return <i className={`fa-solid ${meta.icon} ${meta.color}`} />;
+}
 
 export interface IntegrationTargetPayload {
   id: number;
@@ -48,7 +58,10 @@ export function IntegrationCard({ integration, name, status }: { integration: st
   if (!status.ok) {
     return (
       <div>
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">{name}</p>
+        <div className="flex items-center gap-2 mb-1">
+          {meta && <IntegrationLogo meta={meta} />}
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</p>
+        </div>
         <p className="text-sm text-red-500">
           Unable to connect{meta ? ` to ${meta.label}` : ""}: {status.error ?? "unknown error"}
         </p>
@@ -59,8 +72,9 @@ export function IntegrationCard({ integration, name, status }: { integration: st
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        {meta && <i className={`fa-solid ${meta.icon} ${meta.color}`} />}
+        {meta && <IntegrationLogo meta={meta} />}
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
+        {meta && <span className="text-xs text-slate-400">{meta.label}</span>}
         <Pill ok={status.healthy} label={status.healthy ? "Healthy" : "Attention"} />
       </div>
       <p className="text-sm text-slate-500 dark:text-slate-400">{status.summary}</p>

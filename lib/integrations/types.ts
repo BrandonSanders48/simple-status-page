@@ -34,6 +34,9 @@ export interface IntegrationCatalogEntry {
   description: string;
   icon: string;
   color: string;
+  /** Path under /public to a real brand logo (e.g. "/logos/unifi.svg"), shown instead
+   * of the FontAwesome icon when present. */
+  logo?: string;
   fields: IntegrationField[];
   fetchStatus: (config: Record<string, string>) => Promise<IntegrationStatus>;
 }

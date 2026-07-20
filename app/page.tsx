@@ -33,7 +33,6 @@ export default async function StatusPage({
       footerMessage={cfg?.footerMessage ?? ""}
       supportPhone={cfg?.supportPhone ?? null}
       configVersion={cfg?.configVersion ?? null}
-      metaAuthor={cfg?.metaAuthor ?? null}
       debug={debug === "1"}
       initialUptimeByService={initialUptimeByService}
     />

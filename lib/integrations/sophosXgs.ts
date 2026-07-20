@@ -183,7 +183,9 @@ async function fetchSystemServices(cfg: SophosXgsConfig, diagnostics: string[]):
 
   const block = getTagContent(result.xml, "SystemServices");
   if (block === null) {
-    diagnostics.push("SystemServices: response did not include a <SystemServices> block -- this firmware/account may not support the entity, or expose it under a different tag.");
+    diagnostics.push(
+      `SystemServices: response did not include a <SystemServices> block -- this firmware/account may not support the entity, or expose it under a different tag. Raw response (first 1000 chars): ${result.xml.slice(0, 1000)}`
+    );
     return [];
   }
 

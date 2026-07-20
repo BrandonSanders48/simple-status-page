@@ -57,7 +57,6 @@ export default function Dashboard({
   footerMessage = "",
   supportPhone = null,
   configVersion = null,
-  metaAuthor = null,
   debug = false,
   initialUptimeByService = {},
 }: {
@@ -71,7 +70,6 @@ export default function Dashboard({
   footerMessage?: string;
   supportPhone?: string | null;
   configVersion?: string | null;
-  metaAuthor?: string | null;
   debug?: boolean;
   initialUptimeByService?: Record<number, DayUptime[]>;
 }) {
@@ -329,7 +327,7 @@ export default function Dashboard({
         <RssPanel feeds={rss} loading={!rssLoaded} />
       </main>
 
-      <Footer footerMessage={footerMessage} supportPhone={supportPhone} configVersion={configVersion} metaAuthor={metaAuthor} />
+      <Footer footerMessage={footerMessage} supportPhone={supportPhone} configVersion={configVersion} />
 
       <div className="fixed bottom-5 right-5 z-30 flex flex-col gap-2.5 w-44">
         {isAdmin && (

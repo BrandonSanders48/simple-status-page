@@ -3,8 +3,8 @@
 import { useState } from "react";
 import type { DraftIntegrationTarget } from "@/lib/adminTypes";
 import { INTEGRATION_CATALOG_META, type IntegrationCatalogMeta } from "@/lib/integrationCatalogMeta";
+import { IntegrationLogo } from "../IntegrationsSection";
 import { inputCls, labelCls } from "./styles";
-import { SettingsGroup } from "./SettingsGroup";
 
 const MAX_TARGETS_PER_INTEGRATION = 5;
 
@@ -126,7 +126,7 @@ function IntegrationCatalogCard({
     <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-5 space-y-4">
       <div className="flex items-start gap-3">
         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex-shrink-0">
-          <i className={`fa-solid ${entry.icon} ${entry.color}`} />
+          <IntegrationLogo meta={entry} className="w-6 h-6" />
         </div>
         <div className="flex-1">
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{entry.label}</p>
@@ -178,23 +178,25 @@ export default function IntegrationsTab({
   csrfToken: string;
 }) {
   return (
-    <div>
-      <SettingsGroup title="Integrations Marketplace" description="Connect additional systems to monitor on the public status page." wide>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {INTEGRATION_CATALOG_META.map((entry) => (
-            <IntegrationCatalogCard
-              key={entry.key}
-              entry={entry}
-              targets={integrationTargets.filter((t) => t.integration === entry.key)}
-              csrfToken={csrfToken}
-              onTargetsChange={(updated) => {
-                const others = integrationTargets.filter((t) => t.integration !== entry.key);
-                onIntegrationTargetsChange([...others, ...updated]);
-              }}
-            />
-          ))}
-        </div>
-      </SettingsGroup>
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Integrations Marketplace</h3>
+        <p className="text-xs text-slate-400 mt-1">Connect additional systems to monitor on the public status page.</p>
+      </div>
+      <div className="space-y-4">
+        {INTEGRATION_CATALOG_META.map((entry) => (
+          <IntegrationCatalogCard
+            key={entry.key}
+            entry={entry}
+            targets={integrationTargets.filter((t) => t.integration === entry.key)}
+            csrfToken={csrfToken}
+            onTargetsChange={(updated) => {
+              const others = integrationTargets.filter((t) => t.integration !== entry.key);
+              onIntegrationTargetsChange([...others, ...updated]);
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }

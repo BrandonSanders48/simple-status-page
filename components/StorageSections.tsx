@@ -176,6 +176,11 @@ function DrBadge() {
   );
 }
 
+function BrandLogo({ src, alt }: { src: string; alt: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} className="w-5 h-5 object-contain" />;
+}
+
 export function PowerstoreSection({
   name,
   status,
@@ -205,8 +210,9 @@ export function PowerstoreSection({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <i className="fa-solid fa-database text-cyan-500" />
+        <BrandLogo src="/logos/dell.svg" alt="Dell PowerStore" />
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
+        <span className="text-xs text-slate-400">PowerStore</span>
         <Pill ok={!hasCriticalAlert} label={hasCriticalAlert ? "Attention" : "Healthy"} />
         {isDr && <DrBadge />}
         {status.clusterState && <span className="text-xs text-slate-400">{status.clusterState}</span>}
@@ -279,8 +285,9 @@ export function ProxmoxSection({ name, status, isDr = false }: { name: string; s
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <i className="fa-solid fa-cubes text-orange-500" />
+        <BrandLogo src="/logos/proxmox.svg" alt="Proxmox" />
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
+        <span className="text-xs text-slate-400">Proxmox</span>
         <Pill ok={isProxmoxHealthy(status)} label={isProxmoxHealthy(status) ? "Healthy" : "Attention"} />
         {status.quorate !== null && <Pill ok={status.quorate} label={status.quorate ? "Quorate" : "No Quorum"} />}
         {isDr && <DrBadge />}
@@ -376,8 +383,9 @@ export function PbsSection({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <i className="fa-solid fa-box-archive text-lime-600" />
+        <BrandLogo src="/logos/proxmox.svg" alt="Proxmox" />
         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{name}</span>
+        <span className="text-xs text-slate-400">Backup Server</span>
         <Pill ok={status.lastRunHealthy} label={status.lastRunHealthy ? "Healthy" : "Attention"} />
         <span className="text-xs text-slate-400">
           Last run {status.lastRunHealthy ? "OK" : "failed"}

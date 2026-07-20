@@ -149,21 +149,6 @@ export default function GeneralTab({
         </div>
       </SettingsGroup>
 
-      <SettingsGroup title="About / Meta" description="Shown in the footer, plus a read-only version counter that increments on every save.">
-        <div>
-          <label htmlFor="cfg-meta-description" className={labelCls}>Description</label>
-          <input id="cfg-meta-description" className={inputCls} value={settings.metaDescription ?? ""} onChange={(e) => set("metaDescription", e.target.value)} />
-        </div>
-        <div>
-          <label htmlFor="cfg-meta-author" className={labelCls}>Author</label>
-          <input id="cfg-meta-author" className={inputCls} value={settings.metaAuthor ?? ""} onChange={(e) => set("metaAuthor", e.target.value)} />
-        </div>
-        <div>
-          <label htmlFor="cfg-version" className={labelCls}>Config Version (auto-increments on save)</label>
-          <input id="cfg-version" className={`${inputCls} bg-slate-50 dark:bg-slate-800 text-slate-400`} value={settings.configVersion} readOnly />
-        </div>
-      </SettingsGroup>
-
       <SettingsGroup title="Behaviour" description="Controls polling frequency, admin login requirement, and cached status data.">
         <div>
           <label htmlFor="cfg-refresh-rate" className={labelCls}>Auto-Refresh Interval (ms)</label>

@@ -2,10 +2,9 @@ interface Props {
   footerMessage: string;
   supportPhone: string | null;
   configVersion: string | null;
-  metaAuthor: string | null;
 }
 
-export default function Footer({ footerMessage, supportPhone, configVersion, metaAuthor }: Props) {
+export default function Footer({ footerMessage, supportPhone, configVersion }: Props) {
   return (
     <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-6 mt-6">
       <div className="max-w-screen-xl mx-auto px-4">
@@ -47,19 +46,6 @@ export default function Footer({ footerMessage, supportPhone, configVersion, met
             <span>
               {footerMessage && <span className="text-slate-400 dark:text-slate-600 mr-3">•</span>}
               Config v{configVersion}
-              {metaAuthor && (
-                <>
-                  <span className="text-slate-400 dark:text-slate-600 mx-3">•</span>
-                  <a
-                    href="https://github.com/brandonsanders48"
-                    target="_blank"
-                    rel="noopener"
-                    className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                  >
-                    {metaAuthor}
-                  </a>
-                </>
-              )}
             </span>
           )}
         </div>
