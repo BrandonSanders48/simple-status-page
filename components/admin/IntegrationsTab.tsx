@@ -37,9 +37,16 @@ function IntegrationTargetCard({
   // required either way, and render normally via the generic field grid below).
   const isGoto = entry.key === "goto_connect";
   const genericFields = isGoto ? entry.fields.filter((f) => f.key !== "personalAccessToken" && f.key !== "refreshToken") : entry.fields;
-  const gotoAuthMethod: "pat" | "refresh" = target.config.refreshToken ? "refresh" : "pat";
+  // Real state, not derived from which field has content -- deriving it from
+  // e.g. `refreshToken` being non-empty meant clicking "Refresh Token" while it was
+  // still blank had nothing to make the radio actually reflect: the field would
+  // stay empty, so the derived value snapped straight back to "pat" and the toggle
+  // looked unclickable. Only the initial value (for an existing saved target) needs
+  // to look at the config; after that, a click is the source of truth.
+  const [gotoAuthMethod, setGotoAuthMethod] = useState<"pat" | "refresh">(() => (target.config.refreshToken ? "refresh" : "pat"));
 
-  function setGotoAuthMethod(method: "pat" | "refresh") {
+  function selectGotoAuthMethod(method: "pat" | "refresh") {
+    setGotoAuthMethod(method);
     onChange({ config: { ...target.config, [method === "pat" ? "refreshToken" : "personalAccessToken"]: "" } });
   }
 
@@ -114,7 +121,7 @@ function IntegrationTargetCard({
                   type="radio"
                   name={`goto-auth-${index}`}
                   checked={gotoAuthMethod === "pat"}
-                  onChange={() => setGotoAuthMethod("pat")}
+                  onChange={() => selectGotoAuthMethod("pat")}
                   className="accent-indigo-600"
                 />
                 Personal Access Token
@@ -124,7 +131,7 @@ function IntegrationTargetCard({
                   type="radio"
                   name={`goto-auth-${index}`}
                   checked={gotoAuthMethod === "refresh"}
-                  onChange={() => setGotoAuthMethod("refresh")}
+                  onChange={() => selectGotoAuthMethod("refresh")}
                   className="accent-indigo-600"
                 />
                 Refresh Token
