@@ -21,15 +21,20 @@ const REASON_TEXT: Record<TcpFailureReason, string> = {
 
 type CheckOutcome = { ok: boolean | null; detail?: string };
 
-/** Standard Active Directory / domain-controller port battery -- covers the services
- * an AD-integrated app typically depends on: name resolution, time sync (Kerberos
- * fails outright on >5min clock skew, so NTP is directly diagnostic of "why is
- * Kerberos broken"), authentication (Kerberos, RADIUS/NPS), and directory/network
- * config lookups (LDAP, SMB, Global Catalog, DHCP). Not exhaustive (e.g. no RPC
- * endpoint mapper), but the common set worth checking when diagnosing "why can't
- * this box talk to my DC" -- also reused as-is against the WAN/gateway targets
- * below, since a plain host just shows the AD-only ports (LDAP/Kerberos/etc) as
- * failed, same as testing any other non-DC host would.
+type Check = { name: string; port: number | null; run: (host: string) => Promise<CheckOutcome> };
+
+const PING: Check = { name: "Ping (ICMP)", port: null, run: async (host) => ({ ok: await checkPing(host) }) };
+const DNS: Check = { name: "DNS", port: 53, run: async (host) => ({ ok: await checkDns(host, 53) }) };
+
+/** Active Directory / domain-controller-only checks -- covers the services an
+ * AD-integrated app typically depends on: time sync (Kerberos fails outright on
+ * >5min clock skew, so NTP is directly diagnostic of "why is Kerberos broken"),
+ * authentication (Kerberos, RADIUS/NPS), and directory/network config lookups
+ * (LDAP, SMB, Global Catalog, DHCP). Not exhaustive (e.g. no RPC endpoint mapper),
+ * but the common set worth checking when diagnosing "why can't this box talk to my
+ * DC". Only run against services with type "ad" -- a plain gateway/DNS resolver
+ * has no reason to run any of these, and testing them there was just noise (a wall
+ * of "Failed" for ports that were never expected to be open).
  *
  * `ok: null` means inconclusive, not a confirmed failure -- DHCP and RADIUS/NPS
  * can't give a definitive "down" from a plain UDP probe like NTP can: a DHCP server
@@ -40,9 +45,7 @@ type CheckOutcome = { ok: boolean | null; detail?: string };
  * running". A reply is trusted as a real "yes"; no reply is shown as inconclusive
  * rather than misreported as an outage. See lib/checks/dhcp.ts and radius.ts.
  */
-const CHECKS: { name: string; port: number | null; run: (host: string) => Promise<CheckOutcome> }[] = [
-  { name: "Ping (ICMP)", port: null, run: async (host) => ({ ok: await checkPing(host) }) },
-  { name: "DNS", port: 53, run: async (host) => ({ ok: await checkDns(host, 53) }) },
+const AD_ONLY_CHECKS: Check[] = [
   { name: "NTP", port: 123, run: async (host) => ({ ok: await checkNtp(host) }) },
   {
     name: "Kerberos",
@@ -110,9 +113,14 @@ const CHECKS: { name: string; port: number | null; run: (host: string) => Promis
   },
 ];
 
-async function runBattery(host: string) {
+const AD_CHECKS: Check[] = [PING, DNS, ...AD_ONLY_CHECKS];
+/** Everything a plain internet gateway/DNS resolver can reasonably be expected to
+ * answer -- just reachability and name resolution, none of the AD-only ports. */
+const WAN_CHECKS: Check[] = [PING, DNS];
+
+async function runBattery(host: string, checks: Check[]) {
   return Promise.all(
-    CHECKS.map(async (c) => {
+    checks.map(async (c) => {
       const startedAt = Date.now();
       const outcome = await c.run(host).catch((): CheckOutcome => ({ ok: false }));
       // Show `detail` whenever it's not a clean pass -- including `ok === null`
@@ -146,14 +154,14 @@ export async function POST(request: Request) {
   const adServices = db.select().from(services).all().filter((s) => isAdType(s.type));
   const cfg = db.select().from(settings).get();
 
-  const targets: { label: string; host: string }[] = [
-    ...adServices.map((s) => ({ label: s.name, host: s.host })),
-    ...(cfg?.gatewayHost ? [{ label: "Local Gateway", host: cfg.gatewayHost }] : []),
-    ...(cfg?.publicDnsHost ? [{ label: "Wide Network (Public DNS)", host: cfg.publicDnsHost }] : []),
+  const targets: { label: string; host: string; checks: Check[] }[] = [
+    ...adServices.map((s) => ({ label: s.name, host: s.host, checks: AD_CHECKS })),
+    ...(cfg?.gatewayHost ? [{ label: "Local Gateway", host: cfg.gatewayHost, checks: WAN_CHECKS }] : []),
+    ...(cfg?.publicDnsHost ? [{ label: "Wide Network (Public DNS)", host: cfg.publicDnsHost, checks: WAN_CHECKS }] : []),
   ];
 
   const groups = await Promise.all(
-    targets.map(async (t) => ({ label: t.label, host: t.host, results: await runBattery(t.host) }))
+    targets.map(async (t) => ({ label: t.label, host: t.host, results: await runBattery(t.host, t.checks) }))
   );
 
   // Audit trail -- this endpoint is reachable without sign-in, so who ran a test,
