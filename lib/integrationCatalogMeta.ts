@@ -107,6 +107,18 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
       { key: "refreshToken", label: "Refresh Token", type: "password", placeholder: "Leave blank if using a Personal Access Token" },
     ],
   },
+  {
+    key: "meraki",
+    label: "Cisco Meraki",
+    description: "Cloud-managed switches/APs/security appliances -- device online/offline/alerting status across an organization.",
+    icon: "fa-network-wired",
+    color: "text-sky-600",
+    logo: "/logos/meraki.svg",
+    fields: [
+      { key: "apiKey", label: "API Key", type: "password" },
+      { key: "organizationId", label: "Organization ID (optional)", type: "text", placeholder: "Leave blank to auto-detect" },
+    ],
+  },
 ];
 
 export function getIntegrationCatalogMeta(key: string): IntegrationCatalogMeta | undefined {

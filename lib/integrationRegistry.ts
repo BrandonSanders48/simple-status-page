@@ -4,6 +4,7 @@ import { fetchUnifiStatus } from "./integrations/unifi";
 import { fetchSophosCentralStatus } from "./integrations/sophosCentral";
 import { fetchSophosXgsStatus } from "./integrations/sophosXgs";
 import { fetchGotoConnectStatus } from "./integrations/gotoConnect";
+import { fetchMerakiStatus } from "./integrations/meraki";
 import { fetchPowerstoreStatus, isPowerstoreAlertCritical, isMetroSessionHealthy } from "./integrations/powerstore";
 import { fetchProxmoxStorageStatus } from "./integrations/proxmox";
 import { fetchPbsStatus } from "./integrations/pbs";
@@ -89,6 +90,7 @@ const FETCHERS: Record<string, IntegrationCatalogEntry["fetchStatus"]> = {
   sophos_central: fetchSophosCentralStatus,
   sophos_xgs: fetchSophosXgsStatus,
   goto_connect: fetchGotoConnectStatus,
+  meraki: fetchMerakiStatus,
 };
 
 /**
