@@ -2,6 +2,9 @@ import { z } from "zod";
 import { eq, notInArray } from "drizzle-orm";
 import { db } from "./db/client";
 import { settings, services, rssFeeds, ispMapEntries, statusCategories, integrationTargets, sites } from "./db/schema";
+import { parseIntegrationConfig, serializeIntegrationConfig } from "./integrationTargets";
+import { maskIntegrationConfig, unmaskIntegrationConfig, MASKED_SECRET } from "./secretMasking";
+import { encryptSecret } from "./secretCrypto";
 
 export const MAX_SERVICES = 20;
 export const MAX_RSS_FEEDS = 10;
@@ -109,13 +112,11 @@ export const integrationTargetsPayloadSchema = z.object({
 
 export type ConfigPayload = z.infer<typeof configPayloadSchema>;
 
-function parseIntegrationConfig(raw: string): Record<string, string> {
-  try {
-    const parsed = JSON.parse(raw);
-    return typeof parsed === "object" && parsed !== null ? parsed : {};
-  } catch {
-    return {};
-  }
+/** True whenever settings.smtpPassword has a value, encrypted or (for a legacy row
+ * saved before encryption existed) plain - either way there's a real password stored,
+ * without needing to decrypt just to answer "is one set". */
+function maskSettingsForClient<T extends { smtpPassword: string | null }>(cfg: T): T {
+  return { ...cfg, smtpPassword: cfg.smtpPassword ? MASKED_SECRET : cfg.smtpPassword };
 }
 
 export function getFullConfig() {
@@ -127,21 +128,30 @@ export function getFullConfig() {
   const siteRows = db.select().from(sites).all();
   const integrationRows = db.select().from(integrationTargets).all();
   return {
-    settings: cfg,
+    settings: cfg ? maskSettingsForClient(cfg) : cfg,
     services: svc,
     rssFeeds: rss,
     ispMap: isp,
     statusCategories: categories,
     sites: siteRows,
-    // config is stored as a JSON string (see lib/db/schema.ts) - parsed here so the
-    // admin UI can bind to individual fields directly.
-    integrationTargets: integrationRows.map((t) => ({ ...t, config: parseIntegrationConfig(t.config) })),
+    // config is stored as an encrypted JSON string (see lib/integrationTargets.ts) -
+    // parsed/decrypted here, then any password-type field is masked before this ever
+    // reaches the browser (see lib/secretMasking.ts). Every other reader of this
+    // table (the integrations themselves, admin action routes) needs the real,
+    // unmasked values and must call parseIntegrationConfig directly instead.
+    integrationTargets: integrationRows.map((t) => {
+      const config = parseIntegrationConfig(t.config);
+      return { ...t, config: maskIntegrationConfig(t.integration, config) };
+    }),
   };
 }
 
 export function getIntegrationTargets() {
   const integrationRows = db.select().from(integrationTargets).all();
-  return integrationRows.map((t) => ({ ...t, config: parseIntegrationConfig(t.config) }));
+  return integrationRows.map((t) => {
+    const config = parseIntegrationConfig(t.config);
+    return { ...t, config: maskIntegrationConfig(t.integration, config) };
+  });
 }
 
 /**
@@ -151,6 +161,12 @@ export function getIntegrationTargets() {
  * risk overwriting via a stale full-config payload) any of those.
  */
 export function saveIntegrationTargets(targets: z.infer<typeof integrationTargetInputSchema>[]) {
+  // Existing (real, decrypted) configs, looked up before anything is deleted/replaced,
+  // so a masked placeholder in the incoming payload (see lib/secretMasking.ts) can be
+  // reconciled back to the real stored value instead of overwriting it with the
+  // literal placeholder string.
+  const existingById = new Map(db.select().from(integrationTargets).all().map((row) => [row.id, parseIntegrationConfig(row.config)]));
+
   db.transaction((tx) => {
     const incomingIds = targets.filter((t) => t.id !== undefined).map((t) => t.id!);
     if (incomingIds.length > 0) {
@@ -159,7 +175,8 @@ export function saveIntegrationTargets(targets: z.infer<typeof integrationTarget
       tx.delete(integrationTargets).run();
     }
     targets.forEach((t, index) => {
-      const row = { ...t, config: JSON.stringify(t.config), sortOrder: index };
+      const config = unmaskIntegrationConfig(t.integration, t.config, t.id !== undefined ? existingById.get(t.id) : undefined);
+      const row = { ...t, config: serializeIntegrationConfig(config), sortOrder: index };
       if (t.id !== undefined) {
         tx.update(integrationTargets).set(row).where(eq(integrationTargets.id, t.id)).run();
       } else {
@@ -188,9 +205,21 @@ export function saveFullConfig(payload: ConfigPayload) {
   const current = db.select().from(settings).get();
   const nextVersion = bumpVersion(current?.configVersion ?? "1.0");
 
+  // A masked placeholder (see lib/secretMasking.ts) means the admin didn't touch the
+  // password field, so the existing stored value (already encrypted, or legacy
+  // plaintext - either way, untouched) is kept as-is rather than being overwritten
+  // with the literal placeholder string. Anything else -- a real new password, or an
+  // intentional blank to clear it -- is encrypted fresh.
+  const nextSmtpPassword =
+    payload.settings.smtpPassword === MASKED_SECRET
+      ? (current?.smtpPassword ?? null)
+      : payload.settings.smtpPassword
+        ? encryptSecret(payload.settings.smtpPassword)
+        : null;
+
   db.transaction((tx) => {
     tx.update(settings)
-      .set({ ...payload.settings, configVersion: nextVersion, updatedAt: new Date().toISOString() })
+      .set({ ...payload.settings, smtpPassword: nextSmtpPassword, configVersion: nextVersion, updatedAt: new Date().toISOString() })
       .where(eq(settings.id, 1))
       .run();
 
@@ -266,6 +295,9 @@ export function saveFullConfig(payload: ConfigPayload) {
     // targets alone" (see configPayloadSchema): they're edited on their own
     // /admin/integrations page now, via saveIntegrationTargets above.
     if (payload.integrationTargets) {
+      const existingIntegrationConfigs = new Map(
+        db.select().from(integrationTargets).all().map((row) => [row.id, parseIntegrationConfig(row.config)])
+      );
       const incomingIntegrationIds = payload.integrationTargets.filter((t) => t.id !== undefined).map((t) => t.id!);
       if (incomingIntegrationIds.length > 0) {
         tx.delete(integrationTargets).where(notInArray(integrationTargets.id, incomingIntegrationIds)).run();
@@ -273,7 +305,8 @@ export function saveFullConfig(payload: ConfigPayload) {
         tx.delete(integrationTargets).run();
       }
       payload.integrationTargets.forEach((t, index) => {
-        const row = { ...t, config: JSON.stringify(t.config), sortOrder: index };
+        const config = unmaskIntegrationConfig(t.integration, t.config, t.id !== undefined ? existingIntegrationConfigs.get(t.id) : undefined);
+        const row = { ...t, config: serializeIntegrationConfig(config), sortOrder: index };
         if (t.id !== undefined) {
           tx.update(integrationTargets)
             .set(row)

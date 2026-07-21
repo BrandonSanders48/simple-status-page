@@ -5,6 +5,7 @@ import { getIntegrationCatalogEntry } from "./integrationRegistry";
 import { getIntegrationCatalogMeta } from "./integrationCatalogMeta";
 import { getIgnoredKeys } from "./integrationIgnore";
 import { notifyIntegrationTransitions } from "./notifier";
+import { parseIntegrationConfig } from "./integrationTargets";
 import type { IntegrationStatus } from "./integrations/types";
 
 /** Same shape as an integration's own item, plus whether an admin has ignored it -
@@ -51,15 +52,6 @@ const TTL_MS = 60_000;
 let cache: { data: IntegrationsPayload; expiresAt: number } | null = null;
 let inflight: Promise<IntegrationsPayload> | null = null;
 
-function parseConfig(raw: string): Record<string, string> {
-  try {
-    const parsed = JSON.parse(raw);
-    return typeof parsed === "object" && parsed !== null ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
 /**
  * Marks each item ignored/not (per lib/integrationIgnore.ts) and recomputes `healthy`
  * from that, rather than trusting the integration's own `healthy` - every integration
@@ -99,7 +91,7 @@ async function computeIntegrations(): Promise<IntegrationsPayload> {
     enabledTargets.map(async (t) => {
       const entry = getIntegrationCatalogEntry(t.integration);
       const rawStatus: IntegrationStatus = entry
-        ? await entry.fetchStatus(parseConfig(t.config))
+        ? await entry.fetchStatus(parseIntegrationConfig(t.config))
         : { ok: false, error: `Unknown integration "${t.integration}"`, diagnostics: [], healthy: false, summary: "", items: [] };
       const status = applyIgnores(t.id, rawStatus);
       return { id: t.id, integration: t.integration, name: t.name, status };

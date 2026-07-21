@@ -3,6 +3,7 @@ import { db } from "./db/client";
 import { integrationTargets } from "./db/schema";
 import { fetchPowerstoreStatus, type PowerstoreStatus } from "./integrations/powerstore";
 import { fetchProxmoxStorageStatus, type ProxmoxStatus } from "./integrations/proxmox";
+import { parseIntegrationConfig } from "./integrationTargets";
 
 export interface PowerstoreTargetPayload {
   id: number;
@@ -29,15 +30,6 @@ const TTL_MS = 60_000;
 let cache: { data: StoragePayload; expiresAt: number } | null = null;
 let inflight: Promise<StoragePayload> | null = null;
 
-function parseConfig(raw: string): Record<string, string> {
-  try {
-    const parsed = JSON.parse(raw);
-    return typeof parsed === "object" && parsed !== null ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
 /** Multiple PowerStore arrays / Proxmox clusters can be monitored at once (e.g. a main
  * site and a DR site) - each enabled target is queried independently and shown as its
  * own named card, so one target being unreachable never hides the others. There's no
@@ -60,7 +52,7 @@ async function computeStorage(): Promise<StoragePayload> {
   const [powerstores, proxmoxes] = await Promise.all([
     Promise.all(
       psTargets.map(async (t) => {
-        const cfg = parseConfig(t.config);
+        const cfg = parseIntegrationConfig(t.config);
         return {
           id: t.id,
           name: t.name,
@@ -71,7 +63,7 @@ async function computeStorage(): Promise<StoragePayload> {
     ),
     Promise.all(
       pveTargets.map(async (t) => {
-        const cfg = parseConfig(t.config);
+        const cfg = parseIntegrationConfig(t.config);
         return {
           id: t.id,
           name: t.name,
