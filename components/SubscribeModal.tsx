@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { StatusServicePayload, SitePayload } from "@/lib/statusCache";
 import { getIntegrationCatalogMeta } from "@/lib/integrationCatalogMeta";
+import { getSavedSubscriberEmail, saveSubscriberEmail } from "@/lib/subscriberEmail";
 
 interface IntegrationTargetOption {
   id: number;
@@ -28,7 +29,7 @@ export default function SubscribeModal({
   onManage: () => void;
 }) {
   const [mode, setMode] = useState<Mode>("everything");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(getSavedSubscriberEmail);
   const [selectedServices, setSelectedServices] = useState<Set<number>>(new Set());
   const [selectedSites, setSelectedSites] = useState<Set<number>>(new Set());
   const [selectedTargets, setSelectedTargets] = useState<Set<number>>(new Set());
@@ -92,7 +93,7 @@ export default function SubscribeModal({
       const data = await res.json();
       setMessage({ ok: res.ok, text: data.message || (res.ok ? "Subscribed!" : "Failed to subscribe.") });
       if (res.ok) {
-        setEmail("");
+        saveSubscriberEmail(email);
         setSelectedServices(new Set());
         setSelectedSites(new Set());
         setSelectedTargets(new Set());

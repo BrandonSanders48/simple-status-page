@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getSavedSubscriberEmail, saveSubscriberEmail } from "@/lib/subscriberEmail";
 
 interface ServiceSubscription {
   serviceId: number;
@@ -26,15 +27,15 @@ export default function ManageSubscriptionsModal({
   onClose: () => void;
   onBack: () => void;
 }) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(getSavedSubscriberEmail);
   const [subscriptions, setSubscriptions] = useState<ServiceSubscription[] | null>(null);
   const [siteSubscriptions, setSiteSubscriptions] = useState<SiteSubscription[] | null>(null);
   const [integrationSubscriptions, setIntegrationSubscriptions] = useState<IntegrationSubscription[] | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function lookup() {
-    if (!email.trim()) {
+  async function lookup(emailToLookUp: string) {
+    if (!emailToLookUp.trim()) {
       setMessage("Please enter your email address.");
       return;
     }
@@ -44,19 +45,28 @@ export default function ManageSubscriptionsModal({
       const res = await fetch("/api/subscriptions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: emailToLookUp }),
       });
       const data = await res.json();
       setSubscriptions(data.subscriptions ?? []);
       setSiteSubscriptions(data.siteSubscriptions ?? []);
       setIntegrationSubscriptions(data.integrationSubscriptions ?? []);
       if (data.message) setMessage(data.message);
+      saveSubscriberEmail(emailToLookUp);
     } catch {
       setMessage("Failed to look up subscriptions.");
     } finally {
       setLoading(false);
     }
   }
+
+  // A remembered email (from a previous subscribe/lookup) is looked up automatically
+  // on open, so reopening this modal shows current subscriptions immediately instead
+  // of requiring the visitor to retype their email and click Look Up every time.
+  useEffect(() => {
+    if (email) lookup(email);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function unsubscribeOne(serviceId: number) {
     const res = await fetch("/api/unsubscribe", {
@@ -136,13 +146,13 @@ export default function ManageSubscriptionsModal({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && lookup()}
+            onKeyDown={(e) => e.key === "Enter" && lookup(email)}
             placeholder="you@example.com"
             className="flex-1 px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700/50 text-sm"
           />
           <button
             type="button"
-            onClick={lookup}
+            onClick={() => lookup(email)}
             disabled={loading}
             className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg disabled:opacity-60"
           >
