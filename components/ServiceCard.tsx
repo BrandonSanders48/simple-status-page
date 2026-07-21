@@ -10,7 +10,18 @@ interface DayUptime {
   upPercent: number | null;
 }
 
-export default function ServiceCard({ service, uptime }: { service: StatusServicePayload; uptime?: DayUptime[] }) {
+export default function ServiceCard({
+  service,
+  uptime,
+  siteName,
+}: {
+  service: StatusServicePayload;
+  uptime?: DayUptime[];
+  /** Shown as a small muted subtitle under the service name -- only passed when
+   * services aren't already grouped under a site header (see ServicesPanel.tsx's
+   * groupBySite setting), so the site isn't lost entirely in the flat view. */
+  siteName?: string | null;
+}) {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   useEffect(() => {
@@ -33,7 +44,10 @@ export default function ServiceCard({ service, uptime }: { service: StatusServic
       title={tipLines.join("\n")}
     >
       <div className="flex items-start justify-between gap-1.5 mb-2">
-        <h5 className="font-semibold text-xs text-slate-800 dark:text-slate-100 leading-tight">{service.name}</h5>
+        <div className="min-w-0">
+          <h5 className="font-semibold text-xs text-slate-800 dark:text-slate-100 leading-tight">{service.name}</h5>
+          {siteName && <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight mt-0.5">{siteName}</p>}
+        </div>
         {service.up ? (
           <span className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
             <span className="w-1.5 h-1.5 rounded-full bg-current" /> Up
@@ -49,7 +63,7 @@ export default function ServiceCard({ service, uptime }: { service: StatusServic
           {service.adChecks.map((c) => (
             <span
               key={c.name}
-              title={`${c.name} (${c.port}): ${c.ok ? "OK" : "Failed"}`}
+              title={`${c.name} (${c.ports.join("/")}): ${c.ok ? "OK" : "Failed"}`}
               className={`flex-shrink-0 whitespace-nowrap inline-block text-[9.5px] font-medium px-1.5 py-0.5 rounded-full ${
                 c.ok
                   ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
@@ -61,7 +75,13 @@ export default function ServiceCard({ service, uptime }: { service: StatusServic
           ))}
         </div>
       ) : (
-        <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-200">
+        <span
+          className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${
+            service.up
+              ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+              : "bg-red-50 dark:bg-red-500/20 text-red-700 dark:text-red-300"
+          }`}
+        >
           {service.type}
         </span>
       )}

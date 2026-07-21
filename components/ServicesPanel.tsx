@@ -150,7 +150,12 @@ export default function ServicesPanel({
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
             {shown.map((s) => (
-              <ServiceCard key={s.id} service={s} uptime={uptimeByService?.[s.id]} />
+              <ServiceCard
+                key={s.id}
+                service={s}
+                uptime={uptimeByService?.[s.id]}
+                siteName={s.siteId !== null ? (siteById.get(s.siteId)?.name ?? null) : null}
+              />
             ))}
           </div>
           {hiddenCount > 0 && (

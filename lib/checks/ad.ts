@@ -10,7 +10,7 @@ export function isAdType(type: string): boolean {
 
 export interface AdCheckResult {
   name: string;
-  port: number;
+  ports: number[];
   ok: boolean;
 }
 
@@ -19,14 +19,16 @@ export interface AdCheckResult {
  * NPS/RADIUS are deliberately excluded here (unlike the ad-hoc Test Network tool) -
  * not every DC is configured as a time source or a RADIUS server, so including them
  * would flag perfectly healthy DCs as down; these are safe to require on any real
- * domain controller. */
-const AD_TCP_CHECKS: { name: string; port: number }[] = [
-  { name: "Kerberos", port: 88 },
-  { name: "LDAP", port: 389 },
-  { name: "LDAPS", port: 636 },
-  { name: "SMB", port: 445 },
-  { name: "Global Catalog", port: 3268 },
-  { name: "Global Catalog (SSL)", port: 3269 },
+ * domain controller. LDAP/LDAPS (389/636) and Global Catalog/Global Catalog SSL
+ * (3268/3269) are each shown as a single tag on the public service card (see
+ * ServiceCard.tsx) rather than one tag per port -- both ports in a pair still get
+ * checked, "ok" just requires both, so a card with several AD services doesn't end up
+ * with 7 crowded tags each when 5 says the same thing more readably. */
+const AD_TCP_CHECKS: { name: string; ports: number[] }[] = [
+  { name: "Kerberos", ports: [88] },
+  { name: "LDAP", ports: [389, 636] },
+  { name: "SMB", ports: [445] },
+  { name: "Global Catalog", ports: [3268, 3269] },
 ];
 
 /**
@@ -39,14 +41,17 @@ const AD_TCP_CHECKS: { name: string; port: number }[] = [
  * piece failed, rather than just an opaque "down".
  */
 export async function checkActiveDirectoryDetailed(host: string): Promise<{ up: boolean; checks: AdCheckResult[] }> {
-  const [dnsOk, ...tcpResults] = await Promise.all([
+  const [dnsOk, ...groupResults] = await Promise.all([
     checkDns(host, 53),
-    ...AD_TCP_CHECKS.map((c) => checkTcp(host, c.port)),
+    ...AD_TCP_CHECKS.map(async (c) => {
+      const portResults = await Promise.all(c.ports.map((p) => checkTcp(host, p)));
+      return portResults.every(Boolean);
+    }),
   ]);
 
   const checks: AdCheckResult[] = [
-    { name: "DNS", port: 53, ok: dnsOk },
-    ...AD_TCP_CHECKS.map((c, i) => ({ name: c.name, port: c.port, ok: tcpResults[i]! })),
+    { name: "DNS", ports: [53], ok: dnsOk },
+    ...AD_TCP_CHECKS.map((c, i) => ({ name: c.name, ports: c.ports, ok: groupResults[i]! })),
   ];
 
   return { up: checks.every((c) => c.ok), checks };
