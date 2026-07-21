@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 
-interface Subscription {
+interface ServiceSubscription {
   serviceId: number;
   serviceName: string;
+}
+
+interface SiteSubscription {
+  siteId: number;
+  siteName: string;
 }
 
 export default function ManageSubscriptionsModal({
@@ -17,7 +22,8 @@ export default function ManageSubscriptionsModal({
   onBack: () => void;
 }) {
   const [email, setEmail] = useState("");
-  const [subscriptions, setSubscriptions] = useState<Subscription[] | null>(null);
+  const [subscriptions, setSubscriptions] = useState<ServiceSubscription[] | null>(null);
+  const [siteSubscriptions, setSiteSubscriptions] = useState<SiteSubscription[] | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +42,7 @@ export default function ManageSubscriptionsModal({
       });
       const data = await res.json();
       setSubscriptions(data.subscriptions ?? []);
+      setSiteSubscriptions(data.siteSubscriptions ?? []);
       if (data.message) setMessage(data.message);
     } catch {
       setMessage("Failed to look up subscriptions.");
@@ -57,6 +64,19 @@ export default function ManageSubscriptionsModal({
     setMessage(data.message || "");
   }
 
+  async function unsubscribeOneSite(siteId: number) {
+    const res = await fetch("/api/unsubscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ email, action: "unsubscribe_single_site", siteId }),
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      setSiteSubscriptions((prev) => (prev ? prev.filter((s) => s.siteId !== siteId) : prev));
+    }
+    setMessage(data.message || "");
+  }
+
   async function unsubscribeAll() {
     const res = await fetch("/api/unsubscribe", {
       method: "POST",
@@ -65,8 +85,13 @@ export default function ManageSubscriptionsModal({
     });
     const data = await res.json();
     setMessage(data.message || "");
-    if (data.status === "success") setSubscriptions([]);
+    if (data.status === "success") {
+      setSubscriptions([]);
+      setSiteSubscriptions([]);
+    }
   }
+
+  const hasAny = (subscriptions?.length ?? 0) > 0 || (siteSubscriptions?.length ?? 0) > 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
@@ -105,31 +130,56 @@ export default function ManageSubscriptionsModal({
 
         {message && <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">{message}</p>}
 
-        {subscriptions && (
-          <div className="mb-4">
-            {subscriptions.length === 0 ? (
+        {(siteSubscriptions || subscriptions) && (
+          <div className="mb-4 space-y-3">
+            {siteSubscriptions && siteSubscriptions.length > 0 && (
+              <div>
+                <p className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Sites</p>
+                <ul className="space-y-2 max-h-40 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40">
+                  {siteSubscriptions.map((sub) => (
+                    <li key={sub.siteId} className="flex items-center justify-between px-3 py-2.5">
+                      <span className="text-sm text-slate-800 dark:text-slate-200 font-medium">{sub.siteName}</span>
+                      <button
+                        type="button"
+                        onClick={() => unsubscribeOneSite(sub.siteId)}
+                        className="text-xs bg-red-50 dark:bg-red-500/25 hover:bg-red-100 dark:hover:bg-red-500/40 text-red-600 dark:text-red-300 px-2.5 py-1 rounded-md font-medium"
+                      >
+                        Unsubscribe
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {subscriptions && subscriptions.length > 0 && (
+              <div>
+                <p className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Services</p>
+                <ul className="space-y-2 max-h-56 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40">
+                  {subscriptions.map((sub) => (
+                    <li key={sub.serviceId} className="flex items-center justify-between px-3 py-2.5">
+                      <span className="text-sm text-slate-800 dark:text-slate-200 font-medium">{sub.serviceName}</span>
+                      <button
+                        type="button"
+                        onClick={() => unsubscribeOne(sub.serviceId)}
+                        className="text-xs bg-red-50 dark:bg-red-500/25 hover:bg-red-100 dark:hover:bg-red-500/40 text-red-600 dark:text-red-300 px-2.5 py-1 rounded-md font-medium"
+                      >
+                        Unsubscribe
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {!hasAny && (subscriptions !== null || siteSubscriptions !== null) && (
               <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-3">No active subscriptions found.</p>
-            ) : (
-              <ul className="space-y-2 max-h-56 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40">
-                {subscriptions.map((sub) => (
-                  <li key={sub.serviceId} className="flex items-center justify-between px-3 py-2.5">
-                    <span className="text-sm text-slate-800 dark:text-slate-200 font-medium">{sub.serviceName}</span>
-                    <button
-                      type="button"
-                      onClick={() => unsubscribeOne(sub.serviceId)}
-                      className="text-xs bg-red-50 dark:bg-red-500/25 hover:bg-red-100 dark:hover:bg-red-500/40 text-red-600 dark:text-red-300 px-2.5 py-1 rounded-md font-medium"
-                    >
-                      Unsubscribe
-                    </button>
-                  </li>
-                ))}
-              </ul>
             )}
           </div>
         )}
 
         <div className="flex items-center justify-between gap-2">
-          {subscriptions && subscriptions.length > 0 ? (
+          {hasAny ? (
             <button
               type="button"
               onClick={unsubscribeAll}

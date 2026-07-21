@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { subscriptions } from "@/lib/db/schema";
+import { subscriptions, siteSubscriptions } from "@/lib/db/schema";
 import { verifyCsrf } from "@/lib/csrf";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 
@@ -24,16 +24,18 @@ export async function POST(request: Request) {
   const email = typeof body?.email === "string" ? body.email.trim() : "";
   const action = typeof body?.action === "string" ? body.action : "";
   const serviceId = Number(body?.serviceId);
+  const siteId = Number(body?.siteId);
 
   if (!isValidEmail(email)) {
     return NextResponse.json({ status: "error", message: "Invalid email address." }, { status: 400 });
   }
 
   if (action === "unsubscribe") {
-    const deleted = db.delete(subscriptions).where(eq(subscriptions.email, email)).returning().all();
+    const deletedServices = db.delete(subscriptions).where(eq(subscriptions.email, email)).returning().all();
+    const deletedSites = db.delete(siteSubscriptions).where(eq(siteSubscriptions.email, email)).returning().all();
     return NextResponse.json({
       status: "success",
-      message: deleted.length > 0 ? "Unsubscribed from all services." : "No subscriptions to remove.",
+      message: deletedServices.length + deletedSites.length > 0 ? "Unsubscribed from all services and sites." : "No subscriptions to remove.",
       action: "unsubscribe",
     });
   }
@@ -50,6 +52,22 @@ export async function POST(request: Request) {
     return NextResponse.json({
       status: "success",
       message: deleted.length > 0 ? "Unsubscribed from that service." : "No subscription found for that service.",
+      action: "unsubscribe",
+    });
+  }
+
+  if (action === "unsubscribe_single_site") {
+    if (!Number.isInteger(siteId)) {
+      return NextResponse.json({ status: "error", message: "Invalid site." }, { status: 400 });
+    }
+    const deleted = db
+      .delete(siteSubscriptions)
+      .where(and(eq(siteSubscriptions.email, email), eq(siteSubscriptions.siteId, siteId)))
+      .returning()
+      .all();
+    return NextResponse.json({
+      status: "success",
+      message: deleted.length > 0 ? "Unsubscribed from that site." : "No subscription found for that site.",
       action: "unsubscribe",
     });
   }
