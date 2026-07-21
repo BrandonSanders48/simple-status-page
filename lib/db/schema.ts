@@ -307,6 +307,58 @@ export const integrationSubscriptions = sqliteTable(
   })
 );
 
+// Phone-number equivalents of subscriptions/siteSubscriptions/integrationSubscriptions
+// above, notified by SMS (via GoTo Connect - see lib/notifier.ts's sendGotoSms) instead
+// of email. Deliberately separate tables mirroring the email ones 1:1, rather than
+// adding a nullable phone column to those existing (already-populated, NOT NULL
+// email) tables - the same reasoning as siteSubscriptions being its own table instead
+// of a nullable column on `subscriptions`: no risky rebuild of an existing table just
+// to relax a NOT NULL constraint.
+export const phoneSubscriptions = sqliteTable(
+  "phone_subscriptions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    phone: text("phone").notNull(),
+    serviceId: integer("service_id")
+      .notNull()
+      .references(() => services.id, { onDelete: "cascade" }),
+    subscribedAt: text("subscribed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => ({
+    uniquePhoneService: uniqueIndex("uniq_phone_service").on(t.phone, t.serviceId),
+  })
+);
+
+export const sitePhoneSubscriptions = sqliteTable(
+  "site_phone_subscriptions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    phone: text("phone").notNull(),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    subscribedAt: text("subscribed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => ({
+    uniquePhoneSite: uniqueIndex("uniq_phone_site").on(t.phone, t.siteId),
+  })
+);
+
+export const integrationPhoneSubscriptions = sqliteTable(
+  "integration_phone_subscriptions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    phone: text("phone").notNull(),
+    targetId: integer("target_id")
+      .notNull()
+      .references(() => integrationTargets.id, { onDelete: "cascade" }),
+    subscribedAt: text("subscribed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => ({
+    uniquePhoneTarget: uniqueIndex("uniq_phone_target").on(t.phone, t.targetId),
+  })
+);
+
 export const serviceStatus = sqliteTable("service_status", {
   serviceId: integer("service_id")
     .primaryKey()
