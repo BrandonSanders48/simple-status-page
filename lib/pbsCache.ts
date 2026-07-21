@@ -30,7 +30,7 @@ function parseConfig(raw: string): Record<string, string> {
 
 /** Overlays this target's acknowledged-task ids onto a freshly fetched status, then
  * recomputes lastRunHealthy so a cleared failure stops flipping the target (and the
- * Backups tab badge) to unhealthy -- while still showing the task itself in the list. */
+ * Backups tab badge) to unhealthy - while still showing the task itself in the list. */
 function applyAcknowledgments(targetId: number, status: PbsStatus): PbsStatus {
   if (status.tasks.length === 0) return status;
   const acked = new Set(

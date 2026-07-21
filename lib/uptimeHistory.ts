@@ -22,7 +22,7 @@ function parseSqliteTimestamp(value: string): number {
  * Computes daily uptime percentage per service for the last `days` days, from the
  * closed-outage log plus any currently-ongoing outage. Limited by the same 200-row
  * outage_log retention the rest of the app uses, so very old days may read as 100%
- * once their outage record has been trimmed -- an existing, accepted tradeoff, not
+ * once their outage record has been trimmed - an existing, accepted tradeoff, not
  * something new introduced here.
  */
 export function computeUptimeHistory(days: number): Record<number, DayUptime[]> {

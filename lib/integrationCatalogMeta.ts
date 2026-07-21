@@ -3,7 +3,7 @@ import type { IntegrationCatalogEntry } from "./integrations/types";
 export type IntegrationCatalogMeta = Omit<IntegrationCatalogEntry, "fetchStatus">;
 
 /**
- * Client-safe catalog metadata -- no fetch functions here (those live in
+ * Client-safe catalog metadata - no fetch functions here (those live in
  * lib/integrationRegistry.ts, server-only, since they pull in undici/insecureAgent).
  * Both the admin marketplace UI and lib/integrationRegistry.ts import this same list
  * so the field/label definitions never drift between the two.
@@ -12,7 +12,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
   {
     key: "powerstore",
     label: "Dell PowerStore",
-    description: "Management IP/hostname and a read-only account for each array's REST API -- health, active alerts, and Metro replication status.",
+    description: "Management IP/hostname and a read-only account for each array's REST API - health, active alerts, and Metro replication status.",
     icon: "fa-database",
     color: "text-cyan-500",
     logo: "/logos/dell.svg",
@@ -27,7 +27,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
   {
     key: "proxmox",
     label: "Proxmox",
-    description: "Cluster API endpoint and an API token -- node/quorum health and how the cluster sees its storage. Add one target per cluster, e.g. a main site and a DR site.",
+    description: "Cluster API endpoint and an API token - node/quorum health and how the cluster sees its storage. Add one target per cluster, e.g. a main site and a DR site.",
     icon: "fa-cubes",
     color: "text-orange-500",
     logo: "/logos/proxmox.svg",
@@ -43,7 +43,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
   {
     key: "pbs",
     label: "Proxmox Backup Server",
-    description: "API endpoint and token for each PBS instance -- whether the most recent backup run completed without errors.",
+    description: "API endpoint and token for each PBS instance - whether the most recent backup run completed without errors.",
     icon: "fa-box-archive",
     color: "text-lime-600",
     logo: "/logos/proxmox.svg",
@@ -57,7 +57,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
   {
     key: "unifi",
     label: "UniFi",
-    description: "Local UniFi Network controller (standalone or a UniFi OS console) -- subsystem health and device online/offline counts.",
+    description: "Local UniFi Network controller (standalone or a UniFi OS console) - subsystem health and device online/offline counts.",
     icon: "fa-wifi",
     color: "text-sky-500",
     logo: "/logos/unifi.svg",
@@ -71,7 +71,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
   {
     key: "sophos_central",
     label: "Sophos Central",
-    description: "Cloud-managed endpoint/firewall security -- device health and active alerts.",
+    description: "Cloud-managed endpoint/firewall security - device health and active alerts.",
     icon: "fa-shield-halved",
     color: "text-emerald-600",
     logo: "/logos/sophos.svg",
@@ -84,7 +84,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
   {
     key: "sophos_xgs",
     label: "Sophos XGS Firewall",
-    description: "On-prem Sophos Firewall (XGS series) -- device status and active alerts.",
+    description: "On-prem Sophos Firewall (XGS series) - device status and active alerts.",
     icon: "fa-fire-flame-curved",
     color: "text-red-500",
     logo: "/logos/sophos.svg",
@@ -97,7 +97,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
   {
     key: "goto_connect",
     label: "GoTo Connect",
-    description: "Hosted phone system -- line/extension and system status.",
+    description: "Hosted phone system - line/extension and system status.",
     icon: "fa-phone",
     color: "text-orange-500",
     logo: "/logos/goto.svg",
@@ -112,7 +112,7 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
   {
     key: "meraki",
     label: "Cisco Meraki",
-    description: "Cloud-managed switches/APs/security appliances -- device online/offline/alerting status across an organization.",
+    description: "Cloud-managed switches/APs/security appliances - device online/offline/alerting status across an organization.",
     icon: "fa-network-wired",
     color: "text-sky-600",
     logo: "/logos/meraki.svg",

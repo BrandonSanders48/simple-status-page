@@ -1,7 +1,7 @@
 import { checkDns } from "./dns";
 import { checkTcp } from "./tcp";
 
-/** `type` matches exactly "ad" (case-insensitive, trimmed) -- not a substring test
+/** `type` matches exactly "ad" (case-insensitive, trimmed) - not a substring test
  * like isHttpType/isDnsType use, since "ad" is short enough to false-positive inside
  * unrelated type strings (e.g. "radius", "load"). */
 export function isAdType(type: string): boolean {
@@ -16,7 +16,7 @@ export interface AdCheckResult {
 
 /** The definitive, (almost) always-present ports on a real domain controller: name
  * resolution, Kerberos auth, LDAP/LDAPS directory, SMB, and Global Catalog. NTP and
- * NPS/RADIUS are deliberately excluded here (unlike the ad-hoc Test Network tool) --
+ * NPS/RADIUS are deliberately excluded here (unlike the ad-hoc Test Network tool) -
  * not every DC is configured as a time source or a RADIUS server, so including them
  * would flag perfectly healthy DCs as down; these are safe to require on any real
  * domain controller. */
@@ -31,7 +31,7 @@ const AD_TCP_CHECKS: { name: string; port: number }[] = [
 
 /**
  * Active Directory service health, with a per-check breakdown: up only if every one
- * of the core AD ports responds -- DNS is a real query/response check (see
+ * of the core AD ports responds - DNS is a real query/response check (see
  * checkDns), the rest are TCP reachability (see checkTcp). The overall service tile
  * is still a single up/down (a missing LDAP is treated as the service being down,
  * same as this app's single up/down model for every other service type), but the

@@ -1,15 +1,17 @@
 "use client";
 
-import type { DraftService } from "@/lib/adminTypes";
+import type { DraftService, SiteRow } from "@/lib/adminTypes";
 import { tblInputCls } from "./styles";
 
 const MAX_SERVICES = 20;
 
 export default function ServicesTab({
   services,
+  sites,
   onChange,
 }: {
   services: DraftService[];
+  sites: SiteRow[];
   onChange: (s: DraftService[]) => void;
 }) {
   function update(index: number, patch: Partial<DraftService>) {
@@ -43,6 +45,7 @@ export default function ServicesTab({
         description: "",
         visible: true,
         sortOrder: services.length,
+        siteId: null,
       },
     ]);
   }
@@ -52,6 +55,7 @@ export default function ServicesTab({
       <p className="text-xs text-slate-400 mb-3">
         Leave Port blank for ICMP ping. Type &quot;http&quot;/&quot;https&quot;/&quot;dns&quot; enables real protocol checks. Type &quot;ad&quot; checks a
         domain controller&apos;s core ports (DNS, Kerberos, LDAP/LDAPS, SMB, Global Catalog) and ignores Port.
+        {sites.length > 0 && " Assign a Site to group services and tell a site-wide tunnel outage apart from one service failing on its own."}
       </p>
       <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-xl px-3">
         <table className="w-full text-left border-collapse">
@@ -62,6 +66,7 @@ export default function ServicesTab({
               <th className="py-2 pr-2">Host / IP</th>
               <th className="py-2 pr-2 w-20">Port</th>
               <th className="py-2 pr-2 w-24">Type</th>
+              {sites.length > 0 && <th className="py-2 pr-2 w-32">Site</th>}
               <th className="py-2 pr-2">Description</th>
               <th className="py-2 pr-2 w-14 text-center">Show</th>
               <th className="py-2 w-10"><span className="sr-only">Remove</span></th>
@@ -99,6 +104,23 @@ export default function ServicesTab({
                 <td className="py-1 pr-2">
                   <input aria-label="Type" className={tblInputCls} value={svc.type} onChange={(e) => update(i, { type: e.target.value })} />
                 </td>
+                {sites.length > 0 && (
+                  <td className="py-1 pr-2">
+                    <select
+                      aria-label="Site"
+                      className={tblInputCls}
+                      value={svc.siteId ?? ""}
+                      onChange={(e) => update(i, { siteId: e.target.value === "" ? null : Number(e.target.value) })}
+                    >
+                      <option value="">-- None --</option>
+                      {sites.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                )}
                 <td className="py-1 pr-2">
                   <input
                     aria-label="Description"

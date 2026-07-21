@@ -7,7 +7,7 @@ import { getIntegrationTarget } from "@/lib/integrationTargets";
 import { invalidatePbsCache } from "@/lib/pbsCache";
 
 /** Clears (acknowledges) a failed PBS backup task from the admin-only "Clear" button
- * on the public Backups panel -- it stops counting toward that target's Last Run
+ * on the public Backups panel - it stops counting toward that target's Last Run
  * Failed health/tab badge, but stays in the list as a record of what happened. */
 export async function POST(request: Request) {
   if (!(await requireAuth())) {

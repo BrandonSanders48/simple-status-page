@@ -97,7 +97,7 @@ function rowsOf(result: GetResult): JsonRecord[] {
  * Queries a UniFi controller (local Network Application, either standalone or a
  * UniFi OS console) for subsystem health and device online/offline counts, using
  * cookie session auth: https://demo.ui.com/ (API reverse-engineered from community
- * documentation -- there's no official public API reference for the Network app, so
+ * documentation - there's no official public API reference for the Network app, so
  * treat field names here as best-effort and check `diagnostics` if something's off).
  */
 export async function fetchUnifiStatus(config: Record<string, string>): Promise<IntegrationStatus> {
@@ -137,9 +137,9 @@ export async function fetchUnifiStatus(config: Record<string, string>): Promise<
   for (const subsystem of healthRows) {
     const name = typeof subsystem.subsystem === "string" ? subsystem.subsystem : "subsystem";
     // A missing `status` field, or UniFi's own literal "unknown" value, both mean "no
-    // definitive reading for this subsystem" -- e.g. wan/www/vpn commonly report
+    // definitive reading for this subsystem" - e.g. wan/www/vpn commonly report
     // "unknown" on a controller that doesn't use failover WAN or a VPN, not that
-    // anything is actually down -- so neither counts against health. Only a status
+    // anything is actually down - so neither counts against health. Only a status
     // that's actually present and isn't "ok"/"unknown" is a real problem.
     const rawStatus = typeof subsystem.status === "string" ? subsystem.status : null;
     if (rawStatus === null || rawStatus.toLowerCase() === "unknown") {

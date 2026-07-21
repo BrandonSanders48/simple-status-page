@@ -1,44 +1,134 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/useSession";
-import type { FullConfig, SettingsRow, DraftService, IspMapRow, StatusCategoryRow } from "@/lib/adminTypes";
+import type { FullConfig, SettingsRow, DraftService, DraftSite, SiteRow, IspMapRow, StatusCategoryRow } from "@/lib/adminTypes";
 import GeneralTab from "./GeneralTab";
 import ServicesTab from "./ServicesTab";
+import SitesTab from "./SitesTab";
 import RssTab, { type DraftFeed } from "./RssTab";
 import NetworkTab from "./NetworkTab";
 import NotificationsTab from "./NotificationsTab";
 import SslTab from "./SslTab";
 import StatusCategoriesTab from "./StatusCategoriesTab";
 
-const SECTIONS = [
-  { key: "general", label: "General", icon: "fa-sliders", color: "text-emerald-500" },
-  { key: "services", label: "Services", icon: "fa-server", color: "text-indigo-500" },
-  { key: "categories", label: "Status Labels", icon: "fa-tags", color: "text-pink-500" },
-  { key: "rss", label: "RSS Feeds", icon: "fa-rss", color: "text-orange-500" },
-  { key: "network", label: "Network", icon: "fa-network-wired", color: "text-sky-500" },
-  { key: "notifications", label: "Notifications", icon: "fa-bell", color: "text-violet-500" },
-  { key: "ssl", label: "SSL", icon: "fa-lock", color: "text-emerald-500" },
-] as const;
+interface SidebarItem {
+  key: string;
+  label: string;
+  icon: string;
+  color: string;
+  description: string;
+  /** Present only for the Integrations item -- it lives on its own page (its own save
+   * endpoint) rather than as a section here, so it navigates instead of switching. */
+  href?: string;
+}
 
-/** Lives on its own page (/admin/integrations, its own save endpoint) rather than as
- * a scrolling section here -- linked from the sidebar like the other sections, but
- * navigates instead of scrolling. */
-const INTEGRATIONS_LINK = { label: "Integrations", icon: "fa-store", color: "text-fuchsia-500", href: "/admin/integrations" } as const;
+/** Grouped by what an admin is actually trying to do, rather than one flat list of 8+
+ * items -- each category is a small uppercase label in the sidebar, and clicking an
+ * item swaps the entire content pane to just that section (no more scrolling past
+ * unrelated settings to find one field). */
+const CATEGORIES: { label: string; items: SidebarItem[] }[] = [
+  {
+    label: "Site & Branding",
+    items: [
+      {
+        key: "general",
+        label: "General",
+        icon: "fa-sliders",
+        color: "text-emerald-500",
+        description: "Business name, logo, contact details, SLA reporting, and general behaviour.",
+      },
+    ],
+  },
+  {
+    label: "Monitoring",
+    items: [
+      {
+        key: "sites",
+        label: "Sites",
+        icon: "fa-building",
+        color: "text-cyan-500",
+        description: "Group services by physical or network site, with an optional per-site tunnel/link check.",
+      },
+      {
+        key: "services",
+        label: "Services",
+        icon: "fa-server",
+        color: "text-indigo-500",
+        description: "The internal hosts and services checked and shown on the status page.",
+      },
+      {
+        key: "categories",
+        label: "Status Labels",
+        icon: "fa-tags",
+        color: "text-pink-500",
+        description: "Customize the labels and colors used for status indicators.",
+      },
+      {
+        key: "network",
+        label: "Network",
+        icon: "fa-network-wired",
+        color: "text-sky-500",
+        description: "Gateway/DNS checks and ISP detection for the Local-Area and Wide-Area status rows.",
+      },
+      {
+        key: "integrations",
+        label: "Integrations",
+        icon: "fa-store",
+        color: "text-fuchsia-500",
+        description: "",
+        href: "/admin/integrations",
+      },
+    ],
+  },
+  {
+    label: "Alerts",
+    items: [
+      {
+        key: "notifications",
+        label: "Notifications",
+        icon: "fa-bell",
+        color: "text-violet-500",
+        description: "Email and webhook alerts sent when a service or integration changes status.",
+      },
+      {
+        key: "rss",
+        label: "RSS Feeds",
+        icon: "fa-rss",
+        color: "text-orange-500",
+        description: "External RSS feeds displayed alongside the status page.",
+      },
+    ],
+  },
+  {
+    label: "Advanced",
+    items: [
+      {
+        key: "ssl",
+        label: "SSL",
+        icon: "fa-lock",
+        color: "text-emerald-500",
+        description: "Manage the HTTPS certificate used to serve this status page.",
+      },
+    ],
+  },
+];
+
+const SECTIONS = CATEGORIES.flatMap((c) => c.items.filter((i) => !i.href).map((i) => ({ ...i, category: c.label })));
 
 export default function AdminDashboard() {
   const { session } = useSession();
-  const [activeKey, setActiveKey] = useState<string>(SECTIONS[0].key);
+  const [activeKey, setActiveKey] = useState<string>(SECTIONS[0]!.key);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<SettingsRow | null>(null);
   const [services, setServices] = useState<DraftService[]>([]);
+  const [sites, setSites] = useState<DraftSite[]>([]);
   const [rssFeeds, setRssFeeds] = useState<DraftFeed[]>([]);
   const [ispMap, setIspMap] = useState<IspMapRow[]>([]);
   const [statusCategories, setStatusCategories] = useState<StatusCategoryRow[]>([]);
   const [saveState, setSaveState] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
-  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,6 +137,7 @@ export default function AdminDashboard() {
       const data: FullConfig = await res.json();
       setSettings(data.settings);
       setServices(data.services);
+      setSites(data.sites);
       setRssFeeds(data.rssFeeds);
       setIspMap(data.ispMap);
       setStatusCategories(data.statusCategories);
@@ -58,27 +149,6 @@ export default function AdminDashboard() {
     load();
   }, [load]);
 
-  // Highlight the sidebar link for whichever section is currently in view.
-  useEffect(() => {
-    if (loading) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setActiveKey(visible[0].target.id);
-      },
-      { rootMargin: "-96px 0px -70% 0px", threshold: 0 }
-    );
-    for (const key of Object.keys(sectionRefs.current)) {
-      const el = sectionRefs.current[key];
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
-  }, [loading]);
-
-  function scrollToSection(key: string) {
-    sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   async function handleSave() {
     if (!settings || !session) return;
     setSaving(true);
@@ -87,7 +157,7 @@ export default function AdminDashboard() {
     const { id: _id, updatedAt: _updatedAt, configVersion: _configVersion, businessLogoPath: _logo, ...settingsInput } = settings;
     const payload = {
       settings: settingsInput,
-      services: services.map(({ id, name, host, port, type, description, visible }) => ({
+      services: services.map(({ id, name, host, port, type, description, visible, siteId }) => ({
         id,
         name,
         host,
@@ -95,7 +165,9 @@ export default function AdminDashboard() {
         type,
         description,
         visible,
+        siteId,
       })),
+      sites: sites.map(({ id, name, tunnelHost, tunnelPort }) => ({ id, name, tunnelHost, tunnelPort })),
       rssFeeds: rssFeeds.map(({ name, host, tag, description }) => ({ name, host, tag, description })),
       ispMap: ispMap.map(({ ip, name }) => ({ ip, name })),
       statusCategories: statusCategories.map(({ key, label, color }) => ({ key, label, color })),
@@ -113,6 +185,7 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error(data.error || "Failed to save.");
       setSettings(data.settings);
       setServices(data.services);
+      setSites(data.sites);
       setRssFeeds(data.rssFeeds);
       setIspMap(data.ispMap);
       setStatusCategories(data.statusCategories);
@@ -133,10 +206,31 @@ export default function AdminDashboard() {
     );
   }
 
+  const current = SECTIONS.find((s) => s.key === activeKey) ?? SECTIONS[0]!;
+
+  const Comp =
+    current.key === "general" ? (
+      <GeneralTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
+    ) : current.key === "sites" ? (
+      <SitesTab sites={sites} onChange={setSites} settings={settings} onSettingsChange={setSettings} />
+    ) : current.key === "services" ? (
+      <ServicesTab services={services} sites={sites.filter((s): s is SiteRow => s.id !== undefined)} onChange={setServices} />
+    ) : current.key === "categories" ? (
+      <StatusCategoriesTab categories={statusCategories} onChange={setStatusCategories} />
+    ) : current.key === "rss" ? (
+      <RssTab feeds={rssFeeds} onChange={setRssFeeds} />
+    ) : current.key === "network" ? (
+      <NetworkTab settings={settings} onChange={setSettings} ispMap={ispMap} onIspChange={setIspMap} />
+    ) : current.key === "notifications" ? (
+      <NotificationsTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
+    ) : (
+      <SslTab csrfToken={session.csrfToken} />
+    );
+
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-[#0d1b30]">
       {/* Sidebar */}
-      <aside className="w-60 flex-shrink-0 sticky top-0 h-screen border-r border-slate-200 dark:border-slate-800/70 bg-white dark:bg-slate-900 flex flex-col">
+      <aside className="w-64 flex-shrink-0 sticky top-0 h-screen border-r border-slate-200 dark:border-slate-800/70 bg-white dark:bg-slate-900 flex flex-col">
         <div className="h-14 flex items-center px-5 border-b border-slate-100 dark:border-slate-800/70">
           <Link
             href="/"
@@ -146,30 +240,41 @@ export default function AdminDashboard() {
           </Link>
         </div>
 
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-          {SECTIONS.map((s) => (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => scrollToSection(s.key)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                activeKey === s.key
-                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
-              }`}
-            >
-              <i className={`fa-solid ${s.icon} w-4 text-center ${activeKey === s.key ? "text-indigo-500" : s.color}`} />
-              {s.label}
-            </button>
+        <nav className="flex-1 py-4 px-3 overflow-y-auto">
+          {CATEGORIES.map((cat) => (
+            <div key={cat.label} className="mb-4 last:mb-0">
+              <p className="px-3 mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{cat.label}</p>
+              <div className="space-y-0.5">
+                {cat.items.map((item) =>
+                  item.href ? (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                    >
+                      <i className={`fa-solid ${item.icon} w-4 text-center ${item.color}`} />
+                      {item.label}
+                      <i className="fa-solid fa-arrow-up-right-from-square text-[10px] ml-auto text-slate-400" />
+                    </Link>
+                  ) : (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setActiveKey(item.key)}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                        activeKey === item.key
+                          ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                      }`}
+                    >
+                      <i className={`fa-solid ${item.icon} w-4 text-center ${activeKey === item.key ? "text-indigo-500" : item.color}`} />
+                      {item.label}
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
           ))}
-          <Link
-            href={INTEGRATIONS_LINK.href}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
-          >
-            <i className={`fa-solid ${INTEGRATIONS_LINK.icon} w-4 text-center ${INTEGRATIONS_LINK.color}`} />
-            {INTEGRATIONS_LINK.label}
-            <i className="fa-solid fa-arrow-up-right-from-square text-[10px] ml-auto text-slate-400" />
-          </Link>
         </nav>
 
         <div className="p-3 border-t border-slate-100 dark:border-slate-800/70">
@@ -189,45 +294,20 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      {/* Content: every section rendered at once, scrollable, sidebar jumps to anchors */}
+      {/* Content: only the active section renders -- switching sections replaces the
+          pane instead of scrolling to an anchor. */}
       <div className="flex-1 min-w-0 px-8 py-8">
-       <div className="max-w-4xl mx-auto space-y-10">
-        {SECTIONS.map((s) => {
-          const Comp =
-            s.key === "general" ? (
-              <GeneralTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
-            ) : s.key === "services" ? (
-              <ServicesTab services={services} onChange={setServices} />
-            ) : s.key === "categories" ? (
-              <StatusCategoriesTab categories={statusCategories} onChange={setStatusCategories} />
-            ) : s.key === "rss" ? (
-              <RssTab feeds={rssFeeds} onChange={setRssFeeds} />
-            ) : s.key === "network" ? (
-              <NetworkTab settings={settings} onChange={setSettings} ispMap={ispMap} onIspChange={setIspMap} />
-            ) : s.key === "notifications" ? (
-              <NotificationsTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
-            ) : (
-              <SslTab csrfToken={session.csrfToken} />
-            );
-
-          return (
-            <section
-              key={s.key}
-              id={s.key}
-              ref={(el) => {
-                sectionRefs.current[s.key] = el;
-              }}
-              className="scroll-mt-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6"
-            >
-              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4 pb-3 border-b-2 border-slate-200 dark:border-slate-700">
-                <i className={`fa-solid ${s.icon} ${s.color}`} />
-                {s.label}
-              </h2>
-              {Comp}
-            </section>
-          );
-        })}
-       </div>
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-6">
+            <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">{current.category}</p>
+            <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 mt-1">
+              <i className={`fa-solid ${current.icon} ${current.color}`} />
+              {current.label}
+            </h2>
+            {current.description && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-2xl">{current.description}</p>}
+          </div>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6">{Comp}</div>
+        </div>
       </div>
     </div>
   );

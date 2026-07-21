@@ -26,11 +26,11 @@ export interface ProxmoxStatus {
   ok: boolean;
   error?: string;
   /** Cluster quorum: true/false when clustered, null for a standalone node (or if it
-   * couldn't be determined) -- callers should treat null as "not applicable", not bad. */
+   * couldn't be determined) - callers should treat null as "not applicable", not bad. */
   quorate: boolean | null;
   nodes: ProxmoxNode[];
   storages: ProxmoxStorageEntry[];
-  /** Non-fatal notes about calls that failed (e.g. no cluster configured) -- surfaced
+  /** Non-fatal notes about calls that failed (e.g. no cluster configured) - surfaced
    * in the admin Test Connection summary. */
   diagnostics: string[];
 }
@@ -84,7 +84,7 @@ function rowsOf(result: GetResult): JsonRecord[] {
   return body?.data ?? [];
 }
 
-/** Per-node status/CPU/memory from /nodes -- always available, clustered or not. */
+/** Per-node status/CPU/memory from /nodes - always available, clustered or not. */
 async function fetchNodes(cfg: ProxmoxConfig, diagnostics: string[]): Promise<ProxmoxNode[]> {
   const result = await get(cfg, "/api2/json/nodes");
   if (result.error) {
@@ -99,7 +99,7 @@ async function fetchNodes(cfg: ProxmoxConfig, diagnostics: string[]): Promise<Pr
   }));
 }
 
-/** Cluster quorum from /cluster/status -- absent (not an error) on a standalone node. */
+/** Cluster quorum from /cluster/status - absent (not an error) on a standalone node. */
 async function fetchQuorate(cfg: ProxmoxConfig, diagnostics: string[]): Promise<boolean | null> {
   const result = await get(cfg, "/api2/json/cluster/status");
   if (result.error) {
@@ -166,10 +166,10 @@ export interface ProxmoxVm {
   status: string; // "running" | "stopped" | ...
 }
 
-/** Every QEMU VM in the cluster, wherever it currently lives -- the Failover tab uses
+/** Every QEMU VM in the cluster, wherever it currently lives - the Failover tab uses
  * this to preview/start VMs by id range without needing to know in advance which node
  * each one is on. /cluster/resources only accepts type=vm (which covers both QEMU VMs
- * and LXC containers, each row tagged with its own r.type) -- there's no type=qemu, so
+ * and LXC containers, each row tagged with its own r.type) - there's no type=qemu, so
  * containers are filtered out here rather than at the API. */
 export async function listProxmoxVms(cfg: ProxmoxConfig): Promise<{ ok: boolean; error?: string; vms: ProxmoxVm[] }> {
   const result = await get(cfg, "/api2/json/cluster/resources?type=vm");
@@ -193,10 +193,10 @@ export async function startProxmoxVm(cfg: ProxmoxConfig, node: string, vmid: num
   return { ok: true };
 }
 
-/** Gracefully (ACPI) shuts down one VM by id -- the other half of a manual failover,
+/** Gracefully (ACPI) shuts down one VM by id - the other half of a manual failover,
  * used to power down the primary site once DR is confirmed up. Same node lookup
  * caveat as startProxmoxVm. A VM without ACPI support (or a stuck guest OS) may not
- * respond to this -- Proxmox has a separate hard "stop" for that, not exposed here. */
+ * respond to this - Proxmox has a separate hard "stop" for that, not exposed here. */
 export async function shutdownProxmoxVm(cfg: ProxmoxConfig, node: string, vmid: number): Promise<{ ok: boolean; error?: string }> {
   const result = await post(cfg, `/api2/json/nodes/${node}/qemu/${vmid}/status/shutdown`);
   if (result.error) return { ok: false, error: result.error };

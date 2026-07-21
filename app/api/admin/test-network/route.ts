@@ -11,10 +11,10 @@ import { db } from "@/lib/db/client";
 import { networkTestLog, services, settings } from "@/lib/db/schema";
 
 const REASON_TEXT: Record<TcpFailureReason, string> = {
-  refused: "Connection refused -- host is up, but nothing's listening on this port",
-  timeout: "No response within the timeout -- likely a firewall silently dropping it",
+  refused: "Connection refused - host is up, but nothing's listening on this port",
+  timeout: "No response within the timeout - likely a firewall silently dropping it",
   dns: "Hostname didn't resolve",
-  unreachable: "Network unreachable -- a routing problem before even reaching the host",
+  unreachable: "Network unreachable - a routing problem before even reaching the host",
   other: "Connection failed",
 };
 
@@ -25,21 +25,21 @@ type Check = { name: string; port: number | null; run: (host: string) => Promise
 const PING: Check = { name: "Ping (ICMP)", port: null, run: async (host) => ({ ok: await checkPing(host) }) };
 const DNS: Check = { name: "DNS", port: 53, run: async (host) => ({ ok: await checkDns(host, 53) }) };
 
-/** Active Directory / domain-controller-only checks -- covers the services an
+/** Active Directory / domain-controller-only checks - covers the services an
  * AD-integrated app typically depends on: time sync (Kerberos fails outright on
  * >5min clock skew, so NTP is directly diagnostic of "why is Kerberos broken"),
  * authentication (Kerberos, RADIUS/NPS), and directory/network config lookups
  * (LDAP, SMB, Global Catalog). Not exhaustive (e.g. no RPC endpoint mapper, no
- * DHCP -- removed by request, since it's typically a separate box in most estates
+ * DHCP - removed by request, since it's typically a separate box in most estates
  * anyway and its inconclusive-on-silence nature made it more noise than signal),
  * but the common set worth checking when diagnosing "why can't this box talk to my
- * DC". Only run against services with type "ad" -- a plain gateway/DNS resolver
+ * DC". Only run against services with type "ad" - a plain gateway/DNS resolver
  * has no reason to run any of these, and testing them there was just noise (a wall
  * of "Failed" for ports that were never expected to be open).
  *
- * `ok: null` means inconclusive, not a confirmed failure -- RADIUS/NPS can't give a
+ * `ok: null` means inconclusive, not a confirmed failure - RADIUS/NPS can't give a
  * definitive "down" from a plain UDP probe like NTP can: NPS only replies to
- * requests from IPs it has configured as known RADIUS clients -- from anywhere else
+ * requests from IPs it has configured as known RADIUS clients - from anywhere else
  * (almost certainly including this server), it silently drops the probe with no
  * reply, which looks identical to "not running". A reply is trusted as a real
  * "yes"; no reply is shown as inconclusive rather than misreported as an outage.
@@ -60,7 +60,7 @@ const AD_ONLY_CHECKS: Check[] = [
     port: 1812,
     run: async (host) => ({
       ok: await checkRadius(host),
-      detail: "No reply doesn't necessarily mean it's down -- NPS silently ignores requests from IPs it hasn't configured as a RADIUS client",
+      detail: "No reply doesn't necessarily mean it's down - NPS silently ignores requests from IPs it hasn't configured as a RADIUS client",
     }),
   },
   {
@@ -107,7 +107,7 @@ const AD_ONLY_CHECKS: Check[] = [
 
 const AD_CHECKS: Check[] = [PING, DNS, ...AD_ONLY_CHECKS];
 /** Everything a plain internet gateway/DNS resolver can reasonably be expected to
- * answer -- just reachability and name resolution, none of the AD-only ports. */
+ * answer - just reachability and name resolution, none of the AD-only ports. */
 const WAN_CHECKS: Check[] = [PING, DNS];
 
 async function runBattery(host: string, checks: Check[]) {
@@ -115,7 +115,7 @@ async function runBattery(host: string, checks: Check[]) {
     checks.map(async (c) => {
       const startedAt = Date.now();
       const outcome = await c.run(host).catch((): CheckOutcome => ({ ok: false }));
-      // Show `detail` whenever it's not a clean pass -- including `ok === null`
+      // Show `detail` whenever it's not a clean pass - including `ok === null`
       // (inconclusive), which is exactly when the "this doesn't necessarily mean
       // it's down" caveat for DHCP/RADIUS matters most.
       return { name: c.name, port: c.port, ok: outcome.ok, detail: outcome.ok === true ? undefined : outcome.detail, ms: Date.now() - startedAt };
@@ -126,13 +126,13 @@ async function runBattery(host: string, checks: Check[]) {
 /**
  * Fixed, server-side-determined diagnostic: tests every configured domain
  * controller (services with type "ad") plus this site's configured WAN targets
- * (Settings > Network's Gateway Host and Public DNS Host) -- never a caller-supplied
+ * (Settings > Network's Gateway Host and Public DNS Host) - never a caller-supplied
  * host. There's no free-form host field on this endpoint (or its modal) by design:
  * letting any visitor name an arbitrary host/port for the server to connect to was a
  * real SSRF/scanning-proxy surface, so the target list is now exactly what an admin
  * already configured elsewhere, nothing else.
  *
- * Reachable without sign-in, by request -- still rate limited per IP (now mostly to
+ * Reachable without sign-in, by request - still rate limited per IP (now mostly to
  * bound load rather than abuse, since the target list is fixed) and CSRF-checked.
  */
 export async function POST(request: Request) {
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
     targets.map(async (t) => ({ label: t.label, host: t.host, results: await runBattery(t.host, t.checks) }))
   );
 
-  // Audit trail -- this endpoint is reachable without sign-in, so who ran a test,
+  // Audit trail - this endpoint is reachable without sign-in, so who ran a test,
   // when, and from where, is worth keeping even though the target list is fixed.
   for (const g of groups) {
     db.insert(networkTestLog)

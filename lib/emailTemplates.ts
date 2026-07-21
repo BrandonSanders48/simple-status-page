@@ -130,3 +130,85 @@ export function renderStatusChangeEmail(opts: {
     </td></tr>
   `);
 }
+
+/** Same shape as renderStatusChangeEmail, but for a site's own tunnel check (see
+ * lib/checks/site.ts) rather than a single service -- lists the services grouped
+ * under that site so the reader knows what's affected, and (when down) explicitly
+ * calls out that those services may still be reachable locally from within the site,
+ * since this alert is about the link to the site, not the services behind it. */
+export function renderSiteStatusChangeEmail(opts: {
+  businessName: string;
+  accentColor: string;
+  siteName: string;
+  status: "up" | "down";
+  linkUrl?: string | null;
+  serviceNames: string[];
+}): string {
+  const { businessName, accentColor, siteName, status, linkUrl, serviceNames } = opts;
+  const isUp = status === "up";
+  const statusLabel = isUp ? "Operational" : "Down";
+  const statusIcon = isUp ? "&#9989;" : "&#128721;";
+  const pillBg = isUp ? "#ecfdf5" : "#fef2f2";
+  const pillColor = isUp ? "#059669" : "#dc2626";
+  const bannerBg = isUp ? "#f0fdf4" : "#fef2f2";
+  const bannerBorder = isUp ? "#bbf7d0" : "#fecaca";
+
+  const servicesList =
+    serviceNames.length > 0
+      ? `<tr><td style="padding:24px 32px 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f8fafc;border-radius:10px;">
+            <tr><td style="padding:14px 20px 6px;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.03em;">Services at this site</td></tr>
+            <tr><td style="padding:0 20px 16px;font-size:13px;color:#334155;line-height:1.7;">${serviceNames.map(escapeHtml).join(", ")}</td></tr>
+          </table>
+        </td></tr>`
+      : "";
+
+  const downNote = !isUp
+    ? `<tr><td style="padding:16px 32px 0;">
+        <p style="font-size:12.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;margin:0;line-height:1.6;">
+          This alert is about the link/tunnel to this site, not the services themselves${
+            serviceNames.length > 0 ? " -- the services above" : ""
+          } may still be available locally from within the site even while this is down.
+        </p>
+      </td></tr>`
+    : "";
+
+  const cta = linkUrl
+    ? `<tr><td style="padding:24px 32px 0;text-align:center;">
+        <a href="${escapeHtml(linkUrl)}" target="_blank" style="display:inline-block;padding:12px 32px;background:${accentColor};color:#ffffff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600;">View Status Page</a>
+      </td></tr>`
+    : "";
+
+  return shell(`
+    <tr><td style="padding:28px 32px 20px;border-bottom:1px solid #f1f5f9;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+        <td style="vertical-align:middle;"><span style="font-size:15px;font-weight:700;color:#0f172a;">${escapeHtml(businessName)}</span></td>
+        <td style="vertical-align:middle;text-align:right;">
+          <span style="display:inline-block;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;background:${pillBg};color:${pillColor};">${statusLabel}</span>
+        </td>
+      </tr></table>
+    </td></tr>
+    <tr><td style="padding:24px 32px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${bannerBg};border:1px solid ${bannerBorder};border-radius:12px;">
+        <tr><td style="padding:20px 24px;text-align:center;">
+          <div style="font-size:36px;line-height:1;margin-bottom:10px;">${statusIcon}</div>
+          <div style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:4px;">${escapeHtml(siteName)}</div>
+          <div style="font-size:14px;font-weight:600;color:${pillColor};">Site tunnel is ${statusLabel.toLowerCase()}</div>
+        </td></tr>
+      </table>
+    </td></tr>
+    ${servicesList}
+    ${downNote}
+    <tr><td style="padding:24px 32px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f8fafc;border-radius:10px;">
+        <tr><td style="padding:14px 20px;font-size:13px;color:#64748b;">Site</td><td style="padding:14px 20px;font-size:13px;font-weight:600;color:#0f172a;text-align:right;">${escapeHtml(siteName)}</td></tr>
+        <tr><td style="padding:0 20px 14px;font-size:13px;color:#64748b;">Status</td><td style="padding:0 20px 14px;font-size:13px;font-weight:600;color:${pillColor};text-align:right;">${statusLabel.toUpperCase()}</td></tr>
+        <tr><td style="padding:0 20px 14px;font-size:13px;color:#64748b;">Checked at</td><td style="padding:0 20px 14px;font-size:13px;color:#334155;text-align:right;">${new Date().toLocaleString()}</td></tr>
+      </table>
+    </td></tr>
+    ${cta}
+    <tr><td style="padding:28px 32px;text-align:center;border-top:1px solid #f1f5f9;margin-top:24px;">
+      <span style="font-size:12px;color:#94a3b8;">${escapeHtml(businessName)}</span>
+    </td></tr>
+  `);
+}

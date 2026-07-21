@@ -15,7 +15,7 @@ export interface ServiceCheckResult {
   wentDownAt: number | null;
   lastDownAt: number | null;
   lastDownDurationS: number | null;
-  /** Per-port breakdown, present only for type "ad" services -- lets the public
+  /** Per-port breakdown, present only for type "ad" services - lets the public
    * page show which specific piece (DNS/Kerberos/LDAP/etc) failed instead of just
    * an opaque "down". */
   adChecks?: AdCheckResult[];
@@ -59,7 +59,7 @@ export async function checkOneService(svc: Service): Promise<{ up: boolean; adCh
  * Runs every configured service check in parallel, persists per-service status/outage
  * history, and returns both the raw results and the list of status transitions (so a
  * caller can decide whether to email subscribers). This is the single canonical check
- * path -- both the live /api/status route and the periodic background job call this,
+ * path - both the live /api/status route and the periodic background job call this,
  * instead of each running its own independent check+persist logic.
  */
 export async function runServiceChecks(): Promise<{

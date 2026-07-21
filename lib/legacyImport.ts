@@ -3,7 +3,7 @@
  * app's SQLite database. Used both by the manual `migrate-legacy-data.ts` CLI script
  * and automatically at startup (see `findLegacyDir` + the check in `migrate.ts`).
  *
- * Never deletes or modifies the source files -- this is read-only against the legacy
+ * Never deletes or modifies the source files - this is read-only against the legacy
  * directory, so it's always safe to leave the old files in place after importing.
  */
 import fs from "node:fs";

@@ -39,7 +39,7 @@ function parseConfig(raw: string): Record<string, string> {
 }
 
 /** Multiple PowerStore arrays / Proxmox clusters can be monitored at once (e.g. a main
- * site and a DR site) -- each enabled target is queried independently and shown as its
+ * site and a DR site) - each enabled target is queried independently and shown as its
  * own named card, so one target being unreachable never hides the others. There's no
  * separate master toggle: the panel is active whenever at least one target is enabled.
  * Both live in the shared integration_targets table (see lib/db/schema.ts), filtered

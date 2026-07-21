@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { verifyCsrf } from "@/lib/csrf";
 import { getIntegrationCatalogEntry } from "@/lib/integrationRegistry";
 
-/** Live (uncached) connection test for the admin Integrations marketplace -- mirrors
+/** Live (uncached) connection test for the admin Integrations marketplace - mirrors
  * /api/admin/test-storage, dispatching to whichever integration's fetchStatus by key
  * rather than a fixed target/proxmox branch, since the catalog is open-ended. */
 export async function POST(request: Request) {

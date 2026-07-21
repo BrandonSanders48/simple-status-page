@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { eq, notInArray } from "drizzle-orm";
 import { db } from "./db/client";
-import { settings, services, rssFeeds, ispMapEntries, statusCategories, integrationTargets } from "./db/schema";
+import { settings, services, rssFeeds, ispMapEntries, statusCategories, integrationTargets, sites } from "./db/schema";
 
 export const MAX_SERVICES = 20;
 export const MAX_RSS_FEEDS = 10;
 export const MAX_INTEGRATION_TARGETS = 40;
+export const MAX_SITES = 20;
 
 export const settingsInputSchema = z.object({
   businessName: z.string().min(1).max(200),
@@ -22,6 +23,7 @@ export const settingsInputSchema = z.object({
   browserNotify: z.boolean(),
   requireAuth: z.boolean(),
   servicesVisibleCount: z.number().int().min(1).max(20),
+  groupServicesBySite: z.boolean(),
   gatewayHost: z.string().max(200).nullable().optional(),
   publicDnsHost: z.string().max(200).nullable().optional(),
   internalDomain: z.string().max(200).nullable().optional(),
@@ -47,6 +49,14 @@ export const serviceInputSchema = z.object({
   type: z.string().max(50),
   description: z.string().max(500).nullable().optional(),
   visible: z.boolean(),
+  siteId: z.number().int().nullable().optional(),
+});
+
+export const siteInputSchema = z.object({
+  id: z.number().int().optional(),
+  name: z.string().min(1).max(200),
+  tunnelHost: z.string().max(300).nullable().optional(),
+  tunnelPort: z.number().int().min(1).max(65535).nullable().optional(),
 });
 
 export const rssFeedInputSchema = z.object({
@@ -86,6 +96,7 @@ export const configPayloadSchema = z.object({
   rssFeeds: z.array(rssFeedInputSchema).max(MAX_RSS_FEEDS),
   ispMap: z.array(ispMapInputSchema),
   statusCategories: z.array(statusCategoryInputSchema).max(20),
+  sites: z.array(siteInputSchema).max(MAX_SITES),
   // Optional -- integration targets are edited on their own /admin/integrations page
   // (see saveIntegrationTargets below) and left untouched by a general config save
   // when omitted, so the two pages can't stomp on each other's edits.
@@ -113,6 +124,7 @@ export function getFullConfig() {
   const rss = db.select().from(rssFeeds).all();
   const isp = db.select().from(ispMapEntries).all();
   const categories = db.select().from(statusCategories).all();
+  const siteRows = db.select().from(sites).all();
   const integrationRows = db.select().from(integrationTargets).all();
   return {
     settings: cfg,
@@ -120,6 +132,7 @@ export function getFullConfig() {
     rssFeeds: rss,
     ispMap: isp,
     statusCategories: categories,
+    sites: siteRows,
     // config is stored as a JSON string (see lib/db/schema.ts) -- parsed here so the
     // admin UI can bind to individual fields directly.
     integrationTargets: integrationRows.map((t) => ({ ...t, config: parseIntegrationConfig(t.config) })),
@@ -181,6 +194,28 @@ export function saveFullConfig(payload: ConfigPayload) {
       .where(eq(settings.id, 1))
       .run();
 
+    // Sites saved before services -- services below reference them via site_id.
+    // Diffed by id like services/integration targets so ids stay stable.
+    const incomingSiteIds = payload.sites.filter((s) => s.id !== undefined).map((s) => s.id!);
+    if (incomingSiteIds.length > 0) {
+      tx.delete(sites).where(notInArray(sites.id, incomingSiteIds)).run();
+    } else {
+      tx.delete(sites).run();
+    }
+    payload.sites.forEach((site, index) => {
+      if (site.id !== undefined) {
+        tx.update(sites)
+          .set({ ...site, sortOrder: index })
+          .where(eq(sites.id, site.id))
+          .run();
+      } else {
+        tx.insert(sites)
+          .values({ ...site, sortOrder: index })
+          .run();
+      }
+    });
+    const survivingSiteIds = new Set(incomingSiteIds);
+
     const incomingIds = payload.services.filter((s) => s.id !== undefined).map((s) => s.id!);
     if (incomingIds.length > 0) {
       tx.delete(services).where(notInArray(services.id, incomingIds)).run();
@@ -188,14 +223,20 @@ export function saveFullConfig(payload: ConfigPayload) {
       tx.delete(services).run();
     }
     payload.services.forEach((svc, index) => {
+      // Defensive: services.site_id's real FK is NO ACTION, not SET NULL (see the
+      // schema.ts comment on why) -- a service still pointing at a site that's no
+      // longer in the incoming payload would otherwise throw a foreign key
+      // constraint error here instead of just being ungrouped.
+      const siteId = svc.siteId != null && survivingSiteIds.has(svc.siteId) ? svc.siteId : null;
+      const row = { ...svc, siteId, sortOrder: index };
       if (svc.id !== undefined) {
         tx.update(services)
-          .set({ ...svc, sortOrder: index })
+          .set(row)
           .where(eq(services.id, svc.id))
           .run();
       } else {
         tx.insert(services)
-          .values({ ...svc, sortOrder: index })
+          .values(row)
           .run();
       }
     });

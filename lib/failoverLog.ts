@@ -5,7 +5,7 @@ import { failoverActions } from "./db/schema";
 export type FailoverActionType = "start_vms" | "shutdown_vms" | "promote_metro" | "reprotect_metro";
 
 /** Records one Failover tab action (a whole VM-range batch, or one Metro session
- * call) to the audit log -- called from each action route regardless of outcome, so
+ * call) to the audit log - called from each action route regardless of outcome, so
  * failed attempts are just as visible as successful ones. */
 export function recordFailoverAction(entry: {
   action: FailoverActionType;

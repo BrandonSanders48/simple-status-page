@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `group_services_by_site` integer DEFAULT true NOT NULL;

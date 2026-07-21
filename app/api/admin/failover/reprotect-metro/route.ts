@@ -9,7 +9,7 @@ import { recordFailoverAction } from "@/lib/failoverLog";
 
 /**
  * Re-establishes replication on a Metro session that was previously promoted (the
- * first step of a failback) -- only ever targets a DR-flagged array, same as promote,
+ * first step of a failback) - only ever targets a DR-flagged array, same as promote,
  * since in this tool's model that's always the side currently acting as primary.
  */
 export async function POST(request: Request) {

@@ -6,7 +6,7 @@ import { invalidateStorageCache } from "@/lib/storageCache";
 import { invalidatePbsCache } from "@/lib/pbsCache";
 import { invalidateIntegrationsCache } from "@/lib/integrationsCache";
 
-/** Backs the standalone /admin/integrations page -- scoped to just the
+/** Backs the standalone /admin/integrations page - scoped to just the
  * integration_targets table so it can't touch settings/services/rssFeeds/ispMap/
  * statusCategories, unlike /api/admin/config's full-payload save. */
 export async function GET() {

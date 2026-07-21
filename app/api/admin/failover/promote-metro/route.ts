@@ -8,7 +8,7 @@ import { invalidateStorageCache } from "@/lib/storageCache";
 import { recordFailoverAction } from "@/lib/failoverLog";
 
 /**
- * Promotes a Metro replication session on the DR-flagged PowerStore array -- the
+ * Promotes a Metro replication session on the DR-flagged PowerStore array - the
  * storage half of a manual failover, alongside the Proxmox VM start/shutdown actions.
  * Only ever targets a DR-flagged array (never primary), and is rate limited given how
  * consequential a real Metro failover is on top of the usual auth/CSRF checks.

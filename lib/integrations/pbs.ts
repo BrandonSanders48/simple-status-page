@@ -12,7 +12,7 @@ export interface PbsTask {
   status: string;
   startedAt?: string;
   endedAt?: string;
-  /** Always false here -- this integration layer has no db access. The caller (see
+  /** Always false here - this integration layer has no db access. The caller (see
    * lib/pbsCache.ts) overlays acknowledgment state and recomputes lastRunHealthy. */
   acknowledged: boolean;
 }
@@ -31,7 +31,7 @@ type JsonRecord = Record<string, unknown>;
 type GetResult = { data: unknown; error: null } | { data: null; error: string };
 
 // A single scheduled backup run typically backs up several guests as separate tasks
-// that all start within moments of each other -- grouping by this window is how we
+// that all start within moments of each other - grouping by this window is how we
 // treat them as "the last backup" rather than just the single most recent task.
 const RUN_GROUP_WINDOW_S = 3 * 60 * 60;
 
@@ -43,7 +43,7 @@ function baseUrl(host: string): string {
 async function get(cfg: PbsConfig, path: string, timeoutMs = 8000): Promise<GetResult> {
   try {
     const res = await undiciFetch(`${baseUrl(cfg.host)}${path}`, {
-      // PBS shares Proxmox VE's task/node API shapes, but NOT its auth header -- PBS
+      // PBS shares Proxmox VE's task/node API shapes, but NOT its auth header - PBS
       // uses its own "PBSAPIToken" scheme with a `:` before the secret (PVE uses
       // "PVEAPIToken" with `=`). Mixing these up authenticates as nobody -> 401.
       headers: { Authorization: `PBSAPIToken=${cfg.tokenId}:${cfg.tokenSecret}` },
@@ -66,7 +66,7 @@ function asRecordArray(value: unknown): JsonRecord[] {
 }
 
 /**
- * Proxmox Backup Server doesn't cluster the way Proxmox VE does -- a standalone
+ * Proxmox Backup Server doesn't cluster the way Proxmox VE does - a standalone
  * instance conventionally reports itself as node "localhost". Confirmed via /nodes
  * where possible, falling back to that convention otherwise.
  */
@@ -85,7 +85,7 @@ async function fetchNodeName(cfg: PbsConfig, diagnostics: string[]): Promise<str
  * whether the most recent backup run completed without errors.
  *
  * Field names mirror Proxmox VE's task API, which PBS shares the same framework with
- * (unlike PowerStore's REST API, Proxmox APIs return full objects by default -- no
+ * (unlike PowerStore's REST API, Proxmox APIs return full objects by default - no
  * `select` param needed). This hasn't been verified against a live PBS instance yet,
  * though, so check the admin Test Connection summary and adjust field names here if
  * something looks wrong.

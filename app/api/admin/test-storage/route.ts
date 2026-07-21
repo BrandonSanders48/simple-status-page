@@ -4,7 +4,7 @@ import { verifyCsrf } from "@/lib/csrf";
 import { fetchPowerstoreStatus } from "@/lib/integrations/powerstore";
 import { fetchProxmoxStorageStatus } from "@/lib/integrations/proxmox";
 
-/** Live (uncached) connection test for the admin Storage tab -- separate from the
+/** Live (uncached) connection test for the admin Storage tab - separate from the
  * cached /api/storage endpoint the public panel polls, so "Test Connection" always
  * reflects the credentials currently being edited, not a stale cache entry. */
 export async function POST(request: Request) {

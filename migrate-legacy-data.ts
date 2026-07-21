@@ -12,7 +12,7 @@
  *   cron/outage_log.json
  *
  * This is also run automatically (without needing this script) at container startup
- * if a legacy directory is found in a conventional location on a fresh database -- see
+ * if a legacy directory is found in a conventional location on a fresh database - see
  * `findLegacyDir` in lib/legacyImport.ts and the check in migrate.ts. Use this script
  * directly when the legacy data lives somewhere non-standard.
  */

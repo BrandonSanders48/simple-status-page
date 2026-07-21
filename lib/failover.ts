@@ -21,7 +21,7 @@ function roleIndicatesPreferred(role?: string): boolean {
 
 /**
  * True once a DR-flagged PowerStore array's Metro session reports itself as
- * "preferred" -- PowerStore's own Metro arbitration only shifts preference to the
+ * "preferred" - PowerStore's own Metro arbitration only shifts preference to the
  * non-original side when it has detected a real problem with the other one, so this
  * is treated as confirmation of an actual storage-level failover having occurred (not
  * just a recommendation), strong enough to flip the whole site to "not operational"
@@ -34,7 +34,7 @@ export function isDrPreferred(storage: StoragePayload | null): boolean {
 
 /**
  * Compares the primary site's health against whichever targets are flagged as the DR
- * site, using data already fetched for the Services/Storage/Proxmox tabs -- no
+ * site, using data already fetched for the Services/Storage/Proxmox tabs - no
  * separate polling needed. "recommend" only fires when the primary site looks down
  * AND the DR site looks ready; if both look bad this deliberately stops short of
  * recommending a failover into another bad environment.
@@ -43,7 +43,7 @@ export function isDrPreferred(storage: StoragePayload | null): boolean {
  * signals: most internal services being down, a primary Proxmox host being
  * unreachable/offline, a primary PowerStore array being unreachable or reporting a
  * critical alert, or a DR PowerStore array having become Metro-preferred (see
- * isDrPreferred). CPU% and storage usage% are excluded on purpose -- normal
+ * isDrPreferred). CPU% and storage usage% are excluded on purpose - normal
  * day-to-day noise (still visible as "Attention" on their own tabs) that shouldn't by
  * itself recommend failing over an entire site.
  */

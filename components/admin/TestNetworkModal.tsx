@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 interface CheckResult {
   name: string;
   port: number | null;
-  /** null = inconclusive (see RADIUS's `detail` -- a silent non-reply doesn't
+  /** null = inconclusive (see RADIUS's `detail` - a silent non-reply doesn't
    * necessarily mean the service is down), not a confirmed pass or fail. */
   ok: boolean | null;
   detail?: string;
@@ -73,14 +73,14 @@ interface SpeedTestState {
 const SPEED_PENDING: SpeedTestState = { running: true, downloadMbps: null, uploadMbps: null, error: null };
 
 /**
- * Network diagnostic modal -- runs a fixed battery of AD/DC-style checks (ping,
+ * Network diagnostic modal - runs a fixed battery of AD/DC-style checks (ping,
  * DNS, NTP, Kerberos, NPS/RADIUS, LDAP/LDAPS, SMB, Global Catalog) against every
  * domain controller configured under Services (type "ad") plus this site's
  * configured WAN targets (Settings > Network's Gateway Host and Public DNS Host),
- * plus a WAN download/upload speed test -- all automatically, as soon as it opens,
+ * plus a WAN download/upload speed test - all automatically, as soon as it opens,
  * running in parallel rather than gating one on the other.
  *
- * Deliberately has no free-form host field -- letting a visitor test an arbitrary
+ * Deliberately has no free-form host field - letting a visitor test an arbitrary
  * host/port was a real SSRF/scanning-proxy surface (see the API route), so the
  * target list is exactly what's already configured elsewhere, nothing else.
  */
@@ -111,7 +111,7 @@ export default function TestNetworkModal({ csrfToken, onClose }: { csrfToken: st
   }, []);
 
   // Scroll down to reveal the results (and the pass/fail rating below them) once
-  // the test finishes -- while "Testing..." the content is short and needs no
+  // the test finishes - while "Testing..." the content is short and needs no
   // scrolling, but the full results list often doesn't fit the modal's max height.
   useEffect(() => {
     if (groups === null) return;
@@ -151,7 +151,7 @@ export default function TestNetworkModal({ csrfToken, onClose }: { csrfToken: st
 
           {groups !== null && groups.length === 0 && (
             <p className="text-sm text-slate-400 dark:text-slate-500">
-              Nothing configured to test -- add a Service with type &quot;ad&quot;, or set a Gateway Host / Public DNS Host under Settings &gt;
+              Nothing configured to test - add a Service with type &quot;ad&quot;, or set a Gateway Host / Public DNS Host under Settings &gt;
               Network.
             </p>
           )}
@@ -174,7 +174,7 @@ export default function TestNetworkModal({ csrfToken, onClose }: { csrfToken: st
               }`}
             >
               <i className={`fa-solid ${overallPass ? "fa-circle-check" : "fa-circle-xmark"} mr-1.5`} />
-              {overallPass ? "Pass -- all checks succeeded" : `Fail -- ${failCount} check${failCount === 1 ? "" : "s"} failed`}
+              {overallPass ? "Pass - all checks succeeded" : `Fail - ${failCount} check${failCount === 1 ? "" : "s"} failed`}
             </div>
           )}
 

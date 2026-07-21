@@ -9,7 +9,7 @@ import { recordFailoverAction } from "@/lib/failoverLog";
 const MAX_RANGE = 200;
 
 /**
- * Actually powers on VMs at the DR site -- genuinely consequential, so this re-checks
+ * Actually powers on VMs at the DR site - genuinely consequential, so this re-checks
  * (rather than trusting the client's earlier preview) which VMs currently exist and
  * skips anything already running, and is rate limited on top of the usual auth/CSRF
  * checks since a stray double-submit here isn't just noise like most admin actions.

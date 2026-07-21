@@ -1,10 +1,11 @@
-import type { settings, services, rssFeeds, ispMapEntries, statusCategories } from "./db/schema";
+import type { settings, services, rssFeeds, ispMapEntries, statusCategories, sites } from "./db/schema";
 
 export type SettingsRow = typeof settings.$inferSelect;
 export type ServiceRow = typeof services.$inferSelect;
 export type RssFeedRow = typeof rssFeeds.$inferSelect;
 export type IspMapRow = typeof ispMapEntries.$inferSelect;
 export type StatusCategoryRow = typeof statusCategories.$inferSelect;
+export type SiteRow = typeof sites.$inferSelect;
 
 /** Unlike other rows, `config` is exposed here as a parsed object -- the DB stores it
  * as a JSON string (see lib/db/schema.ts), serialized/deserialized at the
@@ -29,10 +30,14 @@ export interface FullConfig {
   ispMap: IspMapRow[];
   statusCategories: StatusCategoryRow[];
   integrationTargets: IntegrationTargetRow[];
+  sites: SiteRow[];
 }
 
 /** A service row being edited in the admin UI; new, unsaved rows have no id yet. */
 export type DraftService = Omit<ServiceRow, "id" | "createdAt"> & { id?: number };
+
+/** A site row being edited in the admin UI; new, unsaved rows have no id yet. */
+export type DraftSite = Omit<SiteRow, "id"> & { id?: number };
 
 /** A target row being edited in the admin UI; new, unsaved rows have no id yet. */
 export type DraftIntegrationTarget = Omit<IntegrationTargetRow, "id"> & { id?: number };

@@ -13,7 +13,7 @@ export function isHttpType(type: string): boolean {
 
 /**
  * Real HTTP(S) health check: a service only counts as up if it actually returns a
- * non-5xx response, not merely if the TCP port accepts a connection -- a webserver or
+ * non-5xx response, not merely if the TCP port accepts a connection - a webserver or
  * reverse proxy can keep accepting connections while the application behind it errors.
  */
 export async function checkHttp(

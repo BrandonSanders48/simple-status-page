@@ -9,7 +9,7 @@ import { recordFailoverAction } from "@/lib/failoverLog";
 const MAX_RANGE = 200;
 
 /**
- * Gracefully shuts down VMs at the primary site -- the other half of a manual
+ * Gracefully shuts down VMs at the primary site - the other half of a manual
  * failover alongside /api/admin/failover/start. Only ever targets a non-DR
  * ("primary") Proxmox cluster (the inverse restriction of the start route), re-checks
  * which VMs currently exist and skips anything already stopped, and is rate limited
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   }
   if (target.isDr) {
     return NextResponse.json(
-      { error: "That Proxmox target is marked as the DR site -- pick a primary (non-DR) cluster to shut down." },
+      { error: "That Proxmox target is marked as the DR site - pick a primary (non-DR) cluster to shut down." },
       { status: 400 }
     );
   }

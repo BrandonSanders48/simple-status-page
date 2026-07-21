@@ -103,7 +103,7 @@ function formatAlertTime(raisedAt: string): string {
   return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-/** Info/Minor/Warning alerts are noise, not issues -- only Critical/Major should ever
+/** Info/Minor/Warning alerts are noise, not issues - only Critical/Major should ever
  * flip a tab badge, the "Attention" pill, or the overall status banner to unhealthy. */
 export function isCriticalSeverity(severity: string): boolean {
   return CRITICAL_SEVERITIES.has(severity.toLowerCase());
@@ -129,7 +129,7 @@ export function isProxmoxHealthy(status: ProxmoxStatus): boolean {
 
 /** True unless storage monitoring is enabled and something it's watching (any
  * PowerStore's health/alerts/Metro, or any Proxmox cluster's view of its storage) is
- * unhealthy -- so the site banner can fold this in without needing to know it exists
+ * unhealthy - so the site banner can fold this in without needing to know it exists
  * when it's off. */
 export function isStorageHealthy(payload: StoragePayload | null): boolean {
   if (!payload?.enabled) return true;
@@ -141,7 +141,7 @@ export function isPbsHealthy(status: PbsStatus): boolean {
 }
 
 /** True unless backup monitoring is enabled and the most recent run on some PBS
- * target had failures -- same "invisible when off" fold-in as isStorageHealthy. */
+ * target had failures - same "invisible when off" fold-in as isStorageHealthy. */
 export function isPbsAllHealthy(payload: PbsPayload | null): boolean {
   if (!payload?.enabled) return true;
   return payload.targets.every((t) => isPbsHealthy(t.status));
@@ -172,7 +172,7 @@ export function CapacityBar({ percent }: { percent: number }) {
   );
 }
 
-/** Chevron toggle for the collapse/expand header row every Section below uses --
+/** Chevron toggle for the collapse/expand header row every Section below uses -
  * `aria-expanded` on the wrapping header button (not here) drives the actual a11y
  * state; this just renders the icon. */
 function ExpandChevron({ expanded }: { expanded: boolean }) {
@@ -208,7 +208,7 @@ export function PowerstoreSection({
   onAcknowledge?: (alertId: string) => void;
 }) {
   const hasCriticalAlert = status.alerts.some((a) => isCriticalSeverity(a.severity));
-  // Overview by default -- expanded automatically when there's something to look at
+  // Overview by default - expanded automatically when there's something to look at
   // (an alert needing attention), otherwise collapsed to a single summary line.
   const [expanded, setExpanded] = useState(hasCriticalAlert);
 
@@ -296,7 +296,7 @@ export function PowerstoreSection({
 
 export function ProxmoxSection({ name, status, isDr = false }: { name: string; status: ProxmoxStatus; isDr?: boolean }) {
   const healthy = isProxmoxHealthy(status);
-  // Overview by default -- expanded automatically when something needs attention,
+  // Overview by default - expanded automatically when something needs attention,
   // otherwise collapsed to a single summary line.
   const [expanded, setExpanded] = useState(!healthy);
 
@@ -418,7 +418,7 @@ export function PbsSection({
   acknowledgingId?: string | null;
   onAcknowledge?: (taskId: string) => void;
 }) {
-  // Overview by default -- expanded automatically when the last run wasn't healthy,
+  // Overview by default - expanded automatically when the last run wasn't healthy,
   // otherwise collapsed to a single summary line.
   const [expanded, setExpanded] = useState(!status.lastRunHealthy);
 

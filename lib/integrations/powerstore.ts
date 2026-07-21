@@ -19,7 +19,7 @@ export interface PowerstoreMetroSession {
   id: string;
   name: string;
   state: string;
-  /** Raw `role` value as PowerStore reports it -- confirmed values are
+  /** Raw `role` value as PowerStore reports it - confirmed values are
    * "Metro_Preferred" and "Metro_Non_Preferred" (see lib/failover.ts). */
   role?: string;
 }
@@ -32,7 +32,7 @@ export interface PowerstoreStatus {
   alerts: PowerstoreAlert[];
   metroSessions: PowerstoreMetroSession[];
   /** Non-fatal notes about resources/fields that couldn't be read (e.g. a field name
-   * PowerStore rejected, or an account lacking permission for Metro) -- surfaced in
+   * PowerStore rejected, or an account lacking permission for Metro) - surfaced in
    * the admin Test Connection summary so a schema mismatch is diagnosable without
    * devtools access. */
   diagnostics: string[];
@@ -56,7 +56,7 @@ function authHeader(cfg: PowerstoreConfig): string {
 /**
  * PowerStore's REST API only returns the `id` attribute unless a `select` query
  * parameter names the fields you want. Crucially, naming even one field it doesn't
- * recognize fails the *entire* request with HTTP 400 -- so every call here is
+ * recognize fails the *entire* request with HTTP 400 - so every call here is
  * try/caught individually (never combined in a single Promise.all without a catch)
  * and callers fall back to a smaller/no select on failure, rather than letting one bad
  * guess at a field name take down the whole status fetch.
@@ -130,7 +130,7 @@ export function isMetroSessionHealthy(state: string): boolean {
   return HEALTHY_METRO_STATES.has(state.toLowerCase());
 }
 
-/** Cluster identity/health (name, state) -- falls back to an unfiltered request
+/** Cluster identity/health (name, state) - falls back to an unfiltered request
  * (guaranteed valid, if sparse) if the select itself is rejected. */
 async function fetchClusterIdentity(cfg: PowerstoreConfig, diagnostics: string[]): Promise<JsonRecord | undefined> {
   const attempt = await get(cfg, "/cluster", "id,name,state");
@@ -146,7 +146,7 @@ async function fetchClusterIdentity(cfg: PowerstoreConfig, diagnostics: string[]
 }
 
 async function fetchAlerts(cfg: PowerstoreConfig, diagnostics: string[]): Promise<PowerstoreAlert[]> {
-  // Tries the fullest field set first and narrows on failure -- select validates
+  // Tries the fullest field set first and narrows on failure - select validates
   // fail-fast (see fetchMetroSessions), so a field this array doesn't recognize only
   // costs whatever comes after it in the list, not the whole request.
   const selects = ["id,severity,description_l10n,is_acknowledged,raised_timestamp", "id,severity,description_l10n,is_acknowledged", "id,severity,is_acknowledged"];
@@ -169,14 +169,14 @@ async function fetchAlerts(cfg: PowerstoreConfig, diagnostics: string[]): Promis
       description: typeof a.description_l10n === "string" ? a.description_l10n : "Unnamed alert",
       raisedAt: typeof a.raised_timestamp === "string" ? a.raised_timestamp : undefined,
     }))
-    // Most severe first -- the panel only shows the first handful, so whatever's
+    // Most severe first - the panel only shows the first handful, so whatever's
     // driving an "Attention" state must always be the thing that's actually visible.
     .sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
 }
 
 /**
  * Fetches Metro replication sessions via /replication_session. There's no dedicated
- * Metro resource on this OS version -- /metro_replication_session returns 403 even
+ * Metro resource on this OS version - /metro_replication_session returns 403 even
  * for a full-admin account with Metro actively in use, so it's most likely just not a
  * real endpoint here rather than a permissions gap.
  */
@@ -194,7 +194,7 @@ async function fetchMetroSessions(cfg: PowerstoreConfig, diagnostics: string[]):
   }
 
   // Without a confirmed field to distinguish Metro from async replication sessions,
-  // every session found is shown -- accurate for arrays that only use Metro, but
+  // every session found is shown - accurate for arrays that only use Metro, but
   // sessions of both kinds would appear together if both are configured.
   return asRecordArray(result.data);
 }
@@ -206,7 +206,7 @@ async function fetchMetroSessions(cfg: PowerstoreConfig, diagnostics: string[]):
  * Field names below match the PowerStore REST API as documented for OS 3.x/4.x, but
  * Dell has changed some of them across versions. Every resource is fetched
  * independently with its own fallback so one wrong field name only loses that one
- * piece of data instead of the entire status -- check `diagnostics` (surfaced in the
+ * piece of data instead of the entire status - check `diagnostics` (surfaced in the
  * admin Test Connection summary) for anything that didn't come through, and
  * cross-reference https://<mgmt-ip>/swaggerui for the actual field names if needed.
  */
@@ -220,7 +220,7 @@ export async function fetchPowerstoreStatus(cfg: PowerstoreConfig): Promise<Powe
     ]);
 
     // Each fetch above catches its own errors (so one bad field guess doesn't kill
-    // everything) and never throws -- which means a total connection failure (wrong
+    // everything) and never throws - which means a total connection failure (wrong
     // host, bad credentials, timeout) would otherwise still land on this "success"
     // path with no data. Failing to read even basic cluster identity is the strongest
     // signal we couldn't actually reach the array at all.
@@ -267,7 +267,7 @@ export async function acknowledgePowerstoreAlert(cfg: PowerstoreConfig, alertId:
 }
 
 /**
- * Promotes this array's side of a Metro replication session to read/write -- used to
+ * Promotes this array's side of a Metro replication session to read/write - used to
  * "promote the DR datastore" once an admin has confirmed the primary is unreachable.
  * Uses the unplanned `failover` action (for when the primary is actually down), not
  * `planned_failover` (which requires the primary to still be reachable and syncing).
@@ -284,7 +284,7 @@ export async function promoteMetroSession(cfg: PowerstoreConfig, sessionId: stri
 /**
  * Re-establishes replication after a failover (the first step of a failback), so the
  * array that was just promoted can eventually sync back to the original primary once
- * it recovers. Same verification caveat as promoteMetroSession -- this is a best
+ * it recovers. Same verification caveat as promoteMetroSession - this is a best
  * guess (`reprotect`) at PowerStore's action name, not confirmed against a live call.
  */
 export async function reprotectMetroSession(cfg: PowerstoreConfig, sessionId: string): Promise<{ ok: boolean; error?: string }> {

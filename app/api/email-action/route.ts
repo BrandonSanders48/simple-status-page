@@ -6,7 +6,7 @@ import { resolvePageUrl } from "@/lib/pageUrl";
 
 /**
  * Builds an absolute redirect target from the configured public page URL rather than
- * `request.url` -- behind a reverse proxy that doesn't forward the original Host, the
+ * `request.url` - behind a reverse proxy that doesn't forward the original Host, the
  * request as seen by this server can carry an internal hostname/port, which would
  * otherwise redirect the subscriber's browser to an address only reachable from inside
  * the network.

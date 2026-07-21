@@ -24,6 +24,11 @@ export const settings = sqliteTable("settings", {
   browserNotify: integer("browser_notify", { mode: "boolean" }).notNull().default(true),
   requireAuth: integer("require_auth", { mode: "boolean" }).notNull().default(true),
   servicesVisibleCount: integer("services_visible_count").notNull().default(10),
+  // When true (default), the public page groups services under their assigned site's
+  // header (see components/ServicesPanel.tsx). Off keeps every service in one flat
+  // grid regardless of site assignment, for anyone who wants Sites purely as an admin
+  // organization tool without changing what visitors see.
+  groupServicesBySite: integer("group_services_by_site", { mode: "boolean" }).notNull().default(true),
 
   gatewayHost: text("gateway_host"),
   publicDnsHost: text("public_dns_host").default("8.8.8.8"),
@@ -46,6 +51,22 @@ export const settings = sqliteTable("settings", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// A physical/network location (branch office, DR site, etc) that services can be
+// grouped under -- lets the public page tell apart "this one service is down" from
+// "the whole site's tunnel dropped, so of course everything under it looks down".
+// `tunnelHost`/`tunnelPort` are independent of any service's own check: a host/IP
+// only reachable through that site's link (its far-side gateway, a switch, etc), so
+// its own up/down is a direct signal of the tunnel itself, not conflated with
+// whatever services happen to be assigned to the site. Both nullable: a site with
+// no tunnel host configured just groups its services with no tunnel banner.
+export const sites = sqliteTable("sites", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  tunnelHost: text("tunnel_host"),
+  tunnelPort: integer("tunnel_port"), // null => ICMP ping, same convention as services.port
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
 export const services = sqliteTable("services", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -56,6 +77,20 @@ export const services = sqliteTable("services", {
   visible: integer("visible", { mode: "boolean" }).notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  // Optional grouping -- null means "not assigned to a site", shown ungrouped same
+  // as today. `onDelete: "set null"` here is aspirational only, NOT actually
+  // enforced by SQLite: this column was added via `ALTER TABLE ADD COLUMN
+  // ... REFERENCES`, which can't express an ON DELETE clause the way `CREATE TABLE`
+  // can (see migration 0016) -- the real constraint in the database is plain NO
+  // ACTION. Rebuilding this table to get real SET NULL enforcement would require
+  // DROP TABLE services, which would cascade-delete serviceStatus/outageLog rows
+  // (both ON DELETE cascade on services.id), wiping current status and outage
+  // history -- not worth it for this. Keep this annotation matching what
+  // migration 0016's snapshot already recorded (see meta/0016_snapshot.json).
+  // saveSites() in lib/adminConfig.ts explicitly nulls out site_id on affected
+  // services *before* deleting a site, in the same transaction, doing at the
+  // application level what the DB itself won't enforce.
+  siteId: integer("site_id").references(() => sites.id, { onDelete: "set null" }),
 });
 
 export const rssFeeds = sqliteTable("rss_feeds", {
@@ -102,6 +137,23 @@ export const integrationTargets = sqliteTable("integration_targets", {
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   isDr: integer("is_dr", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
+});
+
+// Tracks each marketplace integration target's own healthy/unhealthy transitions (see
+// lib/integrationsCache.ts's runIntegrationHealthChecks) so a change can be diffed and
+// notified the same way service/site status changes are -- unlike those, there's no
+// end-user "subscribe to an integration" concept, so this only ever drives the
+// Slack/Discord/generic webhook, not subscriber emails (see lib/notifier.ts).
+export const integrationHealthStatus = sqliteTable("integration_health_status", {
+  targetId: integer("target_id")
+    .primaryKey()
+    .references(() => integrationTargets.id, { onDelete: "cascade" }),
+  healthy: integer("healthy", { mode: "boolean" }), // null = never checked
+  wentUnhealthyAt: integer("went_unhealthy_at"),
+  lastUnhealthyAt: integer("last_unhealthy_at"),
+  lastUnhealthyDurationS: integer("last_unhealthy_duration_s"),
+  lastCheckedAt: integer("last_checked_at"),
+  downNotified: integer("down_notified", { mode: "boolean" }).notNull().default(false),
 });
 
 // Lets an admin "Clear" a failed backup task from the Backups tab -- acknowledged
@@ -214,6 +266,28 @@ export const subscriptions = sqliteTable(
   })
 );
 
+// A subscription to a site's own tunnel alerts (see lib/checks/site.ts), independent
+// of subscribing to any service assigned to that site -- deliberately its own table
+// rather than a nullable serviceId/siteId column on `subscriptions`, both to avoid a
+// risky rebuild of that existing (already-populated) table just to relax a NOT NULL
+// column, and because "subscribed to a site" and "subscribed to a service" are kept as
+// separate, independently-managed opt-ins (a site subscription does not imply its
+// services', or vice versa).
+export const siteSubscriptions = sqliteTable(
+  "site_subscriptions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    email: text("email").notNull(),
+    siteId: integer("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    subscribedAt: text("subscribed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => ({
+    uniqueEmailSite: uniqueIndex("uniq_email_site").on(t.email, t.siteId),
+  })
+);
+
 export const serviceStatus = sqliteTable("service_status", {
   serviceId: integer("service_id")
     .primaryKey()
@@ -230,6 +304,35 @@ export const outageLog = sqliteTable("outage_log", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   serviceId: integer("service_id").references(() => services.id, { onDelete: "set null" }),
   serviceName: text("service_name").notNull(), // denormalized so history survives service deletion
+  wentDownAt: integer("went_down_at").notNull(),
+  cameUpAt: integer("came_up_at").notNull(),
+  durationS: integer("duration_s").notNull(),
+});
+
+// Mirrors service_status, but for a site's own tunnel check (see lib/checks/site.ts) --
+// lets a site's tunnel down/up be tracked and notified the same way a service's is,
+// independently of any service assigned to it. Only ever has a row for sites with a
+// tunnelHost configured (see runSiteChecks): a site with no tunnel check never gets a
+// row here, same "invisible when off" convention as everywhere else this shows up.
+// Unlike services.siteId (see above), this FK was created via CREATE TABLE, so
+// `onDelete: "cascade"` is a real, enforced constraint, not just an annotation.
+export const siteStatus = sqliteTable("site_status", {
+  siteId: integer("site_id")
+    .primaryKey()
+    .references(() => sites.id, { onDelete: "cascade" }),
+  status: text("status"), // 'up' | 'down' | null (never checked)
+  wentDownAt: integer("went_down_at"),
+  lastDownAt: integer("last_down_at"),
+  lastDownDurationS: integer("last_down_duration_s"),
+  lastCheckedAt: integer("last_checked_at"),
+  downNotified: integer("down_notified", { mode: "boolean" }).notNull().default(false),
+});
+
+// Mirrors outage_log, but for site tunnel outages.
+export const siteOutageLog = sqliteTable("site_outage_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  siteId: integer("site_id").references(() => sites.id, { onDelete: "set null" }),
+  siteName: text("site_name").notNull(), // denormalized so history survives site deletion
   wentDownAt: integer("went_down_at").notNull(),
   cameUpAt: integer("came_up_at").notNull(),
   durationS: integer("duration_s").notNull(),

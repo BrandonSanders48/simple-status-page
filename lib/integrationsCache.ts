@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db/client";
-import { integrationTargets } from "./db/schema";
+import { integrationTargets, integrationHealthStatus, settings } from "./db/schema";
 import { getIntegrationCatalogEntry } from "./integrationRegistry";
 import { getIntegrationCatalogMeta } from "./integrationCatalogMeta";
 import { getIgnoredKeys } from "./integrationIgnore";
+import { notifyIntegrationTransitions } from "./notifier";
 import type { IntegrationStatus } from "./integrations/types";
 
 /** Same shape as an integration's own item, plus whether an admin has ignored it --
@@ -32,6 +33,15 @@ export interface IntegrationsPayload {
   enabled: boolean;
   targets: IntegrationTargetPayload[];
   generatedAt: number;
+}
+
+export interface IntegrationTransition {
+  targetId: number;
+  targetName: string;
+  prevHealthy: boolean | null;
+  curHealthy: boolean;
+  /** Same meaning as ServiceTransition.shouldNotify (see lib/checks/runner.ts). */
+  shouldNotify: boolean;
 }
 
 const TTL_MS = 60_000;
@@ -96,16 +106,85 @@ async function computeIntegrations(): Promise<IntegrationsPayload> {
   return { enabled: true, targets, generatedAt: Date.now() };
 }
 
-/** Cached (60s) marketplace snapshot, with in-flight de-dupe like the storage cache. */
+/** Diffs each target's current healthy/unhealthy reading against its last-persisted
+ * one (integration_health_status), same transition/notify-delay logic as
+ * runServiceChecks/runSiteChecks. Targets whose catalog entry sets
+ * `affectsOverallStatus: false` (currently only sophos_central) are skipped entirely --
+ * a security/posture signal there isn't an "infrastructure is down" event, same
+ * reasoning that already keeps it out of the overall status banner. */
+function diffAndPersistIntegrationHealth(payload: IntegrationsPayload): IntegrationTransition[] {
+  const cfg = db.select().from(settings).get();
+  const notifyDelayS = (cfg?.notifyDownAfterMinutes ?? 0) * 60;
+  const now = Math.floor(Date.now() / 1000);
+  const transitions: IntegrationTransition[] = [];
+
+  for (const t of payload.targets) {
+    if (getIntegrationCatalogMeta(t.integration)?.affectsOverallStatus === false) continue;
+
+    const curHealthy = isIntegrationHealthy(t.status);
+    const prev = db.select().from(integrationHealthStatus).where(eq(integrationHealthStatus.targetId, t.id)).get();
+    const prevHealthy = prev?.healthy ?? null;
+
+    let wentUnhealthyAt = prev?.wentUnhealthyAt ?? null;
+    let lastUnhealthyAt = prev?.lastUnhealthyAt ?? null;
+    let lastUnhealthyDurationS = prev?.lastUnhealthyDurationS ?? null;
+    let downNotified = prev?.downNotified ?? false;
+
+    if (!curHealthy && prevHealthy !== false) {
+      wentUnhealthyAt = now;
+      lastUnhealthyAt = now;
+      downNotified = false;
+    } else if (curHealthy && prevHealthy === false && wentUnhealthyAt) {
+      lastUnhealthyDurationS = now - wentUnhealthyAt;
+      transitions.push({ targetId: t.id, targetName: t.name, prevHealthy, curHealthy, shouldNotify: downNotified });
+      wentUnhealthyAt = null;
+      downNotified = false;
+    }
+
+    if (!curHealthy && !downNotified && wentUnhealthyAt !== null && now - wentUnhealthyAt >= notifyDelayS) {
+      downNotified = true;
+      transitions.push({ targetId: t.id, targetName: t.name, prevHealthy, curHealthy, shouldNotify: true });
+    }
+
+    db.insert(integrationHealthStatus)
+      .values({ targetId: t.id, healthy: curHealthy, wentUnhealthyAt, lastUnhealthyAt, lastUnhealthyDurationS, lastCheckedAt: now, downNotified })
+      .onConflictDoUpdate({
+        target: integrationHealthStatus.targetId,
+        set: { healthy: curHealthy, wentUnhealthyAt, lastUnhealthyAt, lastUnhealthyDurationS, lastCheckedAt: now, downNotified },
+      })
+      .run();
+  }
+
+  return transitions;
+}
+
+/** Forces a fresh check (bypassing the 60s cache) and persists/diffs health, for the
+ * background scheduler (instrumentation-node.ts) so an unhealthy transition is still
+ * caught even with zero visitors -- mirrors runServiceChecks/runSiteChecks. Doesn't
+ * notify itself; the caller does, same convention as those two. */
+export async function runIntegrationHealthChecks(): Promise<{ payload: IntegrationsPayload; transitions: IntegrationTransition[] }> {
+  const payload = await computeIntegrations();
+  const transitions = diffAndPersistIntegrationHealth(payload);
+  return { payload, transitions };
+}
+
+/** Cached (60s) marketplace snapshot, with in-flight de-dupe like the storage cache.
+ * Also diffs/persists health and fires notifications on a real cache-miss compute --
+ * same dual-path convention as lib/statusCache.ts's computeStatus, so a status-page
+ * poll (likely far more frequent than the 2-minute scheduler) doesn't leave a
+ * transition unnoticed until the next scheduled cycle. */
 export async function getIntegrationsStatus(): Promise<IntegrationsPayload> {
   const now = Date.now();
   if (cache && cache.expiresAt > now) return cache.data;
   if (inflight) return inflight;
 
-  inflight = computeIntegrations()
-    .then((data) => {
-      cache = { data, expiresAt: Date.now() + TTL_MS };
-      return data;
+  inflight = runIntegrationHealthChecks()
+    .then(({ payload, transitions }) => {
+      cache = { data: payload, expiresAt: Date.now() + TTL_MS };
+      if (transitions.length > 0) {
+        void notifyIntegrationTransitions(transitions).catch((err) => console.error("[integrations] notifyIntegrationTransitions failed", err));
+      }
+      return payload;
     })
     .finally(() => {
       inflight = null;

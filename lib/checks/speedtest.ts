@@ -1,14 +1,14 @@
 import { fetch as undiciFetch } from "undici";
 
-// Cloudflare's public speed-test backend (speed.cloudflare.com) -- the same
+// Cloudflare's public speed-test backend (speed.cloudflare.com) - the same
 // infrastructure their own speed test page and several open-source CLI speed-test
 // tools use. Confirmed directly: GET __down?bytes=N returns exactly N bytes; POST
 // __up accepts a body of any size and returns 200 once fully received. No auth,
-// no API key -- it's designed to be hit anonymously.
-const DOWNLOAD_BYTES = 10_000_000; // 10MB -- big enough that TLS handshake/connection
+// no API key - it's designed to be hit anonymously.
+const DOWNLOAD_BYTES = 10_000_000; // 10MB - big enough that TLS handshake/connection
 // setup overhead doesn't dominate the timing, without taking more than a couple
 // seconds on a typical connection.
-const UPLOAD_BYTES = 5_000_000; // Smaller than download -- most connections are more
+const UPLOAD_BYTES = 5_000_000; // Smaller than download - most connections are more
 // asymmetric (slower upload), and this is meant to finish in a few seconds either way.
 
 function mbps(bytes: number, ms: number): number {
@@ -22,7 +22,7 @@ export interface SpeedTestResult {
 }
 
 /**
- * Real download/upload throughput test against Cloudflare's speed-test backend --
+ * Real download/upload throughput test against Cloudflare's speed-test backend -
  * not a reachability check like the rest of this app's network diagnostics, an
  * actual timed data transfer. Download and upload run sequentially (not in
  * parallel), so neither one's bandwidth usage skews the other's measurement.
@@ -46,7 +46,7 @@ export async function runSpeedTest(timeoutMs = 15000): Promise<SpeedTestResult> 
 
   try {
     const body = new Uint8Array(UPLOAD_BYTES);
-    crypto.getRandomValues(body.subarray(0, Math.min(UPLOAD_BYTES, 65536))); // a little real randomness is enough; the rest can be zeros -- Cloudflare just measures transfer time, not entropy
+    crypto.getRandomValues(body.subarray(0, Math.min(UPLOAD_BYTES, 65536))); // a little real randomness is enough; the rest can be zeros - Cloudflare just measures transfer time, not entropy
     const start = Date.now();
     const res = await undiciFetch("https://speed.cloudflare.com/__up", {
       method: "POST",

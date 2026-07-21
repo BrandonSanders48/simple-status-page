@@ -113,6 +113,41 @@
       "when": 1784577758678,
       "tag": "0015_handy_thunderball",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1784641940493,
+      "tag": "0016_aberrant_nico_minoru",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1784644334713,
+      "tag": "0017_oval_wind_dancer",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1784644881130,
+      "tag": "0018_solid_menace",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1784645075652,
+      "tag": "0019_overrated_mach_iv",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1784645386442,
+      "tag": "0020_wakeful_power_pack",
+      "breakpoints": true
     }
   ]
 }

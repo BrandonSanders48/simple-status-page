@@ -3,10 +3,10 @@ import { requireAuth } from "@/lib/auth";
 import { getIntegrationTarget } from "@/lib/integrationTargets";
 import { listProxmoxVms } from "@/lib/integrations/proxmox";
 
-/** Live (uncached) VM listing for the admin Failover tab's preview step -- used by
+/** Live (uncached) VM listing for the admin Failover tab's preview step - used by
  * both the "start at DR" and "shut down at primary" actions, so any Proxmox target
  * can be listed here (the destructive action routes are what actually restrict which
- * target -- DR-only or primary-only -- rather than this read-only listing). */
+ * target - DR-only or primary-only - rather than this read-only listing). */
 export async function GET(request: Request) {
   if (!(await requireAuth())) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });

@@ -6,7 +6,7 @@ import { invalidateIntegrationsCache } from "@/lib/integrationsCache";
 
 /** Toggles whether a specific row on a marketplace integration's card (identified by
  * its stable `key`, see IntegrationStatus.items) counts toward that target's healthy
- * rollup -- same "acknowledge, don't erase" pattern as /api/admin/pbs-task and
+ * rollup - same "acknowledge, don't erase" pattern as /api/admin/pbs-task and
  * /api/admin/powerstore-alert, just generic across every marketplace integration
  * instead of one bespoke table per integration. */
 export async function POST(request: Request) {

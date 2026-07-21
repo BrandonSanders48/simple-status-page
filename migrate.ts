@@ -23,7 +23,7 @@ function run() {
   }
 
   // A completely untouched database (no services configured yet, nothing saved or
-  // imported before) is the only time it's safe to auto-import -- this must never run
+  // imported before) is the only time it's safe to auto-import - this must never run
   // again on a restart once real config exists, or it would duplicate every row.
   const isFreshDatabase = db.select().from(services).all().length === 0;
   const legacyDir = isFreshDatabase ? findLegacyDir(DATA_DIR) : null;

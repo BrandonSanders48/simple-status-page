@@ -5,7 +5,7 @@ import type { IntegrationStatus } from "@/lib/integrations/types";
 import { getIntegrationCatalogMeta, type IntegrationCatalogMeta } from "@/lib/integrationCatalogMeta";
 
 /** Real brand logo when the catalog entry has one, falling back to the generic
- * FontAwesome icon otherwise -- shared by the public card and the admin marketplace. */
+ * FontAwesome icon otherwise - shared by the public card and the admin marketplace. */
 export function IntegrationLogo({ meta, className = "w-5 h-5" }: { meta: IntegrationCatalogMeta; className?: string }) {
   if (meta.logo) {
     // eslint-disable-next-line @next/next/no-img-element
@@ -45,9 +45,9 @@ export function isIntegrationHealthy(status: IntegrationStatusPayload): boolean 
 }
 
 /** True unless marketplace integrations are enabled and something they're watching is
- * unhealthy -- same "invisible when off" fold-in as isStorageHealthy/isPbsAllHealthy.
+ * unhealthy - same "invisible when off" fold-in as isStorageHealthy/isPbsAllHealthy.
  * Skips any target whose catalog entry has `affectsOverallStatus: false` (currently
- * just sophos_central) -- its card still shows its own Healthy/Attention state, it
+ * just sophos_central) - its card still shows its own Healthy/Attention state, it
  * just doesn't flip the site-wide banner, since a security/posture alert isn't the
  * same thing as a service actually being down. */
 export function isIntegrationsAllHealthy(payload: IntegrationsPayload | null): boolean {
@@ -55,7 +55,7 @@ export function isIntegrationsAllHealthy(payload: IntegrationsPayload | null): b
   return payload.targets.every((t) => getIntegrationCatalogMeta(t.integration)?.affectsOverallStatus === false || isIntegrationHealthy(t.status));
 }
 
-/** `ok: null` renders neutral grey -- "no definitive reading" (not configured/used,
+/** `ok: null` renders neutral grey - "no definitive reading" (not configured/used,
  * or unconfirmed), distinct from both healthy (green) and unhealthy (red). */
 function Pill({ ok, label }: { ok: boolean | null; label: string }) {
   const cls =
@@ -72,11 +72,11 @@ function ExpandChevron({ expanded }: { expanded: boolean }) {
 }
 
 /**
- * One card per configured marketplace target -- fully generic (no per-integration
+ * One card per configured marketplace target - fully generic (no per-integration
  * display code) off the IntegrationStatus shape every catalog entry's fetch function
  * returns, so a new integration in lib/integrationCatalogMeta.ts never needs a new
  * component here. Admins can "Ignore" any individual alerting row (e.g. a device
- * that's expected to be offline) -- it stays visible, dimmed, and stops counting
+ * that's expected to be offline) - it stays visible, dimmed, and stops counting
  * toward this card's healthy rollup until un-ignored.
  */
 export function IntegrationCard({
@@ -97,7 +97,7 @@ export function IntegrationCard({
   onIgnoreChanged?: () => void;
 }) {
   const meta = getIntegrationCatalogMeta(integration);
-  // Overview by default -- expanded automatically when unhealthy, otherwise collapsed
+  // Overview by default - expanded automatically when unhealthy, otherwise collapsed
   // to just the summary line.
   const [expanded, setExpanded] = useState(!status.healthy);
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
@@ -113,7 +113,7 @@ export function IntegrationCard({
       });
       onIgnoreChanged?.();
     } catch {
-      // Swallow -- the item simply keeps its old ignore state, and the admin can retry.
+      // Swallow - the item simply keeps its old ignore state, and the admin can retry.
     } finally {
       setTogglingKey(null);
     }

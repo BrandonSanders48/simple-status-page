@@ -4,11 +4,11 @@ import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { runSpeedTest } from "@/lib/checks/speedtest";
 
 /**
- * WAN download/upload speed test against Cloudflare's public speed-test backend --
+ * WAN download/upload speed test against Cloudflare's public speed-test backend -
  * see lib/checks/speedtest.ts. Unlike /api/admin/test-network's instant reachability
  * checks, this transfers real data (~15MB total) and takes a few seconds, so it's a
  * separate, manually-triggered endpoint rather than something that runs
- * automatically -- nobody wants a diagnostic panel eating bandwidth just from being
+ * automatically - nobody wants a diagnostic panel eating bandwidth just from being
  * opened. Reachable without sign-in (same as test-network), but rate limited
  * tighter given the bandwidth cost of each run.
  */

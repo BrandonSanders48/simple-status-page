@@ -70,7 +70,7 @@ function LockedCard({ step, title, description, onSkip }: { step: number; title:
 }
 
 /**
- * Generic "pick a cluster, pick a VMID range, preview, confirm, act" card -- used for
+ * Generic "pick a cluster, pick a VMID range, preview, confirm, act" card - used for
  * both starting VMs at DR and shutting down VMs at primary, which are otherwise
  * identical flows with an inverted skip condition and a different destructive action.
  * Optionally gated as one step of the guided failover sequence (locked until the
@@ -336,7 +336,7 @@ function VmActionCard({
  * Lists Metro replication sessions on whichever PowerStore array(s) are flagged as the
  * DR site, each with Promote (the storage half of a failover) and Reprotect (the first
  * step of a later failback, re-establishing replication once the array has been
- * promoted) actions -- both double-confirmed inline rather than via checkbox, since
+ * promoted) actions - both double-confirmed inline rather than via checkbox, since
  * there's normally just one or two sessions rather than a range to preview.
  */
 function PromoteMetroCard({
@@ -503,7 +503,7 @@ function formatLogTime(iso: string): string {
   return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-/** Audit trail of Failover tab actions -- refetched each time this tab is opened
+/** Audit trail of Failover tab actions - refetched each time this tab is opened
  * (ServiceTabs unmounts inactive tabs), plus a manual refresh button. */
 function FailoverLog() {
   const [entries, setEntries] = useState<LogEntry[] | null>(null);
@@ -561,7 +561,7 @@ function FailoverLog() {
 /**
  * Public tab: shows a fail-over-or-not recommendation to everyone (derived from
  * already-fetched Storage data, no separate polling), plus admin-only controls for a
- * guided manual failover -- shut down primary VMs, promote the DR datastore, then
+ * guided manual failover - shut down primary VMs, promote the DR datastore, then
  * start DR VMs, in that order, each step locked until the previous one is done or
  * explicitly skipped. Reprotect (failback prep) and the action log sit outside the
  * gated sequence since they apply after the fact, not during it.
@@ -582,7 +582,7 @@ export default function FailoverSection({
   const drProxmoxes = (storage?.proxmoxes ?? []).filter((t) => t.isDr);
   const primaryProxmoxes = (storage?.proxmoxes ?? []).filter((t) => !t.isDr);
   const drPowerstores = (storage?.powerstores ?? []).filter((t) => t.isDr);
-  // Nothing to gracefully shut down on a cluster we can't even reach -- likely already
+  // Nothing to gracefully shut down on a cluster we can't even reach - likely already
   // the reason a failover is happening. Step 1 only blocks Step 2 when at least one
   // primary cluster is actually responding.
   const primaryAccessible = primaryProxmoxes.some((t) => t.status.ok);

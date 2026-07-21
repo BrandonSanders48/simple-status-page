@@ -1,7 +1,7 @@
 import dgram from "node:dgram";
 
 // Standard NTP client request first byte: LI=0 (no warning), VN=4 (NTPv4), Mode=3
-// (client) -- 0b00_100_011 = 0x23. The rest of the 48-byte packet can be zeros for a
+// (client) - 0b00_100_011 = 0x23. The rest of the 48-byte packet can be zeros for a
 // bare reachability probe; a real NTP client would also fill in a transmit timestamp,
 // but this is the same minimal-request technique most simple NTP checkers use.
 const NTP_CLIENT_REQUEST = Buffer.alloc(48);

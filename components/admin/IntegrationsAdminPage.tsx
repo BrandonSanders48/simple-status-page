@@ -9,7 +9,7 @@ import IntegrationsTab from "./IntegrationsTab";
 /**
  * Standalone page for the integrations marketplace (PowerStore/Proxmox/PBS/UniFi/
  * Sophos/GoTo Connect/etc), split out of the all-in-one scrolling /admin dashboard so
- * it can grow independently -- saves through its own /api/admin/integration-targets
+ * it can grow independently - saves through its own /api/admin/integration-targets
  * endpoint, scoped to just the integration_targets table, rather than the general
  * config PUT.
  */

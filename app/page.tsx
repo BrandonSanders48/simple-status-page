@@ -27,6 +27,7 @@ export default async function StatusPage({
       logoPath={cfg?.businessLogoPath ?? null}
       refreshRateMs={cfg?.refreshRateMs ?? 12000}
       servicesVisibleCount={cfg?.servicesVisibleCount ?? 10}
+      groupServicesBySite={cfg?.groupServicesBySite ?? true}
       alertSound={cfg?.alertSound ?? false}
       browserNotify={cfg?.browserNotify ?? false}
       initialDark={initialDark}

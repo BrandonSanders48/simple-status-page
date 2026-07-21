@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { integrationIgnoredItems } from "./db/schema";
 
-/** Every item key an admin has ignored for a given marketplace target -- see
+/** Every item key an admin has ignored for a given marketplace target - see
  * IntegrationStatus.items in lib/integrations/types.ts for what `key` identifies. */
 export function getIgnoredKeys(targetId: number): Set<string> {
   const rows = db

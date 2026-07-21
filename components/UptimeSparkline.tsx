@@ -6,7 +6,7 @@ interface DayUptime {
 }
 
 function barColor(upPercent: number | null): string {
-  // dark:bg-slate-500, not -700 -- the service card itself is bg-slate-700 in dark
+  // dark:bg-slate-500, not -700 - the service card itself is bg-slate-700 in dark
   // mode (see ServiceCard.tsx), so a -700 bar was invisible against its own background.
   if (upPercent === null) return "bg-slate-200 dark:bg-slate-500";
   if (upPercent >= 99.9) return "bg-emerald-500";

@@ -16,7 +16,7 @@ import FailoverSection from "./FailoverSection";
 import { computeFailoverStatus } from "@/lib/failover";
 import { IntegrationCard, isIntegrationHealthy, type IntegrationsPayload } from "./IntegrationsSection";
 import TestNetworkModal from "./admin/TestNetworkModal";
-import type { StatusServicePayload } from "@/lib/statusCache";
+import type { StatusServicePayload, SitePayload } from "@/lib/statusCache";
 
 type TabKey = "services" | "integrations" | "failover";
 
@@ -72,6 +72,8 @@ function TabButton({
  */
 export default function ServiceTabs({
   services,
+  sites,
+  groupBySite,
   visibleCount,
   loading,
   onOpenOutageLog,
@@ -86,6 +88,8 @@ export default function ServiceTabs({
   uptimeByService,
 }: {
   services: StatusServicePayload[];
+  sites: SitePayload[];
+  groupBySite: boolean;
   visibleCount: number;
   loading: boolean;
   onOpenOutageLog: () => void;
@@ -164,6 +168,8 @@ export default function ServiceTabs({
         <div className="flex justify-end mb-2">{testNetworkButton}</div>
         <ServicesPanel
           services={services}
+          sites={sites}
+          groupBySite={groupBySite}
           visibleCount={visibleCount}
           loading={loading}
           onOpenOutageLog={onOpenOutageLog}
@@ -224,6 +230,8 @@ export default function ServiceTabs({
         {activeTab === "services" && (
           <ServicesPanel
             services={services}
+            sites={sites}
+            groupBySite={groupBySite}
             visibleCount={visibleCount}
             loading={loading}
             onOpenOutageLog={onOpenOutageLog}

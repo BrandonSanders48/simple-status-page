@@ -3,12 +3,12 @@ import type { IntegrationStatus } from "./types";
 
 /**
  * GoTo Connect (formerly Jive/LogMeIn) admin/voice APIs for a customer's own hosted
- * phone system -- NOT the public status.goto.com feed, which this app surfaces as its
+ * phone system - NOT the public status.goto.com feed, which this app surfaces as its
  * own separate "GoTo Status" integration.
  *
  * This is a server-side background poller with no user present to run an interactive
  * OAuth consent flow, so `config` supports two mutually exclusive ways to authenticate
- * -- an admin fills in exactly one, not both:
+ * - an admin fills in exactly one, not both:
  *   - Personal Access Token (PAT): self-service, created once at
  *     https://myaccount.goto.com -> Developer Tools -> Create token, no
  *     authorization-code round trip required. The OAuth Client itself still needs the
@@ -16,7 +16,7 @@ import type { IntegrationStatus } from "./types";
  *     https://developer.logmeininc.com/clients. Simpler to set up; prefer this unless
  *     there's a reason not to.
  *   - Refresh token: a long-lived token obtained once, out of band, via GoTo's OAuth
- *     authorization-code flow -- useful when PAT creation isn't available/allowed for
+ *     authorization-code flow - useful when PAT creation isn't available/allowed for
  *     an account.
  * Every call exchanges whichever one is configured for a short-lived access token
  * (personal_access_token or refresh_token grant, respectively); clientId/clientSecret
@@ -25,35 +25,35 @@ import type { IntegrationStatus } from "./types";
  * Endpoints/fields below were checked against GoTo's current developer docs at
  * https://developer.goto.com/ (mid-2026):
  *   - PAT exchange: https://developer.goto.com/guides/Authentication/03.1_HOW_accessTokenPAT/
- *     -- CONFIRMED: POST to authentication.logmeininc.com/oauth/token, Basic auth of
+ *     - CONFIRMED: POST to authentication.logmeininc.com/oauth/token, Basic auth of
  *     clientId:clientSecret, grant_type=personal_access_token&pat=<token>. Response is a
  *     normal OAuth token response (access_token, expires_in ~3600s). (The older
  *     api.getgo.com/oauth/v2 token host from GoTo's own older guides was decommissioned
  *     September 30, 2025.)
  *   - Refresh token exchange: https://developer.goto.com/guides/Authentication/05_HOW_refreshToken/
- *     -- CONFIRMED: same token endpoint, grant_type=refresh_token&refresh_token=<token>.
+ *     - CONFIRMED: same token endpoint, grant_type=refresh_token&refresh_token=<token>.
  *     GoTo may rotate the refresh token itself on use, returning a new one alongside
- *     the access token -- this integration has no way to persist that back to `config`,
+ *     the access token - this integration has no way to persist that back to `config`,
  *     so if a previously-working refresh token starts being rejected, the fix is
  *     re-running the authorization-code flow for a fresh one (or switching to a PAT).
  *   - Account key lookup: https://developer.goto.com/guides/GoToConnect/09_HOW_fetchAccountUsers/
- *     -- CONFIRMED: GET api.getgo.com/admin/rest/v1/me returns the accounts this token
+ *     - CONFIRMED: GET api.getgo.com/admin/rest/v1/me returns the accounts this token
  *     can act on; their `key` is the accountKey every Voice Admin API call needs.
  *   - Voice Admin API (phone numbers): https://developer.goto.com/guides/GoToConnect/13_HOW_useVoiceAdminApis/
- *     -- CONFIRMED endpoint/shape: GET api.goto.com/voice-admin/v1/phone-numbers, scope
+ *     - CONFIRMED endpoint/shape: GET api.goto.com/voice-admin/v1/phone-numbers, scope
  *     voice-admin.v1.read. GoTo's changelog notes this response now includes a `status`
  *     field per number, but does not document its enum values, so it's shown verbatim
  *     rather than mapped to ok/not-ok beyond a short guess list (see HEALTHY_STATUSES).
  *   - Voice Admin API (extensions): confirmed to exist and to have moved from
  *     api.jive.com to api.goto.com (same /voice-admin/v1/extensions path), but GoTo's
- *     public docs did not turn up a documented response schema for it -- in particular
+ *     public docs did not turn up a documented response schema for it - in particular
  *     there's no confirmed field for "is this extension's phone actually registered".
  *     fetchExtensions() below guesses at `status`/`phone.status` (mirroring the phone
  *     numbers shape) and falls back to listing extensions as configured, with no
  *     health signal, if neither is present. Treat this endpoint's mapping as the least
  *     trustworthy part of this file and correct it against a real account's response.
  *
- * Unlike a refresh token, GoTo's docs don't describe the PAT itself rotating on use --
+ * Unlike a refresh token, GoTo's docs don't describe the PAT itself rotating on use -
  * each call just re-exchanges the same stored PAT for a fresh short-lived access token.
  * If GoTo ever starts rejecting the configured token as invalid/expired, the fix is to
  * create a new Personal Access Token at myaccount.goto.com (PATs can be revoked/expired
@@ -68,7 +68,7 @@ const TOKEN_URL = "https://authentication.logmeininc.com/oauth/token";
 const ADMIN_HOST = "https://api.getgo.com";
 const VOICE_HOST = "https://api.goto.com";
 
-/** Best-guess "this row looks healthy" values -- GoTo doesn't publish the enum for
+/** Best-guess "this row looks healthy" values - GoTo doesn't publish the enum for
  * phone-number/extension status, so this is deliberately a short allow-list rather
  * than a deny-list: anything not recognized is treated as a diagnostic-worthy
  * "unknown", not silently marked healthy. See fetchPhoneNumbers/fetchExtensions. */
@@ -146,7 +146,7 @@ async function get(accessToken: string, url: string, timeoutMs = 8000): Promise<
   }
 }
 
-// Upper bound on pages walked per list endpoint -- GoTo's Voice Admin API appears to
+// Upper bound on pages walked per list endpoint - GoTo's Voice Admin API appears to
 // default to a 50-item page (per a real account hitting exactly that limit), so this
 // still covers a sizeable account without an unbounded worst case.
 const MAX_PAGES = 25;
@@ -166,7 +166,7 @@ async function getAllPages(accessToken: string, baseUrl: string, diagnostics: st
     const url = pageMarker ? `${baseUrl}&pageMarker=${encodeURIComponent(pageMarker)}` : baseUrl;
     const result = await get(accessToken, url);
     if (result.error !== null) {
-      diagnostics.push(page === 0 ? result.error : `${baseUrl}: stopped after ${page} page(s) -- ${result.error}`);
+      diagnostics.push(page === 0 ? result.error : `${baseUrl}: stopped after ${page} page(s) - ${result.error}`);
       break;
     }
     const rows = Array.isArray(result.data.items) ? (result.data.items as JsonRecord[]) : [];
@@ -176,7 +176,7 @@ async function getAllPages(accessToken: string, baseUrl: string, diagnostics: st
     if (!nextMarker) break;
     if (nextMarker === lastMarker) {
       diagnostics.push(
-        `${baseUrl}: nextPageMarker didn't change after submitting it back as pageMarker -- pagination may need a different query ` +
+        `${baseUrl}: nextPageMarker didn't change after submitting it back as pageMarker - pagination may need a different query ` +
           "param name for this account; stopped to avoid looping. Only the first page is reflected here."
       );
       break;
@@ -184,7 +184,7 @@ async function getAllPages(accessToken: string, baseUrl: string, diagnostics: st
     lastMarker = nextMarker;
     pageMarker = nextMarker;
     if (page === MAX_PAGES - 1) {
-      diagnostics.push(`${baseUrl}: more results exist beyond ${MAX_PAGES} pages -- stopped there to bound request time.`);
+      diagnostics.push(`${baseUrl}: more results exist beyond ${MAX_PAGES} pages - stopped there to bound request time.`);
     }
   }
 
@@ -196,7 +196,7 @@ async function getAllPages(accessToken: string, baseUrl: string, diagnostics: st
  * setup docs have admins retrieve this once via the Admin API and pin it, rather
  * than auto-detecting it every call), it's used as-is once confirmed to be one of
  * the accounts this token can actually see; otherwise the first account is picked
- * automatically (diagnosing the choice if there's more than one -- e.g. a
+ * automatically (diagnosing the choice if there's more than one - e.g. a
  * reseller/multi-tenant login). Always calls /me either way, purely so a diagnostic
  * can report every account this token can see, same reasoning as this app's Meraki
  * organizationId auto-detect. */
@@ -218,7 +218,7 @@ async function fetchAccountKey(accessToken: string, configured: string, diagnost
       diagnostics.push(
         `Configured Account Key "${configured}" was not found among the ${accounts.length} account(s) this token can see` +
           (accounts.length > 0 ? ` (${accounts.map(describe).join(", ")})` : "") +
-          " -- double-check it against the GoTo Admin API. Using it anyway in case this token can see it but not list it."
+          " - double-check it against the GoTo Admin API. Using it anyway in case this token can see it but not list it."
       );
     }
     return configured;
@@ -232,7 +232,7 @@ async function fetchAccountKey(accessToken: string, configured: string, diagnost
   diagnostics.push(
     `Using account ${describe(firstAccount)}` +
       (accounts.length > 1
-        ? ` -- this token can see ${accounts.length} accounts total (${accounts.map(describe).join(", ")}); set Account Key in the integration's config to pin a different one.`
+        ? ` - this token can see ${accounts.length} accounts total (${accounts.map(describe).join(", ")}); set Account Key in the integration's config to pin a different one.`
         : ".")
   );
   const key = keyOf(firstAccount);
@@ -244,11 +244,11 @@ type Row = { label: string; value: string; ok: boolean; key: string };
 type ListResult = { total: number; unhealthy: Row[] };
 
 /** Phone numbers on the account, via the Voice Admin API's confirmed
- * /voice-admin/v1/phone-numbers endpoint (walking every page -- see getAllPages).
+ * /voice-admin/v1/phone-numbers endpoint (walking every page - see getAllPages).
  * Field names (`name`, `number`, `status`) match GoTo's documented example response;
  * `status`'s actual enum values are not documented, so anything outside
  * HEALTHY_STATUSES is flagged as a diagnostic rather than silently assumed to be
- * down. Only unhealthy numbers are returned as items -- with a real account this can
+ * down. Only unhealthy numbers are returned as items - with a real account this can
  * be hundreds of numbers, and nobody needs every healthy one listed individually;
  * the total count still goes into the summary. */
 async function fetchPhoneNumbers(accessToken: string, accountKey: string, diagnostics: string[]): Promise<ListResult> {
@@ -271,21 +271,21 @@ async function fetchPhoneNumbers(accessToken: string, accountKey: string, diagno
   });
   if (unknownStatusSeen) {
     diagnostics.push(
-      "One or more phone numbers reported a status not in this integration's known-healthy list -- GoTo doesn't publish the full enum, " +
+      "One or more phone numbers reported a status not in this integration's known-healthy list - GoTo doesn't publish the full enum, " +
         "so check the value shown against your account and adjust HEALTHY_STATUSES in gotoConnect.ts if it's actually fine."
     );
   }
   return { total: rows.length, unhealthy };
 }
 
-/** Extensions on the account, via /voice-admin/v1/extensions (walking every page --
+/** Extensions on the account, via /voice-admin/v1/extensions (walking every page -
  * see getAllPages). The endpoint's existence and path are confirmed (it moved from
  * api.jive.com to api.goto.com along with the rest of the Voice Admin API), but
  * GoTo's public docs did not surface a documented response schema for it.
  * `status`/`phone.status` are a guess mirroring the phone numbers shape above; if an
  * account's real response uses something else, every extension looks "healthy" (no
  * status field means no health signal, not an assumed problem) rather than a wrong
- * guess -- correct this against a real account's response. Only unhealthy extensions
+ * guess - correct this against a real account's response. Only unhealthy extensions
  * are returned as items, same reasoning as fetchPhoneNumbers. */
 async function fetchExtensions(accessToken: string, accountKey: string, diagnostics: string[]): Promise<ListResult> {
   const rows = await getAllPages(accessToken, `${VOICE_HOST}/voice-admin/v1/extensions?accountKey=${encodeURIComponent(accountKey)}`, diagnostics);
@@ -305,7 +305,7 @@ async function fetchExtensions(accessToken: string, accountKey: string, diagnost
   if (rows.length > 0 && !anyStatusFound) {
     diagnostics.push(
       "Extensions API returned no field this integration recognizes as online/registered status (tried `status` and `phone.status`); " +
-        "treating all extensions as healthy with no real health signal -- see the UNCONFIRMED note in gotoConnect.ts."
+        "treating all extensions as healthy with no real health signal - see the UNCONFIRMED note in gotoConnect.ts."
     );
   }
   return { total: rows.length, unhealthy };
@@ -313,7 +313,7 @@ async function fetchExtensions(accessToken: string, accountKey: string, diagnost
 
 /**
  * Queries GoTo Connect's admin/voice APIs for phone-number and extension health: a
- * token exchange (PAT or refresh token, whichever is configured -- see the file-level
+ * token exchange (PAT or refresh token, whichever is configured - see the file-level
  * comment) followed by the Voice Admin API's phone-numbers and extensions endpoints.
  */
 export async function fetchGotoConnectStatus(config: Record<string, string>): Promise<IntegrationStatus> {

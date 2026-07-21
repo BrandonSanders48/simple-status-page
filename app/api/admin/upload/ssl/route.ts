@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   }
 
   // A pending counterpart from a swap already in progress takes priority over whatever's
-  // currently active, but only if it's recent -- an abandoned upload from a stale, never-
+  // currently active, but only if it's recent - an abandoned upload from a stale, never-
   // completed attempt shouldn't linger around and unexpectedly pair with a new upload.
   const pendingCounterpartPath = type === "cert" ? pendingKeyPath : pendingCertPath;
   const pendingStat = await fs.stat(pendingCounterpartPath).catch(() => null);
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       const hotSwapped = await promote(certText, keyText);
       return NextResponse.json({ ok: true, hotSwapped });
     } catch {
-      // Doesn't match what's active -- this is the first half of a full pair swap. Stage
+      // Doesn't match what's active - this is the first half of a full pair swap. Stage
       // it and wait for the matching other half, rather than rejecting outright.
       await fs.writeFile(targetPendingPath, text);
       return NextResponse.json({ ok: true, hotSwapped: false, pending: true });

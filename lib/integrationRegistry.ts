@@ -12,7 +12,7 @@ import { fetchPbsStatus } from "./integrations/pbs";
 /**
  * PowerStore/Proxmox/PBS's real status display (lib/storageCache.ts, lib/pbsCache.ts,
  * components/StorageSections.tsx) calls their bespoke fetch functions directly and
- * keeps their own rich types -- alert-acknowledge, Metro sessions, node capacity bars,
+ * keeps their own rich types - alert-acknowledge, Metro sessions, node capacity bars,
  * and backup task history don't fit the generic marketplace shape without a real
  * regression. These adapters exist only so the generic admin Test Connection button
  * (POST /api/admin/test-integration) works uniformly across every catalog entry,
@@ -101,7 +101,7 @@ const FETCHERS: Record<string, IntegrationCatalogEntry["fetchStatus"]> = {
 /**
  * Server-side catalog: the client-safe metadata (lib/integrationCatalogMeta.ts) plus
  * each integration's fetch function, which pulls in undici/insecureAgent and must
- * never end up in a client bundle -- this file (and this file alone) joins the two,
+ * never end up in a client bundle - this file (and this file alone) joins the two,
  * so only server code (lib/integrationsCache.ts, the admin test-connection route)
  * should import from here.
  */

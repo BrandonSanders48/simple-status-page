@@ -9,6 +9,7 @@ import MaintenanceBanner from "./MaintenanceBanner";
 import CreatePostModal from "./CreatePostModal";
 import RssPanel from "./RssPanel";
 import ServiceTabs from "./ServiceTabs";
+import { isSitesAllHealthy } from "./ServicesPanel";
 import { isStorageHealthy, isPbsAllHealthy, type StoragePayload, type PbsPayload } from "./StorageSections";
 import { isIntegrationsAllHealthy, type IntegrationsPayload } from "./IntegrationsSection";
 import { isDrPreferred } from "@/lib/failover";
@@ -51,6 +52,7 @@ export default function Dashboard({
   logoPath = null,
   refreshRateMs,
   servicesVisibleCount,
+  groupServicesBySite = true,
   alertSound = false,
   browserNotify = false,
   initialDark = false,
@@ -63,6 +65,7 @@ export default function Dashboard({
   logoPath?: string | null;
   refreshRateMs: number;
   servicesVisibleCount: number;
+  groupServicesBySite?: boolean;
   alertSound?: boolean;
   browserNotify?: boolean;
   initialDark?: boolean;
@@ -231,6 +234,7 @@ export default function Dashboard({
       isStorageHealthy(storage) &&
       isPbsAllHealthy(pbs) &&
       isIntegrationsAllHealthy(integrations) &&
+      isSitesAllHealthy(status.sites) &&
       !isDrPreferred(storage)
     : null;
   const isAdmin = !!session?.authenticated;
@@ -307,6 +311,8 @@ export default function Dashboard({
 
         <ServiceTabs
           services={status?.services ?? []}
+          sites={status?.sites ?? []}
+          groupBySite={groupServicesBySite}
           visibleCount={servicesVisibleCount}
           loading={!status}
           onOpenOutageLog={() => setShowOutageLog(true)}
@@ -369,6 +375,7 @@ export default function Dashboard({
       {showSubscribe && session && (
         <SubscribeModal
           services={status?.services ?? []}
+          sites={status?.sites ?? []}
           csrfToken={session.csrfToken}
           onClose={() => setShowSubscribe(false)}
           onManage={() => {

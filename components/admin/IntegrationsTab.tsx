@@ -31,13 +31,13 @@ function IntegrationTargetCard({
   }
 
   // GoTo Connect authenticates with EITHER a Personal Access Token OR a Refresh
-  // Token, never both -- showing both as plain fields alongside OAuth Client ID/
+  // Token, never both - showing both as plain fields alongside OAuth Client ID/
   // Secret reads as "needs 3 different credential types," so this swaps them for a
   // single toggle + one field instead (OAuth Client ID/Secret are still always
   // required either way, and render normally via the generic field grid below).
   const isGoto = entry.key === "goto_connect";
   const genericFields = isGoto ? entry.fields.filter((f) => f.key !== "personalAccessToken" && f.key !== "refreshToken") : entry.fields;
-  // Real state, not derived from which field has content -- deriving it from
+  // Real state, not derived from which field has content - deriving it from
   // e.g. `refreshToken` being non-empty meant clicking "Refresh Token" while it was
   // still blank had nothing to make the radio actually reflect: the field would
   // stay empty, so the derived value snapped straight back to "pat" and the toggle
@@ -229,7 +229,7 @@ function IntegrationCatalogCard({
  * The integrations marketplace: one card per catalog entry (see
  * lib/integrationCatalogMeta.ts), each holding its own configured targets. Adding a
  * new integration to the catalog automatically gets a card here and a generic
- * form driven by that entry's field list -- no new admin UI code needed per integration.
+ * form driven by that entry's field list - no new admin UI code needed per integration.
  */
 export default function IntegrationsTab({
   integrationTargets,

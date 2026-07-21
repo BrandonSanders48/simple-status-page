@@ -2,7 +2,7 @@ import { fetch as undiciFetch } from "undici";
 import type { IntegrationStatus } from "./types";
 
 /**
- * Cisco Meraki Dashboard API -- cloud-managed switches/APs/security appliances/etc.
+ * Cisco Meraki Dashboard API - cloud-managed switches/APs/security appliances/etc.
  * Auth is a single admin-scoped API key (Dashboard > Organization > API & Webhooks),
  * sent on every request via the `X-Cisco-Meraki-API-Key` header (the Dashboard API
  * also accepts `Authorization: Bearer <key>`; the older header name is used here since
@@ -10,40 +10,40 @@ import type { IntegrationStatus } from "./types";
  *
  * Endpoints/fields below were checked against developer.cisco.com/meraki/api-v1/
  * (mid-2026):
- *   - GET /organizations -- CONFIRMED: lists every organization this key can access,
- *     each with an `id`/`name`. Always fetched (see resolveOrganizationId) -- even
- *     when `organizationId` is configured -- purely so a diagnostic can report which
+ *   - GET /organizations - CONFIRMED: lists every organization this key can access,
+ *     each with an `id`/`name`. Always fetched (see resolveOrganizationId) - even
+ *     when `organizationId` is configured - purely so a diagnostic can report which
  *     org name actually got queried and what else this key can see, since "connected
  *     fine, 0 devices" and "queried the wrong/empty org" look identical otherwise.
  *     Falls back to auto-picking the first org when `organizationId` is blank,
  *     mirroring this app's GoTo Connect accountKey auto-detect.
- *   - GET /organizations/{organizationId}/devices/availabilities -- CONFIRMED as the
+ *   - GET /organizations/{organizationId}/devices/availabilities - CONFIRMED as the
  *     current (non-deprecated) endpoint for device status: the older
  *     /devices/statuses endpoint was marked deprecated in the docs as of October 2024
  *     in favor of this one. Each entry has `name`, `serial`, `productType`, and a
- *     `status` of "online"/"alerting"/"offline"/"dormant" -- refreshed by Meraki every
+ *     `status` of "online"/"alerting"/"offline"/"dormant" - refreshed by Meraki every
  *     5 minutes per the docs, so don't expect faster-than-that granularity. Only the
  *     first page (up to 1000 devices, the API's max perPage) is requested; an org with
  *     more devices than that will only show the first 1000, noted in `diagnostics`.
- *   - GET /organizations/{organizationId}/assurance/alerts -- CONFIRMED against a real
+ *   - GET /organizations/{organizationId}/assurance/alerts - CONFIRMED against a real
  *     account's response: this is Meraki's "Alert Hub"/health-alerts API, where the
  *     *reason* a device is "alerting" actually lives (devices/availabilities only
  *     gives the bare status word). Returns a bare array (not `{items: [...]}`) of
  *     rows shaped like `{ id, categoryType, startedAt, resolvedAt, type, title,
- *     description, severity, scope: { devices: [{ serial, name, ... }, ...] } }` --
+ *     description, severity, scope: { devices: [{ serial, name, ... }, ...] } }` -
  *     note `scope.devices` is a plural array, since one alert (e.g. a VLAN mismatch)
  *     can span more than one device (both ends of the mismatched link); every serial
  *     in it gets this alert's `title` as its reason. `resolvedAt` non-null means the
  *     alert is over and is skipped. A failure calling this endpoint at all never
- *     fails the whole integration -- devices just show the bare status word, noted
+ *     fails the whole integration - devices just show the bare status word, noted
  *     in `diagnostics`.
  *
  * Status mapping: only "offline" (device genuinely unreachable) counts as unhealthy.
- * "alerting" does NOT -- confirmed via a real account's assurance/alerts data that it
+ * "alerting" does NOT - confirmed via a real account's assurance/alerts data that it
  * covers plenty of non-outage config warnings (e.g. a VLAN mismatch between two
  * switch ports, categoryType "configuration") where the device is still up and
  * passing traffic, not "down". Both "alerting" and "dormant" (configured but not
- * actively deployed/claimed into a network) are shown neutrally -- same tri-state
+ * actively deployed/claimed into a network) are shown neutrally - same tri-state
  * convention as this app's UniFi integration for a subsystem that isn't really in
  * use, not a real failure. The alert's own reason still shows in parentheses either
  * way, so a genuinely severe "alerting" device is still visible, just not miscounted
@@ -72,7 +72,7 @@ async function get(apiKey: string, path: string, timeoutMs = 8000): Promise<Fetc
 }
 
 /**
- * Resolves which organization to query -- always fetches /organizations first (even
+ * Resolves which organization to query - always fetches /organizations first (even
  * when `configured` is set) so a diagnostic can always say exactly which org name/id
  * ended up being queried, plus every other org this key can see. This is the single
  * biggest source of "connected fine, but 0 devices" confusion: an org that's actually
@@ -98,7 +98,7 @@ async function resolveOrganizationId(apiKey: string, configured: string, diagnos
       diagnostics.push(
         `Configured Organization ID "${configured}" was not found among the ${orgs.length} organization(s) this API key can see` +
           (orgs.length > 0 ? ` (${orgs.map(describe).join(", ")})` : "") +
-          " -- double-check it against Meraki Dashboard > Organization > Settings. Querying it anyway in case this key can see it but not list it."
+          " - double-check it against Meraki Dashboard > Organization > Settings. Querying it anyway in case this key can see it but not list it."
       );
     }
     return configured;
@@ -112,7 +112,7 @@ async function resolveOrganizationId(apiKey: string, configured: string, diagnos
   diagnostics.push(
     `Querying organization ${describe(first)}` +
       (orgs.length > 1
-        ? ` -- this key can see ${orgs.length} organizations total (${orgs.map(describe).join(", ")}); set Organization ID in the integration's config to pin a different one.`
+        ? ` - this key can see ${orgs.length} organizations total (${orgs.map(describe).join(", ")}); set Organization ID in the integration's config to pin a different one.`
         : ".")
   );
   return typeof first.id === "string" ? first.id : null;
@@ -122,7 +122,7 @@ type Row = { label: string; value: string; ok: boolean | null; key: string };
 
 const STATUS_LABEL: Record<string, string> = { online: "Online", offline: "Offline", alerting: "Alerting", dormant: "Dormant" };
 
-/** Every device serial an assurance alert row applies to -- confirmed shape is
+/** Every device serial an assurance alert row applies to - confirmed shape is
  * `alert.scope.devices[].serial` (see the file-level comment); an alert can name
  * more than one device (e.g. both ends of a VLAN mismatch). */
 function deviceSerialsOf(alert: JsonRecord): string[] {
@@ -131,7 +131,7 @@ function deviceSerialsOf(alert: JsonRecord): string[] {
   return devices.filter((d): d is JsonRecord & { serial: string } => typeof d.serial === "string").map((d) => d.serial);
 }
 
-/** A short human reason for an assurance alert row -- prefers `title` (confirmed
+/** A short human reason for an assurance alert row - prefers `title` (confirmed
  * present, e.g. "Port VLAN mismatch"), falling back to `type`/`categoryType`. */
 function describeAlert(alert: JsonRecord): string | null {
   const text = alert.title ?? alert.type ?? alert.categoryType;
@@ -141,7 +141,7 @@ function describeAlert(alert: JsonRecord): string | null {
 /**
  * Maps each alerting device's serial to a short reason via the Assurance Alerts API,
  * so a device can show e.g. "Alerting (Gateway unreachable)" instead of just
- * "Alerting". Never throws and never fails the caller -- any problem here (wrong
+ * "Alerting". Never throws and never fails the caller - any problem here (wrong
  * endpoint shape, request error) just means devices fall back to the bare status
  * word, noted in `diagnostics` rather than surfaced as a hard failure.
  */
@@ -157,7 +157,7 @@ async function fetchAlertReasons(apiKey: string, organizationId: string, diagnos
 
   let unmatched = 0;
   for (const alert of alerts) {
-    if (typeof alert.resolvedAt === "string" && alert.resolvedAt) continue; // already resolved -- not a current reason
+    if (typeof alert.resolvedAt === "string" && alert.resolvedAt) continue; // already resolved - not a current reason
     const serials = deviceSerialsOf(alert);
     const reason = describeAlert(alert);
     if (serials.length === 0 || !reason) {
@@ -170,7 +170,7 @@ async function fetchAlertReasons(apiKey: string, organizationId: string, diagnos
   }
   if (alerts.length > 0 && reasons.size === 0) {
     diagnostics.push(
-      `assurance/alerts: got ${alerts.length} alert(s) but couldn't match any to a device serial or reason -- ` +
+      `assurance/alerts: got ${alerts.length} alert(s) but couldn't match any to a device serial or reason - ` +
         `field-probing in deviceSerialsOf()/describeAlert() likely needs correcting against this account's actual response shape.`
     );
   } else if (unmatched > 0) {
@@ -190,7 +190,7 @@ async function fetchDeviceAvailabilities(apiKey: string, organizationId: string,
   }
   const devices = Array.isArray(devicesResult.data) ? (devicesResult.data as JsonRecord[]) : [];
   if (devices.length === 1000) {
-    diagnostics.push("This organization has 1000+ devices -- only the first 1000 (one API page) are shown here.");
+    diagnostics.push("This organization has 1000+ devices - only the first 1000 (one API page) are shown here.");
   }
 
   return devices.map((d, i): Row => {
@@ -198,7 +198,7 @@ async function fetchDeviceAvailabilities(apiKey: string, organizationId: string,
     const status = rawStatus.toLowerCase();
     const serial = typeof d.serial === "string" ? d.serial : null;
     const label = (typeof d.name === "string" && d.name) || serial || "Device";
-    // Only "offline" is a real outage -- "alerting" covers plenty of non-outage
+    // Only "offline" is a real outage - "alerting" covers plenty of non-outage
     // config warnings too (see the file-level comment), so it's neutral, not red.
     const ok = status === "offline" ? false : status === "online" ? true : null;
     const statusText = STATUS_LABEL[status] || rawStatus || "Unknown";

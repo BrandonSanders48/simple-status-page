@@ -23,7 +23,7 @@ export function checkTcp(host: string, port: number, timeoutMs = 2000): Promise<
 export type TcpFailureReason = "refused" | "timeout" | "dns" | "unreachable" | "other";
 
 /** Same raw TCP connect test as checkTcp, but reports *why* a failed connection
- * failed -- "refused" (something answered and actively rejected the port, i.e. the
+ * failed - "refused" (something answered and actively rejected the port, i.e. the
  * host is up but nothing's listening there), "timeout" (no response at all within
  * the window, e.g. a firewall silently dropping it), "dns" (the hostname itself
  * didn't resolve), "unreachable" (routing-level rejection), or "other". Useful for
