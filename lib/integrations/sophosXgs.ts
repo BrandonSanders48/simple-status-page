@@ -131,13 +131,15 @@ function loginStatusOf(xml: string): string | null {
   return null;
 }
 
-/**
- * POSTs one <Request><Login>...</Login>{innerXml}</Request> payload and returns the raw
- * response body for regex-based extraction (no XML parser dependency in this project).
- * Never throws - network/timeout/HTTP failures and login failures all come back as
- * `{ ok: false, error }` so a caller's Promise.all never rejects.
- */
-async function callApi(cfg: SophosXgsConfig, innerXml: string, timeoutMs = 8000): Promise<ApiResult> {
+/** True for what looks like a transient network/timeout hiccup rather than a real,
+ * persistent problem - the only case worth retrying (see callApi below). An auth
+ * failure or an HTTP error response from the appliance itself won't get any
+ * different on a second try, so those are deliberately excluded. */
+function looksTransient(error: string): boolean {
+  return /aborted due to timeout|fetch failed|ECONNRESET|ETIMEDOUT|EPIPE/i.test(error);
+}
+
+async function callApiOnce(cfg: SophosXgsConfig, innerXml: string, timeoutMs: number): Promise<ApiResult> {
   const reqXml = `<Request><Login><Username>${xmlEscape(cfg.username)}</Username><Password>${xmlEscape(cfg.password)}</Password></Login>${innerXml}</Request>`;
   try {
     const res = await undiciFetch(apiUrl(cfg.host), {
@@ -159,6 +161,42 @@ async function callApi(cfg: SophosXgsConfig, innerXml: string, timeoutMs = 8000)
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "request failed", authFailure: false };
   }
+}
+
+const MAX_RETRIES = 5;
+const RETRY_DELAY_MS = 30_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * POSTs one <Request><Login>...</Login>{innerXml}</Request> payload and returns the raw
+ * response body for regex-based extraction (no XML parser dependency in this project).
+ * Never throws - network/timeout/HTTP failures and login failures all come back as
+ * `{ ok: false, error }` so a caller's Promise.all never rejects.
+ *
+ * Retries up to MAX_RETRIES times (so up to 6 attempts total) on what looks like a
+ * transient timeout/network hiccup, waiting RETRY_DELAY_MS between each attempt so a
+ * slow/busy appliance gets real time to recover instead of being hammered immediately:
+ * on-box firewall APIs like this one are a low-priority thread on a device that's busy
+ * doing actual firewalling, so an occasional slow response under load is normal and
+ * usually succeeds on a later attempt - reported as a real failure (and, eventually, a
+ * down alert) only once every attempt fails. Not retried on an auth failure or an HTTP
+ * error response, since those won't change no matter how many times it's tried.
+ * Worst case (every attempt times out) adds up to roughly
+ * MAX_RETRIES * (timeoutMs + RETRY_DELAY_MS) - with the defaults here, over 2.5
+ * minutes - before this gives up on a single call. That's a real, deliberate
+ * tradeoff: much slower to report a genuine outage, in exchange for shrugging off
+ * transient blips almost entirely.
+ */
+async function callApi(cfg: SophosXgsConfig, innerXml: string, timeoutMs = 8000): Promise<ApiResult> {
+  let result = await callApiOnce(cfg, innerXml, timeoutMs);
+  for (let attempt = 1; attempt <= MAX_RETRIES && !result.ok && !result.authFailure && looksTransient(result.error); attempt++) {
+    await sleep(RETRY_DELAY_MS);
+    result = await callApiOnce(cfg, innerXml, timeoutMs);
+  }
+  return result;
 }
 
 /** AntiSpam/AntiVirus/etc. Status values aren't confirmed as one exact string (docs
@@ -219,19 +257,41 @@ async function fetchVpnConnections(cfg: SophosXgsConfig, diagnostics: string[]):
     return [];
   }
 
-  const blocks = getAllBlocks(result.xml, "VPNIPSecConnection");
-  if (blocks.length === 0) return []; // Genuinely means "no IPsec connections configured" - not an error.
+  const topBlocks = getAllBlocks(result.xml, "VPNIPSecConnection");
+  if (topBlocks.length === 0) return []; // Genuinely means "no IPsec connections configured" - not an error.
+
+  // Sophos has been observed returning multiple connections in either of two shapes:
+  // repeated sibling <VPNIPSecConnection> blocks (one per connection - the shape this
+  // was originally written against), or a single <VPNIPSecConnection> wrapper
+  // containing multiple <Configuration> children (one per connection). Only handling
+  // the first shape meant a box with several tunnels wrapped the second way showed
+  // just one tunnel, since getTagContent (non-global) only ever read the first
+  // <Configuration> out of each top-level block. Flattening every top-level block's
+  // <Configuration> children (or, if there are none, the block itself) into one flat
+  // list of per-connection entries handles both shapes the same way.
+  const entries = topBlocks.flatMap((entryXml) => {
+    const configs = getAllBlocks(entryXml, "Configuration");
+    return (configs.length > 0 ? configs : [entryXml]).map((config) => ({ config, entryXml }));
+  });
+
+  diagnostics.push(
+    `VPNIPSecConnection: found ${topBlocks.length} top-level block(s), ${entries.length} connection(s) after parsing - if this doesn't match the number of tunnels configured on the appliance, please report it along with this diagnostic line.`
+  );
 
   const rows: StatusRow[] = [];
   let usedFallback = false;
 
-  for (const entryXml of blocks) {
-    const config = getTagContent(entryXml, "Configuration") ?? entryXml;
+  for (const { config, entryXml } of entries) {
     const name = getTagContent(config, "Name")?.trim() || "Unnamed connection";
 
+    // The live-status tag (if present at all - see file-level comment) might be a
+    // sibling of <Configuration> rather than nested inside it, so both are checked,
+    // preferring a hit inside this specific connection's own <Configuration> first
+    // so multiple connections flattened out of one top-level block don't all
+    // accidentally read the same shared sibling value.
     let liveStatus: string | null = null;
     for (const tag of LIVE_VPN_STATUS_TAGS) {
-      const value = getTagContent(entryXml, tag);
+      const value = getTagContent(config, tag) ?? (entries.length === topBlocks.length ? getTagContent(entryXml, tag) : null);
       if (value !== null) {
         liveStatus = value.trim();
         break;
