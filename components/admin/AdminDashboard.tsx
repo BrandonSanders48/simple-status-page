@@ -11,6 +11,7 @@ import RssTab, { type DraftFeed } from "./RssTab";
 import NetworkTab from "./NetworkTab";
 import NotificationsTab from "./NotificationsTab";
 import SslTab from "./SslTab";
+import BackupTab from "./BackupTab";
 import StatusCategoriesTab from "./StatusCategoriesTab";
 
 interface SidebarItem {
@@ -110,6 +111,13 @@ const CATEGORIES: { label: string; items: SidebarItem[] }[] = [
         icon: "fa-lock",
         color: "text-emerald-500",
         description: "Manage the HTTPS certificate used to serve this status page.",
+      },
+      {
+        key: "backup",
+        label: "Backup & Restore",
+        icon: "fa-database",
+        color: "text-slate-500",
+        description: "Export the entire database, or restore it from a previously exported backup.",
       },
     ],
   },
@@ -223,8 +231,10 @@ export default function AdminDashboard() {
       <NetworkTab settings={settings} onChange={setSettings} ispMap={ispMap} onIspChange={setIspMap} />
     ) : current.key === "notifications" ? (
       <NotificationsTab settings={settings} onChange={setSettings} csrfToken={session.csrfToken} />
-    ) : (
+    ) : current.key === "ssl" ? (
       <SslTab csrfToken={session.csrfToken} />
+    ) : (
+      <BackupTab csrfToken={session.csrfToken} />
     );
 
   return (
