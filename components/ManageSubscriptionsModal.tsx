@@ -27,32 +27,42 @@ export default function ManageSubscriptionsModal({
   onClose: () => void;
   onBack: () => void;
 }) {
-  const [email, setEmail] = useState(getSavedSubscriberEmail);
+  const [contact, setContact] = useState(getSavedSubscriberEmail);
   const [subscriptions, setSubscriptions] = useState<ServiceSubscription[] | null>(null);
   const [siteSubscriptions, setSiteSubscriptions] = useState<SiteSubscription[] | null>(null);
   const [integrationSubscriptions, setIntegrationSubscriptions] = useState<IntegrationSubscription[] | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function lookup(emailToLookUp: string) {
-    if (!emailToLookUp.trim()) {
-      setMessage("Please enter your email address.");
+  /** Whichever of email/phone was last looked up - unsubscribe actions need to send
+   * the same field back, not just whatever's currently typed in the input. */
+  const [activeContact, setActiveContact] = useState<{ email?: string; phone?: string } | null>(null);
+
+  function asContactField(value: string): { email?: string; phone?: string } {
+    return value.trim().includes("@") ? { email: value.trim() } : { phone: value.trim() };
+  }
+
+  async function lookup(contactToLookUp: string) {
+    if (!contactToLookUp.trim()) {
+      setMessage("Please enter your email address or phone number.");
       return;
     }
     setLoading(true);
     setMessage("");
+    const field = asContactField(contactToLookUp);
     try {
       const res = await fetch("/api/subscriptions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-        body: JSON.stringify({ email: emailToLookUp }),
+        body: JSON.stringify(field),
       });
       const data = await res.json();
       setSubscriptions(data.subscriptions ?? []);
       setSiteSubscriptions(data.siteSubscriptions ?? []);
       setIntegrationSubscriptions(data.integrationSubscriptions ?? []);
       if (data.message) setMessage(data.message);
-      saveSubscriberEmail(emailToLookUp);
+      setActiveContact(field);
+      saveSubscriberEmail(contactToLookUp.trim());
     } catch {
       setMessage("Failed to look up subscriptions.");
     } finally {
@@ -60,19 +70,20 @@ export default function ManageSubscriptionsModal({
     }
   }
 
-  // A remembered email (from a previous subscribe/lookup) is looked up automatically
-  // on open, so reopening this modal shows current subscriptions immediately instead
-  // of requiring the visitor to retype their email and click Look Up every time.
+  // A remembered email/phone (from a previous subscribe/lookup) is looked up
+  // automatically on open, so reopening this modal shows current subscriptions
+  // immediately instead of requiring the visitor to retype it and click Look Up.
   useEffect(() => {
-    if (email) lookup(email);
+    if (contact) lookup(contact);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function unsubscribeOne(serviceId: number) {
+    if (!activeContact) return;
     const res = await fetch("/api/unsubscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-      body: JSON.stringify({ email, action: "unsubscribe_single", serviceId }),
+      body: JSON.stringify({ ...activeContact, action: "unsubscribe_single", serviceId }),
     });
     const data = await res.json();
     if (data.status === "success") {
@@ -82,10 +93,11 @@ export default function ManageSubscriptionsModal({
   }
 
   async function unsubscribeOneSite(siteId: number) {
+    if (!activeContact) return;
     const res = await fetch("/api/unsubscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-      body: JSON.stringify({ email, action: "unsubscribe_single_site", siteId }),
+      body: JSON.stringify({ ...activeContact, action: "unsubscribe_single_site", siteId }),
     });
     const data = await res.json();
     if (data.status === "success") {
@@ -95,10 +107,11 @@ export default function ManageSubscriptionsModal({
   }
 
   async function unsubscribeOneIntegration(targetId: number) {
+    if (!activeContact) return;
     const res = await fetch("/api/unsubscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-      body: JSON.stringify({ email, action: "unsubscribe_single_integration", targetId }),
+      body: JSON.stringify({ ...activeContact, action: "unsubscribe_single_integration", targetId }),
     });
     const data = await res.json();
     if (data.status === "success") {
@@ -108,10 +121,11 @@ export default function ManageSubscriptionsModal({
   }
 
   async function unsubscribeAll() {
+    if (!activeContact) return;
     const res = await fetch("/api/unsubscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-      body: JSON.stringify({ email, action: "unsubscribe" }),
+      body: JSON.stringify({ ...activeContact, action: "unsubscribe" }),
     });
     const data = await res.json();
     setMessage(data.message || "");
@@ -143,16 +157,16 @@ export default function ManageSubscriptionsModal({
 
         <div className="flex gap-2 mb-3">
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && lookup(email)}
-            placeholder="you@example.com"
+            type="text"
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && lookup(contact)}
+            placeholder="you@example.com or +15145550100"
             className="flex-1 px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700/50 text-sm"
           />
           <button
             type="button"
-            onClick={() => lookup(email)}
+            onClick={() => lookup(contact)}
             disabled={loading}
             className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg disabled:opacity-60"
           >

@@ -17,6 +17,7 @@ export default function SubscribeModal({
   services,
   sites,
   integrationTargets = [],
+  smsAvailable = false,
   csrfToken,
   onClose,
   onManage,
@@ -24,12 +25,17 @@ export default function SubscribeModal({
   services: StatusServicePayload[];
   sites: SitePayload[];
   integrationTargets?: IntegrationTargetOption[];
+  /** Whether a GoTo Connect target is enabled with an SMS From number configured (see
+   * lib/integrationTargets.ts's isGotoSmsAvailable) - a phone number is only accepted
+   * in the contact field below when this is true, since otherwise nothing could ever
+   * text it. */
+  smsAvailable?: boolean;
   csrfToken: string;
   onClose: () => void;
   onManage: () => void;
 }) {
   const [mode, setMode] = useState<Mode>("everything");
-  const [email, setEmail] = useState(getSavedSubscriberEmail);
+  const [contact, setContact] = useState(getSavedSubscriberEmail);
   const [selectedServices, setSelectedServices] = useState<Set<number>>(new Set());
   const [selectedSites, setSelectedSites] = useState<Set<number>>(new Set());
   const [selectedTargets, setSelectedTargets] = useState<Set<number>>(new Set());
@@ -83,17 +89,25 @@ export default function SubscribeModal({
       setMessage({ ok: false, text: "Please select at least one service, site, or integration." });
       return;
     }
+    const trimmed = contact.trim();
+    const isEmail = trimmed.includes("@");
+
+    if (!isEmail && !smsAvailable) {
+      setMessage({ ok: false, text: "Phone/SMS subscriptions aren't available right now. Please enter an email address instead." });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-        body: JSON.stringify({ email, serviceIds, siteIds, targetIds }),
+        body: JSON.stringify(isEmail ? { email: trimmed, serviceIds, siteIds, targetIds } : { phone: trimmed, serviceIds, siteIds, targetIds }),
       });
       const data = await res.json();
       setMessage({ ok: res.ok, text: data.message || (res.ok ? "Subscribed!" : "Failed to subscribe.") });
       if (res.ok) {
-        saveSubscriberEmail(email);
+        saveSubscriberEmail(trimmed);
         setSelectedServices(new Set());
         setSelectedSites(new Set());
         setSelectedTargets(new Set());
@@ -111,21 +125,30 @@ export default function SubscribeModal({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h5 className="font-semibold text-slate-900 dark:text-white text-sm">Subscribe to Alerts</h5>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Get emailed when services, sites, or integrations have issues</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {smsAvailable ? "Get emailed or texted" : "Get emailed"} when services, sites, or integrations have issues
+            </p>
           </div>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">
             &times;
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            required
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700/50 text-sm"
-          />
+          <div>
+            <input
+              required
+              type="text"
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              placeholder={smsAvailable ? "you@example.com or +15145550100" : "you@example.com"}
+              className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700/50 text-sm"
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              {smsAvailable
+                ? "Enter an email address to get emailed, or a phone number (with country code) to get texted."
+                : "Enter an email address to get emailed."}
+            </p>
+          </div>
 
           <div className="rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40">
             <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40 cursor-pointer">

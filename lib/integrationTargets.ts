@@ -43,3 +43,18 @@ export function getIntegrationTarget(id: number, integration: string) {
   if (!row) return null;
   return { ...row, config: parseIntegrationConfig(row.config) };
 }
+
+/** True if at least one enabled GoTo Connect target has an SMS From number configured
+ * (see lib/integrationCatalogMeta.ts) - i.e., phone/SMS notifications are actually
+ * deliverable right now, not just theoretically supported. Used both to gate the
+ * public Subscribe form's phone option (see lib/integrationsCache.ts's
+ * IntegrationsPayload.smsAvailable) and to reject a phone subscription server-side
+ * (app/api/subscribe/route.ts) if nothing could ever actually send it. */
+export function isGotoSmsAvailable(): boolean {
+  return db
+    .select()
+    .from(integrationTargets)
+    .where(and(eq(integrationTargets.integration, "goto_connect"), eq(integrationTargets.enabled, true)))
+    .all()
+    .some((t) => !!parseIntegrationConfig(t.config).smsFromNumber);
+}

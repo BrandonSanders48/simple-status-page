@@ -38,6 +38,10 @@ export interface IntegrationTargetPayload {
 export interface IntegrationsPayload {
   enabled: boolean;
   targets: IntegrationTargetPayload[];
+  /** Whether phone/SMS subscriptions are actually deliverable right now (see
+   * lib/integrationTargets.ts's isGotoSmsAvailable) - lets the Subscribe form only
+   * offer a phone number as an option when something could actually text it. */
+  smsAvailable: boolean;
 }
 
 export function isIntegrationHealthy(status: IntegrationStatusPayload): boolean {

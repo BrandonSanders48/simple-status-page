@@ -5,7 +5,7 @@ import { getIntegrationCatalogEntry } from "./integrationRegistry";
 import { getIntegrationCatalogMeta } from "./integrationCatalogMeta";
 import { getIgnoredKeys } from "./integrationIgnore";
 import { notifyIntegrationTransitions } from "./notifier";
-import { parseIntegrationConfig } from "./integrationTargets";
+import { parseIntegrationConfig, isGotoSmsAvailable } from "./integrationTargets";
 import type { IntegrationStatus } from "./integrations/types";
 
 /** Same shape as an integration's own item, plus whether an admin has ignored it -
@@ -33,6 +33,10 @@ export interface IntegrationTargetPayload {
 export interface IntegrationsPayload {
   enabled: boolean;
   targets: IntegrationTargetPayload[];
+  /** Whether phone/SMS subscriptions are actually deliverable right now (see
+   * lib/integrationTargets.ts's isGotoSmsAvailable) - lets the public Subscribe form
+   * only offer a phone number as an option when something could actually text it. */
+  smsAvailable: boolean;
   generatedAt: number;
 }
 
@@ -83,8 +87,10 @@ async function computeIntegrations(): Promise<IntegrationsPayload> {
     .all()
     .filter((t) => !getIntegrationCatalogMeta(t.integration)?.hasBespokeDisplay);
 
+  const smsAvailable = isGotoSmsAvailable();
+
   if (enabledTargets.length === 0) {
-    return { enabled: false, targets: [], generatedAt: Date.now() };
+    return { enabled: false, targets: [], smsAvailable, generatedAt: Date.now() };
   }
 
   const targets = await Promise.all(
@@ -98,7 +104,7 @@ async function computeIntegrations(): Promise<IntegrationsPayload> {
     })
   );
 
-  return { enabled: true, targets, generatedAt: Date.now() };
+  return { enabled: true, targets, smsAvailable, generatedAt: Date.now() };
 }
 
 /** Diffs each target's current healthy/unhealthy reading against its last-persisted

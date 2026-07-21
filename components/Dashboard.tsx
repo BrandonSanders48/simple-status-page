@@ -377,6 +377,7 @@ export default function Dashboard({
           services={status?.services ?? []}
           sites={status?.sites ?? []}
           integrationTargets={(integrations?.targets ?? []).map((t) => ({ id: t.id, name: t.name, integration: t.integration }))}
+          smsAvailable={integrations?.smsAvailable ?? false}
           csrfToken={session.csrfToken}
           onClose={() => setShowSubscribe(false)}
           onManage={() => {
