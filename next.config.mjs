@@ -8,6 +8,13 @@
 // this app supports plain HTTP and a self-signed HTTPS fallback out of the box (see
 // server.js), and HSTS is a browser-remembered directive that can lock out a visitor
 // from the HTTP listener or a self-signed cert they've manually accepted.
+//
+// 'unsafe-eval' is only added in development: `next dev`'s Fast Refresh/webpack HMR
+// runtime uses eval() internally to apply hot updates, so without it every dev-mode
+// page load throws "Evaluating a string as JavaScript violates the CSP" and the app
+// never renders. Production (`next build`/`next start`, i.e. `node server.js`) never
+// needs eval, so that build stays on the stricter policy.
+const isDev = process.env.NODE_ENV !== "production";
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -16,7 +23,7 @@ const SECURITY_HEADERS = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "font-src 'self'",
