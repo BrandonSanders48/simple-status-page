@@ -7,7 +7,7 @@ import { getIgnoredKeys } from "./integrationIgnore";
 import { notifyIntegrationTransitions } from "./notifier";
 import type { IntegrationStatus } from "./integrations/types";
 
-/** Same shape as an integration's own item, plus whether an admin has ignored it --
+/** Same shape as an integration's own item, plus whether an admin has ignored it -
  * computed here (not by each integration's fetchStatus, which has no notion of
  * ignore state), so it's a distinct payload type from IntegrationStatus.items. */
 export interface IntegrationItemPayload {
@@ -59,9 +59,9 @@ function parseConfig(raw: string): Record<string, string> {
 
 /**
  * Marks each item ignored/not (per lib/integrationIgnore.ts) and recomputes `healthy`
- * from that, rather than trusting the integration's own `healthy` -- every integration
+ * from that, rather than trusting the integration's own `healthy` - every integration
  * that flows through this generic cache (unifi/sophos_central/sophos_xgs/goto_connect/
- * meraki -- PowerStore/Proxmox/PBS have their own bespoke acknowledge system already
+ * meraki - PowerStore/Proxmox/PBS have their own bespoke acknowledge system already
  * and never reach here) derives `healthy` purely from `items.every(i => i.ok !== false)`,
  * so recomputing it here after ignoring is equivalent to what each integration would
  * report if the ignored row simply weren't unhealthy, without needing every
@@ -75,7 +75,7 @@ function applyIgnores(targetId: number, status: IntegrationStatus): IntegrationS
 }
 
 /** Every enabled marketplace target is queried independently (one bad/misconfigured
- * target never hides the others), dispatched by catalog key -- same "each target is
+ * target never hides the others), dispatched by catalog key - same "each target is
  * its own card, unreachable ones don't hide the rest" shape as storageCache/pbsCache.
  * PowerStore/Proxmox/PBS are excluded (see hasBespokeDisplay in lib/integrations/
  * types.ts) since they have their own cache/display already; without this they'd be
@@ -109,7 +109,7 @@ async function computeIntegrations(): Promise<IntegrationsPayload> {
 /** Diffs each target's current healthy/unhealthy reading against its last-persisted
  * one (integration_health_status), same transition/notify-delay logic as
  * runServiceChecks/runSiteChecks. Targets whose catalog entry sets
- * `affectsOverallStatus: false` (currently only sophos_central) are skipped entirely --
+ * `affectsOverallStatus: false` (currently only sophos_central) are skipped entirely -
  * a security/posture signal there isn't an "infrastructure is down" event, same
  * reasoning that already keeps it out of the overall status banner. */
 function diffAndPersistIntegrationHealth(payload: IntegrationsPayload): IntegrationTransition[] {
@@ -160,7 +160,7 @@ function diffAndPersistIntegrationHealth(payload: IntegrationsPayload): Integrat
 
 /** Forces a fresh check (bypassing the 60s cache) and persists/diffs health, for the
  * background scheduler (instrumentation-node.ts) so an unhealthy transition is still
- * caught even with zero visitors -- mirrors runServiceChecks/runSiteChecks. Doesn't
+ * caught even with zero visitors - mirrors runServiceChecks/runSiteChecks. Doesn't
  * notify itself; the caller does, same convention as those two. */
 export async function runIntegrationHealthChecks(): Promise<{ payload: IntegrationsPayload; transitions: IntegrationTransition[] }> {
   const payload = await computeIntegrations();
@@ -169,7 +169,7 @@ export async function runIntegrationHealthChecks(): Promise<{ payload: Integrati
 }
 
 /** Cached (60s) marketplace snapshot, with in-flight de-dupe like the storage cache.
- * Also diffs/persists health and fires notifications on a real cache-miss compute --
+ * Also diffs/persists health and fires notifications on a real cache-miss compute -
  * same dual-path convention as lib/statusCache.ts's computeStatus, so a status-page
  * poll (likely far more frequent than the 2-minute scheduler) doesn't leave a
  * transition unnoticed until the next scheduled cycle. */
@@ -202,7 +202,7 @@ export function isIntegrationHealthy(status: IntegrationStatus): boolean {
 }
 
 /** True unless marketplace integrations are enabled and something they're watching is
- * unhealthy -- same "invisible when off" fold-in as isStorageHealthy/isPbsAllHealthy. */
+ * unhealthy - same "invisible when off" fold-in as isStorageHealthy/isPbsAllHealthy. */
 export function isIntegrationsAllHealthy(payload: IntegrationsPayload | null): boolean {
   if (!payload?.enabled) return true;
   return payload.targets.every((t) => isIntegrationHealthy(t.status));

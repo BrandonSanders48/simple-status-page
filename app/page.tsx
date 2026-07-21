@@ -16,7 +16,7 @@ export default async function StatusPage({
   const cookieStore = await cookies();
   const initialDark = cookieStore.get("dark_mode")?.value === "on";
   // Computed directly (same process, no HTTP round trip) and baked into the initial
-  // HTML rather than left to a client-side fetch -- a screenshot-based renderer (e.g.
+  // HTML rather than left to a client-side fetch - a screenshot-based renderer (e.g.
   // digital signage widgets that snapshot the page rather than keep it live) can miss
   // client-fetched data entirely if it captures before that fetch resolves.
   const initialUptimeByService = computeUptimeHistory(30);

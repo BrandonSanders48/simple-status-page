@@ -6,7 +6,7 @@ import { checkTcp } from "./tcp";
 
 export type Site = typeof sites.$inferSelect;
 
-/** A site's own tunnel/link check, independent of any service assigned to it -- lets
+/** A site's own tunnel/link check, independent of any service assigned to it - lets
  * the status page tell "this whole site's link is down" apart from "just one of its
  * services happens to be down". Same null-means-"not configured" convention as
  * checkLocalNetwork/checkWideNetwork: a site with no tunnelHost is just a grouping
@@ -35,7 +35,7 @@ export interface SiteTransition {
 
 /**
  * Runs every site's tunnel check in parallel and persists per-site status/outage
- * history for the ones with a tunnelHost configured -- mirrors runServiceChecks in
+ * history for the ones with a tunnelHost configured - mirrors runServiceChecks in
  * lib/checks/runner.ts so both the live /api/status route and the periodic background
  * job share one canonical check+persist+transition path for sites. Sites with no
  * tunnelHost are skipped entirely: no row is written, and they never produce a

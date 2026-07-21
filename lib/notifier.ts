@@ -16,7 +16,7 @@ const EMAIL_ACCENT_COLOR = "#06b6d4";
  * Sends subscriber emails and/or a webhook (Slack/Discord/generic) notification for
  * service status transitions. Called from the periodic background job with the
  * transitions detected by the same check pass that persisted them, so this never
- * re-runs checks itself. The two channels are independent -- either, both, or neither
+ * re-runs checks itself. The two channels are independent - either, both, or neither
  * can be configured.
  */
 export async function notifyTransitions(transitions: ServiceTransition[]): Promise<void> {
@@ -86,7 +86,7 @@ export async function notifyTransitions(transitions: ServiceTransition[]): Promi
 /**
  * Sends subscriber emails and/or a webhook notification when a site's own tunnel
  * check (see lib/checks/site.ts) changes status. Recipients are the union of anyone
- * subscribed directly to the site (site_subscriptions -- see lib/db/schema.ts) and
+ * subscribed directly to the site (site_subscriptions - see lib/db/schema.ts) and
  * anyone subscribed to any service assigned to it, since either implies caring about
  * that site's link. The email lists the site's services and (when down) explicitly
  * notes they may still be reachable locally at the site, since this alert is about
@@ -159,7 +159,7 @@ export async function notifySiteTransitions(transitions: SiteTransition[]): Prom
  * Posts a webhook notification when a marketplace integration target's overall health
  * (see lib/integrationsCache.ts) flips between healthy and unhealthy. Webhook-only,
  * deliberately: unlike services/sites there's no end-user "subscribe to an
- * integration" concept, so there's no subscriber list to email -- this is meant for
+ * integration" concept, so there's no subscriber list to email - this is meant for
  * whoever's already watching the configured Slack/Discord/generic channel.
  */
 export async function notifyIntegrationTransitions(transitions: IntegrationTransition[]): Promise<void> {

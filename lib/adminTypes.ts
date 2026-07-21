@@ -7,11 +7,11 @@ export type IspMapRow = typeof ispMapEntries.$inferSelect;
 export type StatusCategoryRow = typeof statusCategories.$inferSelect;
 export type SiteRow = typeof sites.$inferSelect;
 
-/** Unlike other rows, `config` is exposed here as a parsed object -- the DB stores it
+/** Unlike other rows, `config` is exposed here as a parsed object - the DB stores it
  * as a JSON string (see lib/db/schema.ts), serialized/deserialized at the
  * lib/adminConfig.ts boundary so the admin UI can bind to individual fields directly.
- * Every monitored external system -- PowerStore, Proxmox, PBS, and marketplace
- * integrations alike -- is one of these rows, distinguished by `integration`.
+ * Every monitored external system - PowerStore, Proxmox, PBS, and marketplace
+ * integrations alike - is one of these rows, distinguished by `integration`.
  * `isDr` only means anything for powerstore/proxmox (it feeds the Failover tab). */
 export interface IntegrationTargetRow {
   id: number;

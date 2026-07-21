@@ -18,21 +18,21 @@ interface Props {
   uptimeByService?: Record<number, DayUptime[]>;
   /** When any service is assigned to a site, services are grouped under a header per
    * site (with its own tunnel Up/Down pill, if that site has a tunnelHost configured)
-   * instead of one flat grid -- so a site-wide link outage reads differently from a
+   * instead of one flat grid - so a site-wide link outage reads differently from a
    * single service failing on its own. Falls back to today's flat grid untouched when
    * no sites exist or nothing's assigned to one. */
   sites?: SitePayload[];
-  /** Settings > Sites toggle -- off keeps every service in one flat grid regardless
+  /** Settings > Sites toggle - off keeps every service in one flat grid regardless
    * of site assignment, for admins who want Sites purely as an organizational tool
    * without changing what visitors see. Defaults true (today's grouped behavior). */
   groupBySite?: boolean;
-  /** Skips this panel's own card chrome (background/border/shadow/padding) -- used
+  /** Skips this panel's own card chrome (background/border/shadow/padding) - used
    * when it's rendered as a tab's content inside ServiceTabs, which already provides
    * that chrome via its enclosing panel. */
   bare?: boolean;
 }
 
-/** True unless a site has a tunnelHost configured and its check failed -- same
+/** True unless a site has a tunnelHost configured and its check failed - same
  * "invisible when off" fold-in as isStorageHealthy/isPbsAllHealthy: a site that's
  * just a grouping label (no tunnelHost) never affects the overall banner. */
 export function isSitesAllHealthy(sites: SitePayload[]): boolean {

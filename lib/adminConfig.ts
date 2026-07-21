@@ -77,8 +77,8 @@ export const statusCategoryInputSchema = z.object({
   color: z.string().min(1).max(30),
 });
 
-// Every monitored external system -- PowerStore, Proxmox, PBS, and marketplace
-// integrations (UniFi, Sophos, GoTo Connect, etc) -- shares this one input shape.
+// Every monitored external system - PowerStore, Proxmox, PBS, and marketplace
+// integrations (UniFi, Sophos, GoTo Connect, etc) - shares this one input shape.
 // `isDr` only means anything for powerstore/proxmox (it feeds the Failover tab), but
 // living here generically means adding a new integration never needs a schema change.
 export const integrationTargetInputSchema = z.object({
@@ -97,7 +97,7 @@ export const configPayloadSchema = z.object({
   ispMap: z.array(ispMapInputSchema),
   statusCategories: z.array(statusCategoryInputSchema).max(20),
   sites: z.array(siteInputSchema).max(MAX_SITES),
-  // Optional -- integration targets are edited on their own /admin/integrations page
+  // Optional - integration targets are edited on their own /admin/integrations page
   // (see saveIntegrationTargets below) and left untouched by a general config save
   // when omitted, so the two pages can't stomp on each other's edits.
   integrationTargets: z.array(integrationTargetInputSchema).max(MAX_INTEGRATION_TARGETS).optional(),
@@ -133,7 +133,7 @@ export function getFullConfig() {
     ispMap: isp,
     statusCategories: categories,
     sites: siteRows,
-    // config is stored as a JSON string (see lib/db/schema.ts) -- parsed here so the
+    // config is stored as a JSON string (see lib/db/schema.ts) - parsed here so the
     // admin UI can bind to individual fields directly.
     integrationTargets: integrationRows.map((t) => ({ ...t, config: parseIntegrationConfig(t.config) })),
   };
@@ -146,7 +146,7 @@ export function getIntegrationTargets() {
 
 /**
  * Saves just the integration_targets table, diffed by id like saveFullConfig does for
- * services -- used by the standalone /admin/integrations page, which never touches
+ * services - used by the standalone /admin/integrations page, which never touches
  * settings/services/rssFeeds/ispMap/statusCategories, so it doesn't need (and shouldn't
  * risk overwriting via a stale full-config payload) any of those.
  */
@@ -181,7 +181,7 @@ function bumpVersion(current: string): string {
  * Saves the whole admin config in one transaction. Services and integration targets
  * are diffed by id (rather than delete-all-and-reinsert) so unrelated saves don't
  * cascade-delete service_status history/subscriptions, or (for integration targets)
- * break a target's id -- referenced when acknowledging a PowerStore alert/PBS task, or
+ * break a target's id - referenced when acknowledging a PowerStore alert/PBS task, or
  * by the Failover tab's DR-flagged target lookups.
  */
 export function saveFullConfig(payload: ConfigPayload) {
@@ -194,7 +194,7 @@ export function saveFullConfig(payload: ConfigPayload) {
       .where(eq(settings.id, 1))
       .run();
 
-    // Sites saved before services -- services below reference them via site_id.
+    // Sites saved before services - services below reference them via site_id.
     // Diffed by id like services/integration targets so ids stay stable.
     const incomingSiteIds = payload.sites.filter((s) => s.id !== undefined).map((s) => s.id!);
     if (incomingSiteIds.length > 0) {
@@ -224,7 +224,7 @@ export function saveFullConfig(payload: ConfigPayload) {
     }
     payload.services.forEach((svc, index) => {
       // Defensive: services.site_id's real FK is NO ACTION, not SET NULL (see the
-      // schema.ts comment on why) -- a service still pointing at a site that's no
+      // schema.ts comment on why) - a service still pointing at a site that's no
       // longer in the incoming payload would otherwise throw a foreign key
       // constraint error here instead of just being ungrouped.
       const siteId = svc.siteId != null && survivingSiteIds.has(svc.siteId) ? svc.siteId : null;
@@ -253,7 +253,7 @@ export function saveFullConfig(payload: ConfigPayload) {
       tx.insert(ispMapEntries).values(payload.ispMap).run();
     }
 
-    // Keys are a fixed seeded set (see migrate.ts) -- only label/color are editable,
+    // Keys are a fixed seeded set (see migrate.ts) - only label/color are editable,
     // so this updates existing rows rather than delete-and-reinsert.
     payload.statusCategories.forEach((cat) => {
       tx.update(statusCategories)
@@ -262,7 +262,7 @@ export function saveFullConfig(payload: ConfigPayload) {
         .run();
     });
 
-    // Omitted entirely -- rather than an empty array -- means "leave integration
+    // Omitted entirely - rather than an empty array - means "leave integration
     // targets alone" (see configPayloadSchema): they're edited on their own
     // /admin/integrations page now, via saveIntegrationTargets above.
     if (payload.integrationTargets) {

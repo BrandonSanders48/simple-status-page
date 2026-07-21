@@ -20,7 +20,7 @@ export interface StatusServicePayload {
   lastDownDurationS: number | null;
   siteId: number | null;
   /** Per-port breakdown, present only for type "ad" services (see lib/checks/ad.ts)
-   * -- lets the public page show which specific piece failed as its own tag,
+   * - lets the public page show which specific piece failed as its own tag,
    * instead of just the single service-level Up/Down. */
   adChecks?: AdCheckResult[];
 }
@@ -28,7 +28,7 @@ export interface StatusServicePayload {
 export interface SitePayload {
   id: number;
   name: string;
-  /** null when the site has no tunnelHost configured -- a pure grouping label that
+  /** null when the site has no tunnelHost configured - a pure grouping label that
    * never affects health, same "invisible when off" convention as everything else. */
   tunnelOk: boolean | null;
 }

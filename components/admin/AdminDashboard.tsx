@@ -19,13 +19,13 @@ interface SidebarItem {
   icon: string;
   color: string;
   description: string;
-  /** Present only for the Integrations item -- it lives on its own page (its own save
+  /** Present only for the Integrations item - it lives on its own page (its own save
    * endpoint) rather than as a section here, so it navigates instead of switching. */
   href?: string;
 }
 
 /** Grouped by what an admin is actually trying to do, rather than one flat list of 8+
- * items -- each category is a small uppercase label in the sidebar, and clicking an
+ * items - each category is a small uppercase label in the sidebar, and clicking an
  * item swaps the entire content pane to just that section (no more scrolling past
  * unrelated settings to find one field). */
 const CATEGORIES: { label: string; items: SidebarItem[] }[] = [
@@ -171,7 +171,7 @@ export default function AdminDashboard() {
       rssFeeds: rssFeeds.map(({ name, host, tag, description }) => ({ name, host, tag, description })),
       ispMap: ispMap.map(({ ip, name }) => ({ ip, name })),
       statusCategories: statusCategories.map(({ key, label, color }) => ({ key, label, color })),
-      // integrationTargets intentionally omitted -- edited on their own
+      // integrationTargets intentionally omitted - edited on their own
       // /admin/integrations page now (see configPayloadSchema).
     };
 
@@ -294,7 +294,7 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      {/* Content: only the active section renders -- switching sections replaces the
+      {/* Content: only the active section renders - switching sections replaces the
           pane instead of scrolling to an anchor. */}
       <div className="flex-1 min-w-0 px-8 py-8">
         <div className="max-w-4xl mx-auto">

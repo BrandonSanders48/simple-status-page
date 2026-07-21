@@ -139,7 +139,7 @@ export default function ServiceTabs({
       });
       onStorageChanged();
     } catch {
-      // Swallow -- the alert simply stays in the list, and the user can retry.
+      // Swallow - the alert simply stays in the list, and the user can retry.
     } finally {
       setAcknowledging(null);
     }
@@ -156,7 +156,7 @@ export default function ServiceTabs({
       });
       onPbsChanged();
     } catch {
-      // Swallow -- the task simply stays unclear, and the user can retry.
+      // Swallow - the task simply stays unclear, and the user can retry.
     } finally {
       setAcknowledgingTask(null);
     }

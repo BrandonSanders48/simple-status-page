@@ -168,7 +168,7 @@ export default function Dashboard({
   }, []);
 
   useEffect(() => {
-    // Rarely changes -- fetched once rather than on the polling loop.
+    // Rarely changes - fetched once rather than on the polling loop.
     fetch("/api/status-categories")
       .then((r) => r.json())
       .then(setCategories)
@@ -194,12 +194,12 @@ export default function Dashboard({
     const rssTimer = setInterval(loadRss, refreshRateMs);
     const incidentsTimer = setInterval(loadIncidents, refreshRateMs);
     // PowerStore/Proxmox/PBS/marketplace integrations are polled less often than the
-    // live service checks -- the server-side caches backing these endpoints only
+    // live service checks - the server-side caches backing these endpoints only
     // refresh every 60s anyway.
     const storageTimer = setInterval(loadStorage, 60_000);
     const pbsTimer = setInterval(loadPbs, 60_000);
     const integrationsTimer = setInterval(loadIntegrations, 60_000);
-    // Maintenance schedules change rarely -- no need to poll as often as live status.
+    // Maintenance schedules change rarely - no need to poll as often as live status.
     const maintenanceTimer = setInterval(loadMaintenance, 60_000);
     // Uptime history only changes on the 2-min background check cycle.
     const uptimeTimer = setInterval(loadUptime, 60_000);

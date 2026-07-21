@@ -132,7 +132,7 @@ export function renderStatusChangeEmail(opts: {
 }
 
 /** Same shape as renderStatusChangeEmail, but for a site's own tunnel check (see
- * lib/checks/site.ts) rather than a single service -- lists the services grouped
+ * lib/checks/site.ts) rather than a single service - lists the services grouped
  * under that site so the reader knows what's affected, and (when down) explicitly
  * calls out that those services may still be reachable locally from within the site,
  * since this alert is about the link to the site, not the services behind it. */
@@ -167,7 +167,7 @@ export function renderSiteStatusChangeEmail(opts: {
     ? `<tr><td style="padding:16px 32px 0;">
         <p style="font-size:12.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;margin:0;line-height:1.6;">
           This alert is about the link/tunnel to this site, not the services themselves${
-            serviceNames.length > 0 ? " -- the services above" : ""
+            serviceNames.length > 0 ? " - the services above" : ""
           } may still be available locally from within the site even while this is down.
         </p>
       </td></tr>`

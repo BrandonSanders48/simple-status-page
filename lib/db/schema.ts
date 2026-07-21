@@ -52,7 +52,7 @@ export const settings = sqliteTable("settings", {
 });
 
 // A physical/network location (branch office, DR site, etc) that services can be
-// grouped under -- lets the public page tell apart "this one service is down" from
+// grouped under - lets the public page tell apart "this one service is down" from
 // "the whole site's tunnel dropped, so of course everything under it looks down".
 // `tunnelHost`/`tunnelPort` are independent of any service's own check: a host/IP
 // only reachable through that site's link (its far-side gateway, a switch, etc), so
@@ -77,15 +77,15 @@ export const services = sqliteTable("services", {
   visible: integer("visible", { mode: "boolean" }).notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  // Optional grouping -- null means "not assigned to a site", shown ungrouped same
+  // Optional grouping - null means "not assigned to a site", shown ungrouped same
   // as today. `onDelete: "set null"` here is aspirational only, NOT actually
   // enforced by SQLite: this column was added via `ALTER TABLE ADD COLUMN
   // ... REFERENCES`, which can't express an ON DELETE clause the way `CREATE TABLE`
-  // can (see migration 0016) -- the real constraint in the database is plain NO
+  // can (see migration 0016) - the real constraint in the database is plain NO
   // ACTION. Rebuilding this table to get real SET NULL enforcement would require
   // DROP TABLE services, which would cascade-delete serviceStatus/outageLog rows
   // (both ON DELETE cascade on services.id), wiping current status and outage
-  // history -- not worth it for this. Keep this annotation matching what
+  // history - not worth it for this. Keep this annotation matching what
   // migration 0016's snapshot already recorded (see meta/0016_snapshot.json).
   // saveSites() in lib/adminConfig.ts explicitly nulls out site_id on affected
   // services *before* deleting a site, in the same transaction, doing at the
@@ -123,7 +123,7 @@ export const statusCategories = sqliteTable("status_categories", {
 
 // Every monitored external system (PowerStore, Proxmox, PBS, and marketplace
 // integrations like UniFi/Sophos/GoTo Connect, see lib/integrationRegistry.ts) shares
-// this one table rather than getting a dedicated table each -- `config` is a
+// this one table rather than getting a dedicated table each - `config` is a
 // JSON-serialized Record<string,string> whose shape is defined by that integration's
 // catalog entry, since each needs different credential fields. `isDr` is only
 // meaningful for powerstore/proxmox (it marks a target as living at the DR site, so
@@ -141,7 +141,7 @@ export const integrationTargets = sqliteTable("integration_targets", {
 
 // Tracks each marketplace integration target's own healthy/unhealthy transitions (see
 // lib/integrationsCache.ts's runIntegrationHealthChecks) so a change can be diffed and
-// notified the same way service/site status changes are -- unlike those, there's no
+// notified the same way service/site status changes are - unlike those, there's no
 // end-user "subscribe to an integration" concept, so this only ever drives the
 // Slack/Discord/generic webhook, not subscriber emails (see lib/notifier.ts).
 export const integrationHealthStatus = sqliteTable("integration_health_status", {
@@ -156,7 +156,7 @@ export const integrationHealthStatus = sqliteTable("integration_health_status", 
   downNotified: integer("down_notified", { mode: "boolean" }).notNull().default(false),
 });
 
-// Lets an admin "Clear" a failed backup task from the Backups tab -- acknowledged
+// Lets an admin "Clear" a failed backup task from the Backups tab - acknowledged
 // tasks no longer count toward that target's Last Run Failed health/tab badge, but
 // stay in the list (greyed out) as a record of what happened.
 export const pbsAcknowledgedTasks = sqliteTable(
@@ -175,11 +175,11 @@ export const pbsAcknowledgedTasks = sqliteTable(
 );
 
 // Lets an admin "Ignore" a specific alerting/unhealthy row on a marketplace
-// integration's card (UniFi/Sophos Central/Sophos XGS/GoTo Connect/Meraki/etc) --
+// integration's card (UniFi/Sophos Central/Sophos XGS/GoTo Connect/Meraki/etc) -
 // ignored items stay visible (dimmed, not hidden) but no longer count toward that
 // target's healthy rollup or the "Attention" pill, same "acknowledge, don't erase"
 // pattern as pbsAcknowledgedTasks above. `itemKey` is each integration's own stable
-// per-row identifier (see IntegrationStatus.items in lib/integrations/types.ts) --
+// per-row identifier (see IntegrationStatus.items in lib/integrations/types.ts) -
 // not a DB foreign key of its own, since it points at a row inside a live API
 // response, not a row in this database.
 export const integrationIgnoredItems = sqliteTable(
@@ -210,11 +210,11 @@ export const failoverActions = sqliteTable("failover_actions", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-// Audit trail for the "Test Network" tool -- it's reachable without sign-in (see
+// Audit trail for the "Test Network" tool - it's reachable without sign-in (see
 // app/api/admin/test-network/route.ts) and makes this server connect to whatever
 // host a caller names, so knowing who ran what, when, from what IP, matters. `ip` is
 // whatever the server actually sees the request arrive from (X-Forwarded-For if
-// present, else the raw connection) -- on a LAN-only deployment with no reverse
+// present, else the raw connection) - on a LAN-only deployment with no reverse
 // proxy/NAT in front of it, that's the same as the client's real LAN IP; behind one,
 // it's that hop's IP instead. There's no reliable way for a webpage to learn a
 // visitor's true local IP otherwise (the old WebRTC ICE-candidate trick is blocked
@@ -267,7 +267,7 @@ export const subscriptions = sqliteTable(
 );
 
 // A subscription to a site's own tunnel alerts (see lib/checks/site.ts), independent
-// of subscribing to any service assigned to that site -- deliberately its own table
+// of subscribing to any service assigned to that site - deliberately its own table
 // rather than a nullable serviceId/siteId column on `subscriptions`, both to avoid a
 // risky rebuild of that existing (already-populated) table just to relax a NOT NULL
 // column, and because "subscribed to a site" and "subscribed to a service" are kept as
@@ -309,7 +309,7 @@ export const outageLog = sqliteTable("outage_log", {
   durationS: integer("duration_s").notNull(),
 });
 
-// Mirrors service_status, but for a site's own tunnel check (see lib/checks/site.ts) --
+// Mirrors service_status, but for a site's own tunnel check (see lib/checks/site.ts) -
 // lets a site's tunnel down/up be tracked and notified the same way a service's is,
 // independently of any service assigned to it. Only ever has a row for sites with a
 // tunnelHost configured (see runSiteChecks): a site with no tunnel check never gets a

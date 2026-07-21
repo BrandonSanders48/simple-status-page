@@ -54,7 +54,7 @@ export default function SitesTab({
           <span className="text-sm font-medium">
             Group services by site
             <span className="block text-xs text-slate-400 font-normal">
-              Uncheck to keep every service in one flat view, same as before Sites existed -- Sites still work as an admin-only
+              Uncheck to keep every service in one flat view, same as before Sites existed - Sites still work as an admin-only
               organizational tool and their tunnel checks still run, they just won&apos;t change what visitors see.
             </span>
           </span>
@@ -63,7 +63,7 @@ export default function SitesTab({
 
       <p className="text-xs text-slate-400 mb-3">
         A site groups Services under it (assign one in the Services section below) and, optionally, tests its own tunnel/link health
-        independently of any of them -- so the status page can tell &quot;this whole site&apos;s tunnel is down&quot; apart from &quot;just
+        independently of any of them - so the status page can tell &quot;this whole site&apos;s tunnel is down&quot; apart from &quot;just
         one service happens to be down&quot;. Tunnel Host should be something only reachable through that site&apos;s link (its far-side
         gateway, a switch, etc), not any of the services themselves. Leave Tunnel Host blank to just group services with no tunnel check.
       </p>
