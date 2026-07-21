@@ -336,8 +336,9 @@ function VmActionCard({
  * Lists Metro replication sessions on whichever PowerStore array(s) are flagged as the
  * DR site, each with Promote (the storage half of a failover) and Reprotect (the first
  * step of a later failback, re-establishing replication once the array has been
- * promoted) actions - both double-confirmed inline rather than via checkbox, since
- * there's normally just one or two sessions rather than a range to preview.
+ * promoted) actions - both gated behind a native confirm dialog spelling out what the
+ * action actually does and when it's safe to use, rather than an inline checkbox,
+ * since there's normally just one or two sessions rather than a range to preview.
  */
 function PromoteMetroCard({
   drPowerstores,
@@ -354,8 +355,6 @@ function PromoteMetroCard({
   onSkip?: () => void;
   onDone?: () => void;
 }) {
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [confirmingAction, setConfirmingAction] = useState<"promote" | "reprotect" | null>(null);
   const [busySessionId, setBusySessionId] = useState<string | null>(null);
   const [result, setResult] = useState<{ sessionId: string; ok: boolean; text: string } | null>(null);
 
@@ -386,9 +385,17 @@ function PromoteMetroCard({
       setResult({ sessionId, ok: false, text: err instanceof Error ? err.message : `Failed to ${action} Metro session.` });
     } finally {
       setBusySessionId(null);
-      setConfirmingId(null);
-      setConfirmingAction(null);
     }
+  }
+
+  function confirmAndRun(action: "promote" | "reprotect", targetId: number, sessionId: string, targetName: string, sessionName: string) {
+    const explanation =
+      action === "promote"
+        ? "This makes the DR array read/write so it can serve as primary storage. Only do this once the primary array is confirmed unreachable - promoting while the primary is still active can cause a split-brain between the two arrays."
+        : "This re-establishes replication from the promoted array back toward its original primary, as the first step of a later failback. Only do this once the original primary array is back online and healthy - reprotecting too early can fail or leave replication in a bad state.";
+    const verb = action === "promote" ? "Promote" : "Reprotect";
+    const confirmed = window.confirm(`${verb} the Metro session "${sessionName}" on ${targetName}?\n\n${explanation}`);
+    if (confirmed) run(action, targetId, sessionId);
   }
 
   const sessions = drPowerstores.flatMap((t) => t.status.metroSessions.map((session) => ({ target: t, session })));
@@ -420,54 +427,22 @@ function PromoteMetroCard({
               <span className="text-sm text-slate-500 dark:text-slate-400">{session.name}</span>
               <span className="text-xs text-slate-400">{session.state}</span>
               <div className="ml-auto flex items-center gap-2">
-                {confirmingId === session.id ? (
-                  <>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {confirmingAction === "promote" ? "Promote" : "Reprotect"} this session?
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => confirmingAction && run(confirmingAction, target.id, session.id)}
-                      disabled={busySessionId === session.id}
-                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg disabled:opacity-40"
-                    >
-                      {busySessionId === session.id ? "Working..." : "Confirm"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setConfirmingId(null);
-                        setConfirmingAction(null);
-                      }}
-                      className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setConfirmingId(session.id);
-                        setConfirmingAction("promote");
-                      }}
-                      className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-300 dark:border-red-500/40 text-red-600 dark:text-red-400 text-xs font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
-                    >
-                      Promote
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setConfirmingId(session.id);
-                        setConfirmingAction("reprotect");
-                      }}
-                      className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
-                    >
-                      Reprotect
-                    </button>
-                  </>
-                )}
+                <button
+                  type="button"
+                  onClick={() => confirmAndRun("promote", target.id, session.id, target.name, session.name)}
+                  disabled={busySessionId === session.id}
+                  className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-300 dark:border-red-500/40 text-red-600 dark:text-red-400 text-xs font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-40"
+                >
+                  {busySessionId === session.id ? "Working..." : "Promote"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmAndRun("reprotect", target.id, session.id, target.name, session.name)}
+                  disabled={busySessionId === session.id}
+                  className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40"
+                >
+                  {busySessionId === session.id ? "Working..." : "Reprotect"}
+                </button>
               </div>
               {result?.sessionId === session.id && (
                 <p className={`w-full text-xs ${result.ok ? "text-emerald-600" : "text-red-500"}`}>{result.text}</p>
@@ -561,10 +536,10 @@ function FailoverLog() {
 /**
  * Public tab: shows a fail-over-or-not recommendation to everyone (derived from
  * already-fetched Storage data, no separate polling), plus admin-only controls for a
- * guided manual failover - shut down primary VMs, promote the DR datastore, then
- * start DR VMs, in that order, each step locked until the previous one is done or
- * explicitly skipped. Reprotect (failback prep) and the action log sit outside the
- * gated sequence since they apply after the fact, not during it.
+ * guided manual failover - promote the DR datastore, then start DR VMs, in that
+ * order, the second step locked until the first is done or explicitly skipped.
+ * Reprotect (failback prep) and the action log sit outside the gated sequence since
+ * they apply after the fact, not during it.
  */
 export default function FailoverSection({
   storage,
@@ -580,15 +555,9 @@ export default function FailoverSection({
   const failover = computeFailoverStatus(storage, services);
   const copy = RECOMMENDATION_COPY[failover.recommendation];
   const drProxmoxes = (storage?.proxmoxes ?? []).filter((t) => t.isDr);
-  const primaryProxmoxes = (storage?.proxmoxes ?? []).filter((t) => !t.isDr);
   const drPowerstores = (storage?.powerstores ?? []).filter((t) => t.isDr);
-  // Nothing to gracefully shut down on a cluster we can't even reach - likely already
-  // the reason a failover is happening. Step 1 only blocks Step 2 when at least one
-  // primary cluster is actually responding.
-  const primaryAccessible = primaryProxmoxes.some((t) => t.status.ok);
 
-  const [step1Done, setStep1Done] = useState(false);
-  const [step2Done, setStep2Done] = useState(false);
+  const [promoteDone, setPromoteDone] = useState(false);
 
   return (
     <div className="space-y-5">
@@ -599,40 +568,15 @@ export default function FailoverSection({
 
       {!isAdmin && (
         <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
-          <i className="fa-solid fa-lock text-xs" /> Log in as an admin to start/shut down VMs or promote the DR datastore.
+          <i className="fa-solid fa-lock text-xs" /> Log in as an admin to start VMs or promote the DR datastore.
         </p>
       )}
 
       {isAdmin && (
         <div className="space-y-4">
+          <PromoteMetroCard step={1} drPowerstores={drPowerstores} csrfToken={csrfToken} onDone={() => setPromoteDone(true)} />
           <VmActionCard
-            step={1}
-            title="Shut down VMs at primary site"
-            description="Gracefully (ACPI) shuts down QEMU VMs by id range on a primary (non-DR) Proxmox cluster. Preview first, this powers off real infrastructure."
-            note={
-              primaryProxmoxes.length > 0 && !primaryAccessible
-                ? "The primary cluster already appears unreachable, so this step likely isn't necessary."
-                : undefined
-            }
-            targets={primaryProxmoxes}
-            emptyMessage="No primary Proxmox cluster is available (either none is configured, or every configured cluster is marked as the DR site)."
-            verb="shutdown"
-            actionUrl="/api/admin/failover/shutdown"
-            csrfToken={csrfToken}
-            idPrefix="primary"
-            onDone={() => setStep1Done(true)}
-            onSkip={() => setStep1Done(true)}
-          />
-          <PromoteMetroCard
             step={2}
-            drPowerstores={drPowerstores}
-            csrfToken={csrfToken}
-            locked={primaryAccessible && !step1Done}
-            onSkip={() => setStep1Done(true)}
-            onDone={() => setStep2Done(true)}
-          />
-          <VmActionCard
-            step={3}
             title="Start VMs at DR site"
             description="Starts QEMU VMs by id range on the Proxmox cluster marked as the DR site. Preview first, this powers on real infrastructure."
             targets={drProxmoxes}
@@ -641,8 +585,8 @@ export default function FailoverSection({
             actionUrl="/api/admin/failover/start"
             csrfToken={csrfToken}
             idPrefix="dr"
-            locked={!step2Done}
-            onSkip={() => setStep2Done(true)}
+            locked={!promoteDone}
+            onSkip={() => setPromoteDone(true)}
           />
 
           <FailoverLog />
