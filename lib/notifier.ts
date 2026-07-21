@@ -3,7 +3,7 @@ import type { ServiceTransition } from "./checks/runner";
 import type { SiteTransition } from "./checks/site";
 import type { IntegrationTransition } from "./integrationsCache";
 import { db } from "./db/client";
-import { settings, subscriptions, services, siteSubscriptions, integrationSubscriptions } from "./db/schema";
+import { settings, subscriptions, services, siteSubscriptions, integrationSubscriptions, siteStatus } from "./db/schema";
 import { isSmtpConfigured, sendMail } from "./mailer";
 import { renderStatusChangeEmail, renderSiteStatusChangeEmail, renderIntegrationStatusChangeEmail } from "./emailTemplates";
 import { generateActionTokens } from "./emailTokens";
@@ -18,6 +18,14 @@ const EMAIL_ACCENT_COLOR = "#06b6d4";
  * transitions detected by the same check pass that persisted them, so this never
  * re-runs checks itself. The two channels are independent - either, both, or neither
  * can be configured.
+ *
+ * A subscriber who's also directly subscribed to this service's site (see
+ * lib/db/schema.ts's siteSubscriptions) does NOT get this email if that site's own
+ * tunnel is currently down - they're already getting the site-down email (which
+ * names this service), and when a site's tunnel is down its services usually go
+ * down too as a direct symptom of the same outage, not a separate problem worth a
+ * second email. A subscriber who only subscribed to the service (not the site)
+ * still gets it, since they may have no idea the site concept exists.
  */
 export async function notifyTransitions(transitions: ServiceTransition[]): Promise<void> {
   const toNotify = transitions.filter((t) => t.shouldNotify);
@@ -42,27 +50,45 @@ export async function notifyTransitions(transitions: ServiceTransition[]): Promi
         .all();
 
       if (subs.length > 0) {
-        const actionUrls =
-          cfg.smtpShowActionButtons && transition.curStatus === "down" && url
-            ? generateActionTokens(transition.serviceId, transition.serviceName, url)
-            : null;
+        let suppressEmails = new Set<string>();
+        if (transition.curStatus === "down") {
+          const svc = db.select({ siteId: services.siteId }).from(services).where(eq(services.id, transition.serviceId)).get();
+          const site = svc?.siteId != null ? db.select({ status: siteStatus.status }).from(siteStatus).where(eq(siteStatus.siteId, svc.siteId)).get() : null;
+          if (site?.status === "down") {
+            const siteSubs = db
+              .select({ email: siteSubscriptions.email })
+              .from(siteSubscriptions)
+              .where(eq(siteSubscriptions.siteId, svc!.siteId!))
+              .all();
+            suppressEmails = new Set(siteSubs.map((s) => s.email));
+          }
+        }
 
-        const html = renderStatusChangeEmail({
-          businessName: cfg.businessName,
-          accentColor: EMAIL_ACCENT_COLOR,
-          serviceName: transition.serviceName,
-          status: transition.curStatus,
-          linkUrl: url,
-          actionUrls,
-        });
+        const recipients = subs.filter((s) => !suppressEmails.has(s.email));
 
-        const subject = `Service '${transition.serviceName}' is now ${transition.curStatus.toUpperCase()}`;
+        if (recipients.length > 0) {
+          const actionUrls =
+            cfg.smtpShowActionButtons && transition.curStatus === "down" && url
+              ? generateActionTokens(transition.serviceId, transition.serviceName, url)
+              : null;
 
-        for (const { email } of subs) {
-          try {
-            await sendMail(cfg, { to: email, subject, html });
-          } catch (err) {
-            console.error(`[notifier] failed to email ${email} about ${transition.serviceName}:`, err);
+          const html = renderStatusChangeEmail({
+            businessName: cfg.businessName,
+            accentColor: EMAIL_ACCENT_COLOR,
+            serviceName: transition.serviceName,
+            status: transition.curStatus,
+            linkUrl: url,
+            actionUrls,
+          });
+
+          const subject = `Service '${transition.serviceName}' is now ${transition.curStatus.toUpperCase()}`;
+
+          for (const { email } of recipients) {
+            try {
+              await sendMail(cfg, { to: email, subject, html });
+            } catch (err) {
+              console.error(`[notifier] failed to email ${email} about ${transition.serviceName}:`, err);
+            }
           }
         }
       }
