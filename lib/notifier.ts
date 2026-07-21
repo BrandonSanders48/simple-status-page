@@ -28,7 +28,6 @@ import { isWebhookConfigured, sendWebhookNotification } from "./webhook";
 import { checkDns } from "./checks/dns";
 import { parseIntegrationConfig } from "./integrationTargets";
 import { sendGotoConnectSms } from "./integrations/gotoConnect";
-import { logNotificationAttempt } from "./notifyLog";
 
 const EMAIL_ACCENT_COLOR = "#06b6d4";
 
@@ -64,14 +63,8 @@ async function sendGotoSms(subscriberPhones: string[], message: string): Promise
     for (const toNumber of toNumbers) {
       try {
         const result = await sendGotoConnectSms(config, toNumber, message);
-        if (result.ok) {
-          logNotificationAttempt(`SMS via "${target.name}" to ${toNumber}: sent`);
-        } else {
-          logNotificationAttempt(`SMS via "${target.name}" to ${toNumber}: FAILED - ${result.error}`);
-          console.error(`[notifier] failed to send GoTo SMS to ${toNumber} via "${target.name}":`, result.error);
-        }
+        if (!result.ok) console.error(`[notifier] failed to send GoTo SMS to ${toNumber} via "${target.name}":`, result.error);
       } catch (err) {
-        logNotificationAttempt(`SMS via "${target.name}" to ${toNumber}: FAILED - ${err instanceof Error ? err.message : String(err)}`);
         console.error(`[notifier] failed to send GoTo SMS to ${toNumber} via "${target.name}":`, err);
       }
     }
