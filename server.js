@@ -14,7 +14,17 @@ const handle = app.getRequestHandler();
 
 await app.prepare();
 
-createHttpServer((req, res) => handle(req, res)).listen(httpPort, () => {
+// The real, un-spoofable peer address for this connection, from the raw socket
+// (not the client-supplied X-Forwarded-For header, which anyone can set to anything).
+// Overwrites any x-real-ip the client itself sent, so it's always trustworthy by the
+// time lib/rateLimit.ts reads it -- that's what lets it decide whether to also trust
+// X-Forwarded-For (only when this direct peer looks like a local reverse proxy).
+function withRealIp(req) {
+  req.headers["x-real-ip"] = req.socket.remoteAddress || "";
+  return req;
+}
+
+createHttpServer((req, res) => handle(withRealIp(req), res)).listen(httpPort, () => {
   console.log(`> HTTP listening on port ${httpPort}`);
 });
 
@@ -28,7 +38,7 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
   try {
     const httpsServer = createHttpsServer(
       { cert: fs.readFileSync(certPath), key: fs.readFileSync(keyPath) },
-      (req, res) => handle(req, res)
+      (req, res) => handle(withRealIp(req), res)
     );
     // Exposed so the SSL upload route can hot-swap the TLS context without a restart
     // once both a new cert and key have been uploaded and validated.
