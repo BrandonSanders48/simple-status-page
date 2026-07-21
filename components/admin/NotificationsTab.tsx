@@ -19,6 +19,11 @@ export default function NotificationsTab({
   const [sending, setSending] = useState(false);
   const [webhookTestStatus, setWebhookTestStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [webhookTesting, setWebhookTesting] = useState(false);
+  const [smsLog, setSmsLog] = useState<string[] | null>(null);
+  const [smsLogLoading, setSmsLogLoading] = useState(false);
+  const [smsTestTo, setSmsTestTo] = useState("");
+  const [smsTestStatus, setSmsTestStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const [smsTesting, setSmsTesting] = useState(false);
 
   function set<K extends keyof SettingsRow>(key: K, value: SettingsRow[K]) {
     onChange({ ...settings, [key]: value });
@@ -41,6 +46,39 @@ export default function NotificationsTab({
       setTestStatus({ ok: false, text: err instanceof Error ? err.message : "Failed to send test email." });
     } finally {
       setSending(false);
+    }
+  }
+
+  async function loadSmsLog() {
+    setSmsLogLoading(true);
+    try {
+      const res = await fetch("/api/admin/notification-log");
+      const data = await res.json();
+      setSmsLog(Array.isArray(data.lines) ? data.lines : []);
+    } catch {
+      setSmsLog([]);
+    } finally {
+      setSmsLogLoading(false);
+    }
+  }
+
+  async function sendSmsTest() {
+    if (!smsTestTo) return;
+    setSmsTesting(true);
+    setSmsTestStatus(null);
+    try {
+      const res = await fetch("/api/admin/test-sms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+        body: JSON.stringify({ to: smsTestTo }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send test text.");
+      setSmsTestStatus({ ok: true, text: "Test text sent!" });
+    } catch (err) {
+      setSmsTestStatus({ ok: false, text: err instanceof Error ? err.message : "Failed to send test text." });
+    } finally {
+      setSmsTesting(false);
     }
   }
 
@@ -250,6 +288,53 @@ export default function NotificationsTab({
           </button>
           {webhookTestStatus && (
             <p className={`text-xs mt-2 ${webhookTestStatus.ok ? "text-emerald-600" : "text-red-500"}`}>{webhookTestStatus.text}</p>
+          )}
+        </div>
+      </SettingsGroup>
+
+      <SettingsGroup
+        title="SMS Send Log"
+        description="Recent GoTo Connect SMS attempts (subscriber texts and the integration's fixed alert number), most recent first - confirms whether a text actually sent, and why not if it didn't."
+        wide
+      >
+        <div className="pb-4 border-b border-slate-100 dark:border-slate-800/70">
+          <label htmlFor="cfg-test-sms-to" className={labelCls}>Send a Test Text (temporary)</label>
+          <div className="flex items-center gap-3">
+            <input
+              id="cfg-test-sms-to"
+              type="tel"
+              className={`${inputCls} flex-1`}
+              value={smsTestTo}
+              onChange={(e) => setSmsTestTo(e.target.value)}
+              placeholder="+15145550100"
+            />
+            <button
+              type="button"
+              onClick={sendSmsTest}
+              disabled={smsTesting || !smsTestTo}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg whitespace-nowrap disabled:opacity-60"
+            >
+              <i className="fa-solid fa-paper-plane text-xs mr-1.5" /> {smsTesting ? "Sending..." : "Send Test"}
+            </button>
+          </div>
+          {smsTestStatus && (
+            <p className={`text-xs mt-2 ${smsTestStatus.ok ? "text-emerald-600" : "text-red-500"}`}>{smsTestStatus.text}</p>
+          )}
+          <p className="text-xs text-slate-400 mt-1">Uses the first enabled GoTo Connect target with an SMS From number configured.</p>
+        </div>
+        <div>
+          <button
+            type="button"
+            onClick={loadSmsLog}
+            disabled={smsLogLoading}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg whitespace-nowrap disabled:opacity-60"
+          >
+            <i className="fa-solid fa-arrows-rotate text-xs mr-1.5" /> {smsLogLoading ? "Loading..." : smsLog === null ? "Load Log" : "Refresh"}
+          </button>
+          {smsLog && (
+            <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-3 font-mono text-xs text-slate-600 dark:text-slate-300 space-y-1">
+              {smsLog.length === 0 ? <p className="text-slate-400">No SMS attempts logged yet.</p> : smsLog.map((line, i) => <p key={i}>{line}</p>)}
+            </div>
           )}
         </div>
       </SettingsGroup>
