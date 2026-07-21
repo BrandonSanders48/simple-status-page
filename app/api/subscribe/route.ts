@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { services, sites, subscriptions, siteSubscriptions } from "@/lib/db/schema";
+import { services, sites, integrationTargets, subscriptions, siteSubscriptions, integrationSubscriptions } from "@/lib/db/schema";
 import { verifyCsrf } from "@/lib/csrf";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 
@@ -10,10 +10,10 @@ function isValidEmail(email: string): boolean {
 }
 
 /**
- * Subscribes an email to the given services/sites. Additive, not all-or-nothing: any
- * ids the email is already subscribed to are just skipped (not treated as an error),
- * so re-opening this form to add one more service/site never requires unsubscribing
- * and re-picking everything else first.
+ * Subscribes an email to the given services/sites/integration targets. Additive, not
+ * all-or-nothing: any ids the email is already subscribed to are just skipped (not
+ * treated as an error), so re-opening this form to add one more thing never requires
+ * unsubscribing and re-picking everything else first.
  */
 export async function POST(request: Request) {
   if (!(await verifyCsrf(request))) {
@@ -34,12 +34,15 @@ export async function POST(request: Request) {
   const siteIds: number[] = Array.isArray(body?.siteIds)
     ? body.siteIds.map((id: unknown) => Number(id)).filter((id: number) => Number.isInteger(id))
     : [];
+  const targetIds: number[] = Array.isArray(body?.targetIds)
+    ? body.targetIds.map((id: unknown) => Number(id)).filter((id: number) => Number.isInteger(id))
+    : [];
 
   if (!isValidEmail(email)) {
     return NextResponse.json({ status: "error", message: "Invalid email address." }, { status: 400 });
   }
-  if (serviceIds.length === 0 && siteIds.length === 0) {
-    return NextResponse.json({ status: "error", message: "No service or site selected." }, { status: 400 });
+  if (serviceIds.length === 0 && siteIds.length === 0 && targetIds.length === 0) {
+    return NextResponse.json({ status: "error", message: "No service, site, or integration selected." }, { status: 400 });
   }
 
   let addedCount = 0;
@@ -74,6 +77,25 @@ export async function POST(request: Request) {
     const toInsert = siteIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id)).map((siteId) => ({ email, siteId }));
     if (toInsert.length > 0) {
       db.insert(siteSubscriptions).values(toInsert).run();
+      addedCount += toInsert.length;
+    }
+  }
+
+  if (targetIds.length > 0) {
+    const validIds = new Set(
+      db.select({ id: integrationTargets.id }).from(integrationTargets).where(inArray(integrationTargets.id, targetIds)).all().map((t) => t.id)
+    );
+    const alreadySubscribed = new Set(
+      db
+        .select({ targetId: integrationSubscriptions.targetId })
+        .from(integrationSubscriptions)
+        .where(and(eq(integrationSubscriptions.email, email), inArray(integrationSubscriptions.targetId, targetIds)))
+        .all()
+        .map((t) => t.targetId)
+    );
+    const toInsert = targetIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id)).map((targetId) => ({ email, targetId }));
+    if (toInsert.length > 0) {
+      db.insert(integrationSubscriptions).values(toInsert).run();
       addedCount += toInsert.length;
     }
   }

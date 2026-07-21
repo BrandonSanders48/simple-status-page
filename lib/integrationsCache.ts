@@ -42,6 +42,9 @@ export interface IntegrationTransition {
   curHealthy: boolean;
   /** Same meaning as ServiceTransition.shouldNotify (see lib/checks/runner.ts). */
   shouldNotify: boolean;
+  /** The target's current one-line summary (e.g. "42 devices online, 1 alert"),
+   * carried along so a subscriber email can say more than just healthy/unhealthy. */
+  summary: string;
 }
 
 const TTL_MS = 60_000;
@@ -136,14 +139,14 @@ function diffAndPersistIntegrationHealth(payload: IntegrationsPayload): Integrat
       downNotified = false;
     } else if (curHealthy && prevHealthy === false && wentUnhealthyAt) {
       lastUnhealthyDurationS = now - wentUnhealthyAt;
-      transitions.push({ targetId: t.id, targetName: t.name, prevHealthy, curHealthy, shouldNotify: downNotified });
+      transitions.push({ targetId: t.id, targetName: t.name, prevHealthy, curHealthy, shouldNotify: downNotified, summary: t.status.summary });
       wentUnhealthyAt = null;
       downNotified = false;
     }
 
     if (!curHealthy && !downNotified && wentUnhealthyAt !== null && now - wentUnhealthyAt >= notifyDelayS) {
       downNotified = true;
-      transitions.push({ targetId: t.id, targetName: t.name, prevHealthy, curHealthy, shouldNotify: true });
+      transitions.push({ targetId: t.id, targetName: t.name, prevHealthy, curHealthy, shouldNotify: true, summary: t.status.summary });
     }
 
     db.insert(integrationHealthStatus)

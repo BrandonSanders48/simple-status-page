@@ -3,9 +3,9 @@ import type { ServiceTransition } from "./checks/runner";
 import type { SiteTransition } from "./checks/site";
 import type { IntegrationTransition } from "./integrationsCache";
 import { db } from "./db/client";
-import { settings, subscriptions, services, siteSubscriptions } from "./db/schema";
+import { settings, subscriptions, services, siteSubscriptions, integrationSubscriptions } from "./db/schema";
 import { isSmtpConfigured, sendMail } from "./mailer";
-import { renderStatusChangeEmail, renderSiteStatusChangeEmail } from "./emailTemplates";
+import { renderStatusChangeEmail, renderSiteStatusChangeEmail, renderIntegrationStatusChangeEmail } from "./emailTemplates";
 import { generateActionTokens } from "./emailTokens";
 import { resolvePageUrl } from "./pageUrl";
 import { isWebhookConfigured, sendWebhookNotification } from "./webhook";
@@ -156,11 +156,12 @@ export async function notifySiteTransitions(transitions: SiteTransition[]): Prom
 }
 
 /**
- * Posts a webhook notification when a marketplace integration target's overall health
- * (see lib/integrationsCache.ts) flips between healthy and unhealthy. Webhook-only,
- * deliberately: unlike services/sites there's no end-user "subscribe to an
- * integration" concept, so there's no subscriber list to email - this is meant for
- * whoever's already watching the configured Slack/Discord/generic channel.
+ * Sends subscriber emails and/or a webhook notification when a marketplace
+ * integration target's overall health (see lib/integrationsCache.ts) flips between
+ * healthy and unhealthy. Recipients are whoever's subscribed directly to that target
+ * (integration_subscriptions - see lib/db/schema.ts); unlike services/sites there's
+ * no other implicit path into that list (an integration target isn't tied to any
+ * particular service or site).
  */
 export async function notifyIntegrationTransitions(transitions: IntegrationTransition[]): Promise<void> {
   const toNotify = transitions.filter((t) => t.shouldNotify);
@@ -169,21 +170,54 @@ export async function notifyIntegrationTransitions(transitions: IntegrationTrans
   const cfg = db.select().from(settings).get();
   const url = cfg ? resolvePageUrl(cfg) : null;
 
-  if (!isWebhookConfigured(cfg)) {
-    console.log("[notifier] no webhook configured, skipping", toNotify.length, "integration notification(s)");
+  const smtpReady = isSmtpConfigured(cfg);
+  const webhookReady = isWebhookConfigured(cfg);
+  if (!smtpReady && !webhookReady) {
+    console.log("[notifier] no notification channel configured, skipping", toNotify.length, "integration notification(s)");
     return;
   }
 
   for (const transition of toNotify) {
-    try {
-      await sendWebhookNotification(cfg, {
-        businessName: cfg.businessName,
-        serviceName: `Integration: ${transition.targetName}`,
-        status: transition.curHealthy ? "up" : "down",
-        linkUrl: url,
-      });
-    } catch (err) {
-      console.error(`[notifier] failed to post webhook for integration ${transition.targetName}:`, err);
+    if (smtpReady) {
+      const subs = db
+        .select({ email: integrationSubscriptions.email })
+        .from(integrationSubscriptions)
+        .where(eq(integrationSubscriptions.targetId, transition.targetId))
+        .all();
+
+      if (subs.length > 0) {
+        const html = renderIntegrationStatusChangeEmail({
+          businessName: cfg.businessName,
+          accentColor: EMAIL_ACCENT_COLOR,
+          targetName: transition.targetName,
+          status: transition.curHealthy ? "up" : "down",
+          linkUrl: url,
+          summary: transition.summary,
+        });
+
+        const subject = `Integration '${transition.targetName}' is now ${transition.curHealthy ? "HEALTHY" : "UNHEALTHY"}`;
+
+        for (const { email } of subs) {
+          try {
+            await sendMail(cfg, { to: email, subject, html });
+          } catch (err) {
+            console.error(`[notifier] failed to email ${email} about integration ${transition.targetName}:`, err);
+          }
+        }
+      }
+    }
+
+    if (webhookReady) {
+      try {
+        await sendWebhookNotification(cfg, {
+          businessName: cfg.businessName,
+          serviceName: `Integration: ${transition.targetName}`,
+          status: transition.curHealthy ? "up" : "down",
+          linkUrl: url,
+        });
+      } catch (err) {
+        console.error(`[notifier] failed to post webhook for integration ${transition.targetName}:`, err);
+      }
     }
   }
 }

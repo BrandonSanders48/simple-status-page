@@ -212,3 +212,68 @@ export function renderSiteStatusChangeEmail(opts: {
     </td></tr>
   `);
 }
+
+/** Same shape as renderStatusChangeEmail, but for a marketplace integration target's
+ * overall health (see lib/integrationsCache.ts) rather than a service's up/down --
+ * "Healthy"/"Attention" wording matches what the target's own card shows, and the
+ * summary line is whatever that card currently displays (e.g. "42 devices online, 1
+ * alert") so the email says more than just healthy/unhealthy. */
+export function renderIntegrationStatusChangeEmail(opts: {
+  businessName: string;
+  accentColor: string;
+  targetName: string;
+  status: "up" | "down";
+  linkUrl?: string | null;
+  summary: string;
+}): string {
+  const { businessName, accentColor, targetName, status, linkUrl, summary } = opts;
+  const isUp = status === "up";
+  const statusLabel = isUp ? "Healthy" : "Attention";
+  const statusIcon = isUp ? "&#9989;" : "&#9888;";
+  const pillBg = isUp ? "#ecfdf5" : "#fef2f2";
+  const pillColor = isUp ? "#059669" : "#dc2626";
+  const bannerBg = isUp ? "#f0fdf4" : "#fef2f2";
+  const bannerBorder = isUp ? "#bbf7d0" : "#fecaca";
+
+  const summaryRow = summary
+    ? `<tr><td style="padding:0 20px 14px;font-size:13px;color:#64748b;">Summary</td><td style="padding:0 20px 14px;font-size:13px;font-weight:600;color:#0f172a;text-align:right;">${escapeHtml(summary)}</td></tr>`
+    : "";
+
+  const cta = linkUrl
+    ? `<tr><td style="padding:24px 32px 0;text-align:center;">
+        <a href="${escapeHtml(linkUrl)}" target="_blank" style="display:inline-block;padding:12px 32px;background:${accentColor};color:#ffffff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600;">View Status Page</a>
+      </td></tr>`
+    : "";
+
+  return shell(`
+    <tr><td style="padding:28px 32px 20px;border-bottom:1px solid #f1f5f9;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+        <td style="vertical-align:middle;"><span style="font-size:15px;font-weight:700;color:#0f172a;">${escapeHtml(businessName)}</span></td>
+        <td style="vertical-align:middle;text-align:right;">
+          <span style="display:inline-block;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;background:${pillBg};color:${pillColor};">${statusLabel}</span>
+        </td>
+      </tr></table>
+    </td></tr>
+    <tr><td style="padding:24px 32px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${bannerBg};border:1px solid ${bannerBorder};border-radius:12px;">
+        <tr><td style="padding:20px 24px;text-align:center;">
+          <div style="font-size:36px;line-height:1;margin-bottom:10px;">${statusIcon}</div>
+          <div style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:4px;">${escapeHtml(targetName)}</div>
+          <div style="font-size:14px;font-weight:600;color:${pillColor};">Integration is ${statusLabel.toLowerCase()}</div>
+        </td></tr>
+      </table>
+    </td></tr>
+    <tr><td style="padding:24px 32px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f8fafc;border-radius:10px;">
+        <tr><td style="padding:14px 20px;font-size:13px;color:#64748b;">Integration</td><td style="padding:14px 20px;font-size:13px;font-weight:600;color:#0f172a;text-align:right;">${escapeHtml(targetName)}</td></tr>
+        <tr><td style="padding:0 20px 14px;font-size:13px;color:#64748b;">Status</td><td style="padding:0 20px 14px;font-size:13px;font-weight:600;color:${pillColor};text-align:right;">${statusLabel.toUpperCase()}</td></tr>
+        ${summaryRow}
+        <tr><td style="padding:0 20px 14px;font-size:13px;color:#64748b;">Checked at</td><td style="padding:0 20px 14px;font-size:13px;color:#334155;text-align:right;">${new Date().toLocaleString()}</td></tr>
+      </table>
+    </td></tr>
+    ${cta}
+    <tr><td style="padding:28px 32px;text-align:center;border-top:1px solid #f1f5f9;margin-top:24px;">
+      <span style="font-size:12px;color:#94a3b8;">${escapeHtml(businessName)}</span>
+    </td></tr>
+  `);
+}

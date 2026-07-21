@@ -12,6 +12,11 @@ interface SiteSubscription {
   siteName: string;
 }
 
+interface IntegrationSubscription {
+  targetId: number;
+  targetName: string;
+}
+
 export default function ManageSubscriptionsModal({
   csrfToken,
   onClose,
@@ -24,6 +29,7 @@ export default function ManageSubscriptionsModal({
   const [email, setEmail] = useState("");
   const [subscriptions, setSubscriptions] = useState<ServiceSubscription[] | null>(null);
   const [siteSubscriptions, setSiteSubscriptions] = useState<SiteSubscription[] | null>(null);
+  const [integrationSubscriptions, setIntegrationSubscriptions] = useState<IntegrationSubscription[] | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -43,6 +49,7 @@ export default function ManageSubscriptionsModal({
       const data = await res.json();
       setSubscriptions(data.subscriptions ?? []);
       setSiteSubscriptions(data.siteSubscriptions ?? []);
+      setIntegrationSubscriptions(data.integrationSubscriptions ?? []);
       if (data.message) setMessage(data.message);
     } catch {
       setMessage("Failed to look up subscriptions.");
@@ -77,6 +84,19 @@ export default function ManageSubscriptionsModal({
     setMessage(data.message || "");
   }
 
+  async function unsubscribeOneIntegration(targetId: number) {
+    const res = await fetch("/api/unsubscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ email, action: "unsubscribe_single_integration", targetId }),
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      setIntegrationSubscriptions((prev) => (prev ? prev.filter((s) => s.targetId !== targetId) : prev));
+    }
+    setMessage(data.message || "");
+  }
+
   async function unsubscribeAll() {
     const res = await fetch("/api/unsubscribe", {
       method: "POST",
@@ -88,10 +108,12 @@ export default function ManageSubscriptionsModal({
     if (data.status === "success") {
       setSubscriptions([]);
       setSiteSubscriptions([]);
+      setIntegrationSubscriptions([]);
     }
   }
 
-  const hasAny = (subscriptions?.length ?? 0) > 0 || (siteSubscriptions?.length ?? 0) > 0;
+  const hasAny =
+    (subscriptions?.length ?? 0) > 0 || (siteSubscriptions?.length ?? 0) > 0 || (integrationSubscriptions?.length ?? 0) > 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
@@ -130,7 +152,7 @@ export default function ManageSubscriptionsModal({
 
         {message && <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">{message}</p>}
 
-        {(siteSubscriptions || subscriptions) && (
+        {(siteSubscriptions || subscriptions || integrationSubscriptions) && (
           <div className="mb-4 space-y-3">
             {siteSubscriptions && siteSubscriptions.length > 0 && (
               <div>
@@ -172,7 +194,27 @@ export default function ManageSubscriptionsModal({
               </div>
             )}
 
-            {!hasAny && (subscriptions !== null || siteSubscriptions !== null) && (
+            {integrationSubscriptions && integrationSubscriptions.length > 0 && (
+              <div>
+                <p className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Integrations</p>
+                <ul className="space-y-2 max-h-40 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40">
+                  {integrationSubscriptions.map((sub) => (
+                    <li key={sub.targetId} className="flex items-center justify-between px-3 py-2.5">
+                      <span className="text-sm text-slate-800 dark:text-slate-200 font-medium">{sub.targetName}</span>
+                      <button
+                        type="button"
+                        onClick={() => unsubscribeOneIntegration(sub.targetId)}
+                        className="text-xs bg-red-50 dark:bg-red-500/25 hover:bg-red-100 dark:hover:bg-red-500/40 text-red-600 dark:text-red-300 px-2.5 py-1 rounded-md font-medium"
+                      >
+                        Unsubscribe
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {!hasAny && (subscriptions !== null || siteSubscriptions !== null || integrationSubscriptions !== null) && (
               <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-3">No active subscriptions found.</p>
             )}
           </div>

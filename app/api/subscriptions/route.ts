@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { services, sites, subscriptions, siteSubscriptions } from "@/lib/db/schema";
+import { services, sites, integrationTargets, subscriptions, siteSubscriptions, integrationSubscriptions } from "@/lib/db/schema";
 import { verifyCsrf } from "@/lib/csrf";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 
@@ -9,8 +9,8 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-/** Look up active service and site subscriptions for an email address (the "manage
- * subscriptions" flow). */
+/** Look up active service, site, and integration subscriptions for an email address
+ * (the "manage subscriptions" flow). */
 export async function POST(request: Request) {
   if (!(await verifyCsrf(request))) {
     return NextResponse.json({ status: "error", message: "Invalid CSRF token." }, { status: 403 });
@@ -42,10 +42,21 @@ export async function POST(request: Request) {
     .where(eq(siteSubscriptions.email, email))
     .all();
 
+  const targetRows = db
+    .select({ targetId: integrationSubscriptions.targetId, targetName: integrationTargets.name })
+    .from(integrationSubscriptions)
+    .innerJoin(integrationTargets, eq(integrationSubscriptions.targetId, integrationTargets.id))
+    .where(eq(integrationSubscriptions.email, email))
+    .all();
+
   return NextResponse.json({
     status: "success",
-    message: serviceRows.length === 0 && siteRows.length === 0 ? "No subscriptions found for this email." : "Subscriptions found.",
+    message:
+      serviceRows.length === 0 && siteRows.length === 0 && targetRows.length === 0
+        ? "No subscriptions found for this email."
+        : "Subscriptions found.",
     subscriptions: serviceRows,
     siteSubscriptions: siteRows,
+    integrationSubscriptions: targetRows,
   });
 }

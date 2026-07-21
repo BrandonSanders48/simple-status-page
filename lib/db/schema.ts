@@ -288,6 +288,25 @@ export const siteSubscriptions = sqliteTable(
   })
 );
 
+// A subscription to a marketplace integration target's own health alerts (see
+// lib/integrationsCache.ts's runIntegrationHealthChecks) - same independent-table
+// pattern as siteSubscriptions above, since an integration target's health has
+// nothing to do with any particular service or site.
+export const integrationSubscriptions = sqliteTable(
+  "integration_subscriptions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    email: text("email").notNull(),
+    targetId: integer("target_id")
+      .notNull()
+      .references(() => integrationTargets.id, { onDelete: "cascade" }),
+    subscribedAt: text("subscribed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => ({
+    uniqueEmailTarget: uniqueIndex("uniq_email_target").on(t.email, t.targetId),
+  })
+);
+
 export const serviceStatus = sqliteTable("service_status", {
   serviceId: integer("service_id")
     .primaryKey()

@@ -3,15 +3,22 @@
 import { useState } from "react";
 import type { StatusServicePayload, SitePayload } from "@/lib/statusCache";
 
+interface IntegrationTargetOption {
+  id: number;
+  name: string;
+}
+
 export default function SubscribeModal({
   services,
   sites,
+  integrationTargets = [],
   csrfToken,
   onClose,
   onManage,
 }: {
   services: StatusServicePayload[];
   sites: SitePayload[];
+  integrationTargets?: IntegrationTargetOption[];
   csrfToken: string;
   onClose: () => void;
   onManage: () => void;
@@ -19,6 +26,7 @@ export default function SubscribeModal({
   const [email, setEmail] = useState("");
   const [selectedServices, setSelectedServices] = useState<Set<number>>(new Set());
   const [selectedSites, setSelectedSites] = useState<Set<number>>(new Set());
+  const [selectedTargets, setSelectedTargets] = useState<Set<number>>(new Set());
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,11 +55,20 @@ export default function SubscribeModal({
     });
   }
 
+  function toggleTarget(id: number) {
+    setSelectedTargets((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMessage(null);
-    if (selectedServices.size === 0 && selectedSites.size === 0) {
-      setMessage({ ok: false, text: "Please select at least one service or site." });
+    if (selectedServices.size === 0 && selectedSites.size === 0 && selectedTargets.size === 0) {
+      setMessage({ ok: false, text: "Please select at least one service, site, or integration." });
       return;
     }
     setSubmitting(true);
@@ -59,7 +76,12 @@ export default function SubscribeModal({
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-        body: JSON.stringify({ email, serviceIds: Array.from(selectedServices), siteIds: Array.from(selectedSites) }),
+        body: JSON.stringify({
+          email,
+          serviceIds: Array.from(selectedServices),
+          siteIds: Array.from(selectedSites),
+          targetIds: Array.from(selectedTargets),
+        }),
       });
       const data = await res.json();
       setMessage({ ok: res.ok, text: data.message || (res.ok ? "Subscribed!" : "Failed to subscribe.") });
@@ -67,6 +89,7 @@ export default function SubscribeModal({
         setEmail("");
         setSelectedServices(new Set());
         setSelectedSites(new Set());
+        setSelectedTargets(new Set());
       }
     } catch {
       setMessage({ ok: false, text: "Failed to subscribe." });
@@ -81,7 +104,7 @@ export default function SubscribeModal({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h5 className="font-semibold text-slate-900 dark:text-white text-sm">Subscribe to Alerts</h5>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Get emailed when services or sites go down</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Get emailed when services, sites, or integrations have issues</p>
           </div>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">
             &times;
@@ -112,6 +135,27 @@ export default function SubscribeModal({
                       className="w-4 h-4 rounded accent-cyan-500 flex-shrink-0"
                     />
                     <span className="text-sm text-slate-800 dark:text-slate-200 font-medium flex-1">{s.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {integrationTargets.length > 0 && (
+            <div>
+              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2 block">
+                Integrations <span className="font-normal normal-case text-slate-400">(healthy/attention alerts)</span>
+              </label>
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/40">
+                {integrationTargets.map((t) => (
+                  <label key={t.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedTargets.has(t.id)}
+                      onChange={() => toggleTarget(t.id)}
+                      className="w-4 h-4 rounded accent-fuchsia-500 flex-shrink-0"
+                    />
+                    <span className="text-sm text-slate-800 dark:text-slate-200 font-medium flex-1">{t.name}</span>
                   </label>
                 ))}
               </div>
