@@ -277,3 +277,59 @@ export function renderIntegrationStatusChangeEmail(opts: {
     </td></tr>
   `);
 }
+
+/** Sent instead of individual renderIntegrationStatusChangeEmail messages when the
+ * WAN itself is confirmed down at the same moment several integrations went
+ * unhealthy - see notifyIntegrationTransitions in lib/notifier.ts. One of these per
+ * affected subscriber, naming every currently-affected integration they're subscribed
+ * to, rather than a separate email per integration for what's really one root cause. */
+export function renderWanDownIntegrationsEmail(opts: {
+  businessName: string;
+  accentColor: string;
+  linkUrl?: string | null;
+  targetNames: string[];
+}): string {
+  const { businessName, accentColor, linkUrl, targetNames } = opts;
+
+  const cta = linkUrl
+    ? `<tr><td style="padding:24px 32px 0;text-align:center;">
+        <a href="${escapeHtml(linkUrl)}" target="_blank" style="display:inline-block;padding:12px 32px;background:${accentColor};color:#ffffff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600;">View Status Page</a>
+      </td></tr>`
+    : "";
+
+  return shell(`
+    <tr><td style="padding:28px 32px 20px;border-bottom:1px solid #f1f5f9;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+        <td style="vertical-align:middle;"><span style="font-size:15px;font-weight:700;color:#0f172a;">${escapeHtml(businessName)}</span></td>
+        <td style="vertical-align:middle;text-align:right;">
+          <span style="display:inline-block;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#fef2f2;color:#dc2626;">Attention</span>
+        </td>
+      </tr></table>
+    </td></tr>
+    <tr><td style="padding:24px 32px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;">
+        <tr><td style="padding:20px 24px;text-align:center;">
+          <div style="font-size:36px;line-height:1;margin-bottom:10px;">&#9888;</div>
+          <div style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:4px;">Wide-Area network appears down</div>
+          <div style="font-size:14px;font-weight:600;color:#dc2626;">${targetNames.length} integration${targetNames.length === 1 ? "" : "s"} affected</div>
+        </td></tr>
+      </table>
+    </td></tr>
+    <tr><td style="padding:24px 32px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f8fafc;border-radius:10px;">
+        <tr><td style="padding:14px 20px 6px;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.03em;">Affected integrations</td></tr>
+        <tr><td style="padding:0 20px 16px;font-size:13px;color:#334155;line-height:1.7;">${targetNames.map(escapeHtml).join(", ")}</td></tr>
+      </table>
+    </td></tr>
+    <tr><td style="padding:16px 32px 0;">
+      <p style="font-size:12.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;margin:0;line-height:1.6;">
+        These are grouped into one email because the Wide-Area network check is down at the same time - likely one root cause, rather
+        than a separate problem with each integration.
+      </p>
+    </td></tr>
+    ${cta}
+    <tr><td style="padding:28px 32px;text-align:center;border-top:1px solid #f1f5f9;margin-top:24px;">
+      <span style="font-size:12px;color:#94a3b8;">${escapeHtml(businessName)}</span>
+    </td></tr>
+  `);
+}

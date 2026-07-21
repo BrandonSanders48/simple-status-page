@@ -107,6 +107,18 @@ export const INTEGRATION_CATALOG_META: IntegrationCatalogMeta[] = [
       { key: "personalAccessToken", label: "Personal Access Token", type: "password", placeholder: "Leave blank if using a Refresh Token" },
       { key: "refreshToken", label: "Refresh Token", type: "password", placeholder: "Leave blank if using a Personal Access Token" },
       { key: "accountKey", label: "Account Key (optional)", type: "text", placeholder: "Leave blank to auto-detect" },
+      {
+        key: "smsFromNumber",
+        label: "Notification SMS From Number (optional)",
+        type: "text",
+        placeholder: "+15145550100 - leave both SMS fields blank to disable",
+      },
+      {
+        key: "smsToNumber",
+        label: "Notification SMS To Number (optional)",
+        type: "text",
+        placeholder: "+15145550199",
+      },
     ],
   },
   {

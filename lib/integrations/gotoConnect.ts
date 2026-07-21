@@ -6,6 +6,12 @@ import type { IntegrationStatus } from "./types";
  * phone system - NOT the public status.goto.com feed, which this app surfaces as its
  * own separate "GoTo Status" integration.
  *
+ * Also doubles as an outbound notification channel: sendGotoConnectSms (near the
+ * bottom of this file) sends a plain-text SMS via this same target's credentials,
+ * used by lib/notifier.ts alongside subscriber email and the webhook. That's a
+ * distinct GoTo API (Messaging, not Voice Admin) needing its own OAuth scope - see
+ * sendGotoConnectSms's own doc comment.
+ *
  * This is a server-side background poller with no user present to run an interactive
  * OAuth consent flow, so `config` supports two mutually exclusive ways to authenticate
  * - an admin fills in exactly one, not both:
@@ -128,6 +134,16 @@ async function exchangeRefreshToken(clientId: string, clientSecret: string, refr
   } catch (err) {
     return { token: null, error: err instanceof Error ? `Token refresh: ${err.message}` : "Token refresh failed" };
   }
+}
+
+/** Picks whichever grant is configured (PAT or refresh token - see the file-level
+ * comment) and exchanges it for a short-lived access token. Shared by
+ * fetchGotoConnectStatus and sendGotoConnectSms so the PAT-vs-refresh branch only
+ * lives in one place. */
+async function getAccessToken(clientId: string, clientSecret: string, personalAccessToken: string, refreshToken: string): Promise<TokenResult> {
+  return personalAccessToken
+    ? exchangePersonalAccessToken(clientId, clientSecret, personalAccessToken)
+    : exchangeRefreshToken(clientId, clientSecret, refreshToken);
 }
 
 async function get(accessToken: string, url: string, timeoutMs = 8000): Promise<FetchResult> {
@@ -355,9 +371,7 @@ export async function fetchGotoConnectStatus(config: Record<string, string>): Pr
 
   const diagnostics: string[] = [];
   try {
-    const tokenResult = personalAccessToken
-      ? await exchangePersonalAccessToken(clientId, clientSecret, personalAccessToken)
-      : await exchangeRefreshToken(clientId, clientSecret, refreshToken!);
+    const tokenResult = await getAccessToken(clientId, clientSecret, personalAccessToken ?? "", refreshToken ?? "");
     if (tokenResult.error !== null) throw new Error(tokenResult.error);
     const accessToken = tokenResult.token;
 
@@ -392,5 +406,63 @@ export async function fetchGotoConnectStatus(config: Record<string, string>): Pr
       summary: "",
       items: [],
     };
+  }
+}
+
+/**
+ * Sends an SMS from a GoTo Connect phone number to an arbitrary destination number,
+ * used as an outbound notification channel (see lib/notifier.ts) alongside
+ * subscriber email and the Slack/Discord/generic webhook - the FROM number is this
+ * target's own smsFromNumber field (see lib/integrationCatalogMeta.ts), the TO
+ * number is passed in by the caller (either this target's fixed smsToNumber for the
+ * admin-configured alert, or a phone number someone subscribed with).
+ *
+ * CONFIRMED against https://developer.goto.com/guides/GoToConnect/12_Send_SMS/ :
+ * POST https://api.goto.com/messaging/v1/messages with body
+ * { ownerPhoneNumber, contactPhoneNumbers: [...], body }, needing the
+ * `messaging.v1.send` OAuth scope. That scope is almost certainly NOT already
+ * enabled on an existing GoTo OAuth Client set up only for the Voice Admin health
+ * check (which needs `voice-admin.v1.read`) - it must be added at
+ * https://developer.logmeininc.com/clients for this to work, the same one-time step
+ * already needed there for the Personal Access Token grant type (see the file-level
+ * comment above).
+ */
+export async function sendGotoConnectSms(
+  config: Record<string, string>,
+  toNumber: string,
+  message: string
+): Promise<{ ok: boolean; error?: string }> {
+  const clientId = config.clientId?.trim();
+  const clientSecret = config.clientSecret?.trim();
+  const personalAccessToken = config.personalAccessToken?.trim();
+  const refreshToken = config.refreshToken?.trim();
+  const fromNumber = config.smsFromNumber?.trim();
+
+  if (!clientId || !clientSecret || (!personalAccessToken && !refreshToken)) {
+    return { ok: false, error: "GoTo Connect is not configured with credentials." };
+  }
+  if (!fromNumber || !toNumber) {
+    return { ok: false, error: "SMS From number is not configured for this GoTo Connect target, or no destination number was given." };
+  }
+
+  const tokenResult = await getAccessToken(clientId, clientSecret, personalAccessToken ?? "", refreshToken ?? "");
+  if (tokenResult.error !== null) {
+    return { ok: false, error: tokenResult.error };
+  }
+
+  try {
+    const res = await undiciFetch(`${VOICE_HOST}/messaging/v1/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenResult.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ownerPhoneNumber: fromNumber, contactPhoneNumbers: [toNumber], body: message }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      return { ok: false, error: `Messaging API returned HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ""}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to send SMS" };
   }
 }
