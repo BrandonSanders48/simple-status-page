@@ -5,6 +5,7 @@ import { settings, services, rssFeeds, ispMapEntries, statusCategories, integrat
 import { parseIntegrationConfig, serializeIntegrationConfig } from "./integrationTargets";
 import { maskIntegrationConfig, unmaskIntegrationConfig, MASKED_SECRET } from "./secretMasking";
 import { encryptSecret } from "./secretCrypto";
+import { getIntegrationCatalogMeta } from "./integrationCatalogMeta";
 
 export const MAX_SERVICES = 20;
 export const MAX_RSS_FEEDS = 10;
@@ -175,7 +176,14 @@ export function saveIntegrationTargets(targets: z.infer<typeof integrationTarget
       tx.delete(integrationTargets).run();
     }
     targets.forEach((t, index) => {
-      const config = unmaskIntegrationConfig(t.integration, t.config, t.id !== undefined ? existingById.get(t.id) : undefined);
+      const unmasked = unmaskIntegrationConfig(t.integration, t.config, t.id !== undefined ? existingById.get(t.id) : undefined);
+      // Drops any key that isn't (or no longer is) one of this integration's catalog
+      // fields - e.g. a field removed from lib/integrationCatalogMeta.ts after a target
+      // was already saved - so a stale value can't keep influencing behavior (like
+      // isGotoSmsAvailable) purely because it's still sitting in the stored JSON with
+      // no admin UI left to see or clear it.
+      const knownKeys = new Set(getIntegrationCatalogMeta(t.integration)?.fields.map((f) => f.key) ?? []);
+      const config = Object.fromEntries(Object.entries(unmasked).filter(([key]) => knownKeys.has(key)));
       const row = { ...t, config: serializeIntegrationConfig(config), sortOrder: index };
       if (t.id !== undefined) {
         tx.update(integrationTargets).set(row).where(eq(integrationTargets.id, t.id)).run();
