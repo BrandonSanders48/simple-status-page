@@ -42,7 +42,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex items-center gap-2 px-3.5 py-2.5 text-sm font-medium rounded-t-lg border border-b-0 transition-colors ${
+      className={`relative flex-shrink-0 whitespace-nowrap flex items-center gap-2 px-3.5 py-2.5 text-sm font-medium rounded-t-lg border border-b-0 transition-colors ${
         active
           ? "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 border-b-white dark:border-b-slate-800 text-indigo-600 dark:text-indigo-400 -mb-px"
           : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-700/40"
@@ -195,8 +195,8 @@ export default function ServiceTabs({
 
   return (
     <div className="mb-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
-      <div className="flex items-center justify-between gap-2 px-3 pt-3 border-b border-slate-200 dark:border-slate-700">
-        <div className="flex flex-wrap gap-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 pt-3 border-b border-slate-200 dark:border-slate-700">
+        <div className="thin-scrollbar flex gap-1 overflow-x-auto">
           <TabButton
             active={activeTab === "services"}
             onClick={() => setTab("services")}
@@ -223,7 +223,7 @@ export default function ServiceTabs({
             />
           )}
         </div>
-        {testNetworkButton}
+        <div className="flex justify-end sm:contents">{testNetworkButton}</div>
       </div>
 
       <div className="p-5">

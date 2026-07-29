@@ -54,3 +54,12 @@ export function decryptSecret(stored: string): string {
     return "";
   }
 }
+
+/** True if `stored` was written by encryptSecret (so decrypting it should never yield
+ * "" - encryptSecret only ever encrypts non-empty plaintext, see above) but
+ * decryptSecret came back empty anyway - i.e. AUTH_SECRET has changed since this value
+ * was saved, or the ciphertext is corrupt. Used by migrate.ts to warn loudly at
+ * startup instead of letting stored credentials silently look "cleared". */
+export function isDecryptFailure(stored: string): boolean {
+  return stored.startsWith(ENC_PREFIX) && decryptSecret(stored) === "";
+}

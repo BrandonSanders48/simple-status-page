@@ -59,6 +59,14 @@ Set via environment variables, or change `require_auth` in the General tab of th
 
 ## Quick Start
 
+> [!WARNING]
+> Generate `AUTH_SECRET` **once** and reuse that exact value on every future `docker run`/`docker compose up` for this container - don't regenerate it inline (e.g. `-e AUTH_SECRET="$(openssl rand -hex 32)"` re-evaluated on every run). It's also the encryption key for stored integration credentials and the SMTP password: changing it doesn't just log everyone out, it silently blanks those out too (they decrypt to empty rather than erroring). Save the value somewhere before running the command below.
+
+```bash
+export AUTH_SECRET="$(openssl rand -hex 32)"
+echo "Save this - you'll need the exact same value every time you recreate the container: $AUTH_SECRET"
+```
+
 ### Option 1: Docker (recommended)
 
 ```bash
@@ -67,7 +75,7 @@ docker run -d \
   -p 80:3000 -p 443:3443 \
   -e APP_USERNAME="admin" \
   -e APP_PASSWORD="changeme" \
-  -e AUTH_SECRET="$(openssl rand -hex 32)" \
+  -e AUTH_SECRET="$AUTH_SECRET" \
   -v simple-status-page-data:/data \
   brandonsanders/simple-status-page
 ```
@@ -83,7 +91,7 @@ docker build -t simple-status-page -f dockerfile .
 docker run -d -p 80:3000 -p 443:3443 \
   -e APP_USERNAME="admin" \
   -e APP_PASSWORD="changeme" \
-  -e AUTH_SECRET="$(openssl rand -hex 32)" \
+  -e AUTH_SECRET="$AUTH_SECRET" \
   -v simple-status-page-data:/data \
   simple-status-page
 ```
@@ -126,7 +134,7 @@ Set the from/reply-to addresses and SMTP host, port, security mode, username, an
 | `APP_USERNAME` | `admin` | Admin login username |
 | `APP_PASSWORD` | `changeme` | Admin login password |
 | `APP_AUTH_REQUIRED` | `true` | Set `false` to disable the login requirement entirely (overrides the in-app toggle) |
-| `AUTH_SECRET` | *(required)* | Random secret used to sign session cookies. Generate with `openssl rand -hex 32` |
+| `AUTH_SECRET` | *(required)* | Random secret used to sign session cookies **and** encrypt stored integration credentials / the SMTP password. Generate once with `openssl rand -hex 32` and keep using that same value - changing it invalidates sessions and silently blanks out those stored secrets. |
 | `PAGE_URL` | *(company URL setting)* | Public base URL used to build links in notification emails |
 | `DATA_DIR` | `/data` in Docker, `./data` locally | Where the SQLite database, uploads, and SSL certs are stored |
 | `PORT` | `3000` | HTTP listener port |

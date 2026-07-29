@@ -1,7 +1,37 @@
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { db, sqlite, DATA_DIR } from "./lib/db/client";
-import { settings, statusCategories, rssFeeds, services } from "./lib/db/schema";
+import { settings, statusCategories, rssFeeds, services, integrationTargets } from "./lib/db/schema";
 import { findLegacyDir, importLegacyData } from "./lib/legacyImport";
+import { isDecryptFailure } from "./lib/secretCrypto";
+
+/** Warns loudly (rather than letting it pass silently) when AUTH_SECRET doesn't match
+ * the key stored credentials were encrypted with - almost always because AUTH_SECRET
+ * changed since they were saved (see lib/secretCrypto.ts's decryptSecret). Runs on
+ * every startup since it's cheap and this is the only place that would otherwise go
+ * unnoticed until an admin wonders why a saved password or integration looks blank. */
+function checkAuthSecretIntegrity() {
+  const problems: string[] = [];
+
+  const cfg = db.select().from(settings).get();
+  if (cfg?.smtpPassword && isDecryptFailure(cfg.smtpPassword)) {
+    problems.push("SMTP password (Notifications settings)");
+  }
+
+  for (const t of db.select().from(integrationTargets).all()) {
+    if (isDecryptFailure(t.config)) {
+      problems.push(`integration target "${t.name}" (${t.integration})`);
+    }
+  }
+
+  if (problems.length > 0) {
+    console.warn(
+      "[migrate] WARNING: AUTH_SECRET does not match the key these were encrypted with, so they " +
+        `decrypted to empty and will appear blank until re-entered: ${problems.join(", ")}. ` +
+        "This means AUTH_SECRET changed since they were saved - if you still have the original value, " +
+        "restart the container with it restored; otherwise these need to be re-entered."
+    );
+  }
+}
 
 function run() {
   migrate(db, { migrationsFolder: "./lib/db/migrations" });
@@ -48,6 +78,8 @@ function run() {
     });
     console.log(`[migrate] seeded ${defaultFeeds.length} default RSS feeds`);
   }
+
+  checkAuthSecretIntegrity();
 
   console.log("[migrate] up to date");
   sqlite.close();
