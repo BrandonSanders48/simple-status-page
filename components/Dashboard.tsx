@@ -242,18 +242,18 @@ export default function Dashboard({
   return (
     <div className="min-h-screen">
       <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800/60">
-        <div className="max-w-screen-xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="max-w-screen-xl mx-auto px-4 min-h-14 py-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
             {logoPath && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoPath} alt={businessName} className="h-8 w-auto rounded bg-white p-0.5 object-contain" />
+              <img src={logoPath} alt={businessName} className="h-8 w-auto rounded bg-white p-0.5 object-contain flex-shrink-0" />
             )}
-            <div className="flex flex-col gap-0.5">
-              <span className="font-semibold text-slate-900 dark:text-white leading-none">{businessName}</span>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="font-semibold text-slate-900 dark:text-white leading-tight truncate">{businessName}</span>
               <SlaBadge />
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <span
               className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500"
               title={`This page automatically refreshes every ${Math.round(refreshRateMs / 1000)} seconds`}

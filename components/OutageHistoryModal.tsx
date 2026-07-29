@@ -92,26 +92,28 @@ export default function OutageHistoryModal({ onClose }: { onClose: () => void })
                   ))}
                 </select>
               </div>
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Service</th>
-                    <th className="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Went Down</th>
-                    <th className="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Recovered</th>
-                    <th className="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Duration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((r) => (
-                    <tr key={r.id} className="border-b border-slate-100 dark:border-slate-700/50 last:border-0">
-                      <td className="py-2.5 pr-4 text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">{r.serviceName}</td>
-                      <td className="py-2.5 pr-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatTimestamp(r.wentDownAt)}</td>
-                      <td className="py-2.5 pr-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatTimestamp(r.cameUpAt)}</td>
-                      <td className="py-2.5 text-xs font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">{formatDuration(r.durationS)}</td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700">
+                      <th className="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Service</th>
+                      <th className="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Went Down</th>
+                      <th className="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pr-4">Recovered</th>
+                      <th className="pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Duration</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filtered.map((r) => (
+                      <tr key={r.id} className="border-b border-slate-100 dark:border-slate-700/50 last:border-0">
+                        <td className="py-2.5 pr-4 text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">{r.serviceName}</td>
+                        <td className="py-2.5 pr-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatTimestamp(r.wentDownAt)}</td>
+                        <td className="py-2.5 pr-4 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatTimestamp(r.cameUpAt)}</td>
+                        <td className="py-2.5 text-xs font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">{formatDuration(r.durationS)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {filtered.length === 0 && (
                 <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-6">No outages match the selected filters.</p>
               )}

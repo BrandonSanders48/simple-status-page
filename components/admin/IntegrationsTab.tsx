@@ -71,10 +71,10 @@ function IntegrationTargetCard({
 
   return (
     <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <input
           aria-label="Target name"
-          className={`${inputCls} flex-1 font-semibold`}
+          className={`${inputCls} flex-1 min-w-[140px] font-semibold`}
           value={target.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder={`e.g. Main Office ${entry.label}`}

@@ -198,7 +198,7 @@ export default function NotificationsTab({
         </div>
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800/70">
           <label htmlFor="cfg-test-email-to" className={labelCls}>Send a Test Email</label>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <input
               id="cfg-test-email-to"
               type="email"
@@ -277,10 +277,10 @@ export default function NotificationsTab({
         </div>
       </SettingsGroup>
 
-      <SettingsGroup title="SMS (temporary)" description="Uses the first enabled GoTo Connect target with an SMS From number configured." wide>
+      <SettingsGroup title="SMS" description="Uses the first enabled GoTo Connect target with an SMS From number configured." wide>
         <div>
           <label htmlFor="cfg-test-sms-to" className={labelCls}>Send a Test Text</label>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <input
               id="cfg-test-sms-to"
               type="tel"

@@ -75,7 +75,7 @@ export default function IntegrationsAdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0d1b30]">
-      <div className="h-14 flex items-center justify-between px-5 border-b border-slate-200 dark:border-slate-800/70 bg-white dark:bg-slate-900">
+      <div className="flex flex-wrap items-center justify-between gap-2 min-h-14 px-4 sm:px-5 py-2 border-b border-slate-200 dark:border-slate-800/70 bg-white dark:bg-slate-900">
         <Link
           href="/admin"
           className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 font-medium"
@@ -97,8 +97,8 @@ export default function IntegrationsAdminPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-8 py-8">
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:px-8 sm:py-8">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4 pb-3 border-b-2 border-slate-200 dark:border-slate-700">
             <i className="fa-solid fa-store text-fuchsia-500" />
             Integrations

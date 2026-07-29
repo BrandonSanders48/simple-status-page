@@ -103,7 +103,7 @@ function AddUpdateForm({
   return (
     <form onSubmit={submit} className="ml-6 mt-2 flex flex-col gap-2">
       {error && <p className="text-xs text-red-500">{error}</p>}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <select
           aria-label="Update status"
           value={status}
