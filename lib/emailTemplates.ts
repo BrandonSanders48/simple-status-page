@@ -213,6 +213,57 @@ export function renderSiteStatusChangeEmail(opts: {
   `);
 }
 
+/** Sent once to a contact (email or phone, see lib/notifier.ts's sendWelcomeMessage)
+ * the very first time they subscribe to anything, on top of whatever status change
+ * emails they'll get afterward - confirms the subscription went through and names
+ * what they're now signed up for, since the subscribe form gives no other
+ * confirmation once its modal closes. Never sent again on a later request that just
+ * adds more services/sites/integrations to an already-known contact. */
+export function renderWelcomeEmail(opts: { businessName: string; accentColor: string; linkUrl?: string | null; itemNames: string[] }): string {
+  const { businessName, accentColor, linkUrl, itemNames } = opts;
+
+  const itemsList =
+    itemNames.length > 0
+      ? `<tr><td style="padding:24px 32px 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f8fafc;border-radius:10px;">
+            <tr><td style="padding:14px 20px 6px;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.03em;">You're subscribed to</td></tr>
+            <tr><td style="padding:0 20px 16px;font-size:13px;color:#334155;line-height:1.7;">${itemNames.map(escapeHtml).join(", ")}</td></tr>
+          </table>
+        </td></tr>`
+      : "";
+
+  const cta = linkUrl
+    ? `<tr><td style="padding:24px 32px 0;text-align:center;">
+        <a href="${escapeHtml(linkUrl)}" target="_blank" style="display:inline-block;padding:12px 32px;background:${accentColor};color:#ffffff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600;">View Status Page</a>
+      </td></tr>`
+    : "";
+
+  return shell(`
+    <tr><td style="padding:28px 32px 20px;border-bottom:1px solid #f1f5f9;">
+      <span style="font-size:15px;font-weight:700;color:#0f172a;">${escapeHtml(businessName)}</span>
+    </td></tr>
+    <tr><td style="padding:24px 32px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
+        <tr><td style="padding:20px 24px;text-align:center;">
+          <div style="font-size:36px;line-height:1;margin-bottom:10px;">&#128075;</div>
+          <div style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:4px;">You're subscribed!</div>
+          <div style="font-size:14px;font-weight:600;color:#059669;">We'll email you when something changes</div>
+        </td></tr>
+      </table>
+    </td></tr>
+    ${itemsList}
+    <tr><td style="padding:16px 32px 0;">
+      <p style="font-size:12.5px;color:#64748b;margin:0;line-height:1.6;text-align:center;">
+        You can update or remove these alerts anytime from the Subscribe &rarr; Manage link on the status page.
+      </p>
+    </td></tr>
+    ${cta}
+    <tr><td style="padding:28px 32px;text-align:center;border-top:1px solid #f1f5f9;margin-top:24px;">
+      <span style="font-size:12px;color:#94a3b8;">${escapeHtml(businessName)}</span>
+    </td></tr>
+  `);
+}
+
 /** Same shape as renderStatusChangeEmail, but for a marketplace integration target's
  * overall health (see lib/integrationsCache.ts) rather than a service's up/down --
  * "Healthy"/"Attention" wording matches what the target's own card shows, and the

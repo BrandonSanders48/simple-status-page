@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
+  settings,
   services,
   sites,
   integrationTargets,
@@ -15,6 +16,40 @@ import {
 import { verifyCsrf } from "@/lib/csrf";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { isGotoSmsAvailable } from "@/lib/integrationTargets";
+import { isSmtpConfigured, sendMail } from "@/lib/mailer";
+import { renderWelcomeEmail } from "@/lib/emailTemplates";
+import { resolvePageUrl } from "@/lib/pageUrl";
+import { sendGotoSms, EMAIL_ACCENT_COLOR } from "@/lib/notifier";
+
+/** True if this contact (whichever of email/phone is set) has never subscribed to
+ * anything before this request - checked up front, before any of the inserts below,
+ * so it reflects "brand new subscriber" rather than "subscribed to this specific
+ * thing before". Used to gate the one-time welcome message below the isNewContact
+ * check, not the regular per-transition status emails. */
+function isNewContact(email: string | null, phone: string | null): boolean {
+  if (email) {
+    return (
+      db.select({ id: subscriptions.id }).from(subscriptions).where(eq(subscriptions.email, email)).limit(1).all().length === 0 &&
+      db.select({ id: siteSubscriptions.id }).from(siteSubscriptions).where(eq(siteSubscriptions.email, email)).limit(1).all().length === 0 &&
+      db.select({ id: integrationSubscriptions.id }).from(integrationSubscriptions).where(eq(integrationSubscriptions.email, email)).limit(1).all()
+        .length === 0
+    );
+  }
+  if (phone) {
+    return (
+      db.select({ id: phoneSubscriptions.id }).from(phoneSubscriptions).where(eq(phoneSubscriptions.phone, phone)).limit(1).all().length === 0 &&
+      db.select({ id: sitePhoneSubscriptions.id }).from(sitePhoneSubscriptions).where(eq(sitePhoneSubscriptions.phone, phone)).limit(1).all()
+        .length === 0 &&
+      db
+        .select({ id: integrationPhoneSubscriptions.id })
+        .from(integrationPhoneSubscriptions)
+        .where(eq(integrationPhoneSubscriptions.phone, phone))
+        .limit(1)
+        .all().length === 0
+    );
+  }
+  return false;
+}
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -88,10 +123,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "error", message: "No service, site, or integration selected." }, { status: 400 });
   }
 
+  // Computed before any inserts below, so it reflects whether this contact is
+  // subscribing for the very first time (see isNewContact's doc comment).
+  const newContact = isNewContact(email, phone);
+
   let addedCount = 0;
+  const addedNames: string[] = [];
 
   if (serviceIds.length > 0) {
-    const validIds = new Set(db.select({ id: services.id }).from(services).where(inArray(services.id, serviceIds)).all().map((s) => s.id));
+    const validRows = db.select({ id: services.id, name: services.name }).from(services).where(inArray(services.id, serviceIds)).all();
+    const validIds = new Set(validRows.map((s) => s.id));
+    const nameById = new Map(validRows.map((s) => [s.id, s.name]));
     if (email) {
       const alreadySubscribed = new Set(
         db
@@ -101,10 +143,11 @@ export async function POST(request: Request) {
           .all()
           .map((s) => s.serviceId)
       );
-      const toInsert = serviceIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id)).map((serviceId) => ({ email, serviceId }));
-      if (toInsert.length > 0) {
-        db.insert(subscriptions).values(toInsert).run();
-        addedCount += toInsert.length;
+      const idsToAdd = serviceIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id));
+      if (idsToAdd.length > 0) {
+        db.insert(subscriptions).values(idsToAdd.map((serviceId) => ({ email, serviceId }))).run();
+        addedCount += idsToAdd.length;
+        idsToAdd.forEach((id) => addedNames.push(nameById.get(id)!));
       }
     } else if (phone) {
       const alreadySubscribed = new Set(
@@ -115,16 +158,19 @@ export async function POST(request: Request) {
           .all()
           .map((s) => s.serviceId)
       );
-      const toInsert = serviceIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id)).map((serviceId) => ({ phone, serviceId }));
-      if (toInsert.length > 0) {
-        db.insert(phoneSubscriptions).values(toInsert).run();
-        addedCount += toInsert.length;
+      const idsToAdd = serviceIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id));
+      if (idsToAdd.length > 0) {
+        db.insert(phoneSubscriptions).values(idsToAdd.map((serviceId) => ({ phone, serviceId }))).run();
+        addedCount += idsToAdd.length;
+        idsToAdd.forEach((id) => addedNames.push(nameById.get(id)!));
       }
     }
   }
 
   if (siteIds.length > 0) {
-    const validIds = new Set(db.select({ id: sites.id }).from(sites).where(inArray(sites.id, siteIds)).all().map((s) => s.id));
+    const validRows = db.select({ id: sites.id, name: sites.name }).from(sites).where(inArray(sites.id, siteIds)).all();
+    const validIds = new Set(validRows.map((s) => s.id));
+    const nameById = new Map(validRows.map((s) => [s.id, s.name]));
     if (email) {
       const alreadySubscribed = new Set(
         db
@@ -134,10 +180,11 @@ export async function POST(request: Request) {
           .all()
           .map((s) => s.siteId)
       );
-      const toInsert = siteIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id)).map((siteId) => ({ email, siteId }));
-      if (toInsert.length > 0) {
-        db.insert(siteSubscriptions).values(toInsert).run();
-        addedCount += toInsert.length;
+      const idsToAdd = siteIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id));
+      if (idsToAdd.length > 0) {
+        db.insert(siteSubscriptions).values(idsToAdd.map((siteId) => ({ email, siteId }))).run();
+        addedCount += idsToAdd.length;
+        idsToAdd.forEach((id) => addedNames.push(nameById.get(id)!));
       }
     } else if (phone) {
       const alreadySubscribed = new Set(
@@ -148,18 +195,23 @@ export async function POST(request: Request) {
           .all()
           .map((s) => s.siteId)
       );
-      const toInsert = siteIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id)).map((siteId) => ({ phone, siteId }));
-      if (toInsert.length > 0) {
-        db.insert(sitePhoneSubscriptions).values(toInsert).run();
-        addedCount += toInsert.length;
+      const idsToAdd = siteIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id));
+      if (idsToAdd.length > 0) {
+        db.insert(sitePhoneSubscriptions).values(idsToAdd.map((siteId) => ({ phone, siteId }))).run();
+        addedCount += idsToAdd.length;
+        idsToAdd.forEach((id) => addedNames.push(nameById.get(id)!));
       }
     }
   }
 
   if (targetIds.length > 0) {
-    const validIds = new Set(
-      db.select({ id: integrationTargets.id }).from(integrationTargets).where(inArray(integrationTargets.id, targetIds)).all().map((t) => t.id)
-    );
+    const validRows = db
+      .select({ id: integrationTargets.id, name: integrationTargets.name })
+      .from(integrationTargets)
+      .where(inArray(integrationTargets.id, targetIds))
+      .all();
+    const validIds = new Set(validRows.map((t) => t.id));
+    const nameById = new Map(validRows.map((t) => [t.id, t.name]));
     if (email) {
       const alreadySubscribed = new Set(
         db
@@ -169,10 +221,11 @@ export async function POST(request: Request) {
           .all()
           .map((t) => t.targetId)
       );
-      const toInsert = targetIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id)).map((targetId) => ({ email, targetId }));
-      if (toInsert.length > 0) {
-        db.insert(integrationSubscriptions).values(toInsert).run();
-        addedCount += toInsert.length;
+      const idsToAdd = targetIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id));
+      if (idsToAdd.length > 0) {
+        db.insert(integrationSubscriptions).values(idsToAdd.map((targetId) => ({ email, targetId }))).run();
+        addedCount += idsToAdd.length;
+        idsToAdd.forEach((id) => addedNames.push(nameById.get(id)!));
       }
     } else if (phone) {
       const alreadySubscribed = new Set(
@@ -183,10 +236,11 @@ export async function POST(request: Request) {
           .all()
           .map((t) => t.targetId)
       );
-      const toInsert = targetIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id)).map((targetId) => ({ phone, targetId }));
-      if (toInsert.length > 0) {
-        db.insert(integrationPhoneSubscriptions).values(toInsert).run();
-        addedCount += toInsert.length;
+      const idsToAdd = targetIds.filter((id) => validIds.has(id) && !alreadySubscribed.has(id));
+      if (idsToAdd.length > 0) {
+        db.insert(integrationPhoneSubscriptions).values(idsToAdd.map((targetId) => ({ phone, targetId }))).run();
+        addedCount += idsToAdd.length;
+        idsToAdd.forEach((id) => addedNames.push(nameById.get(id)!));
       }
     }
   }
@@ -194,5 +248,35 @@ export async function POST(request: Request) {
   if (addedCount === 0) {
     return NextResponse.json({ status: "success", message: "You're already subscribed to everything selected." });
   }
+
+  if (newContact) {
+    await sendWelcomeMessage(email, phone, addedNames);
+  }
+
   return NextResponse.json({ status: "success", message: `Subscribed to ${addedCount} more.` });
+}
+
+/** Sent once, right after a brand-new contact's first successful subscribe (see
+ * isNewContact above) - confirms it went through and names what they're now signed
+ * up for, since the subscribe modal gives no other confirmation once it closes.
+ * Best-effort: a failure here must never fail the subscribe request itself, since the
+ * subscription rows are already committed by the time this runs. */
+async function sendWelcomeMessage(email: string | null, phone: string | null, itemNames: string[]): Promise<void> {
+  const cfg = db.select().from(settings).get();
+  if (!cfg) return;
+  const url = resolvePageUrl(cfg);
+
+  if (email && isSmtpConfigured(cfg)) {
+    const html = renderWelcomeEmail({ businessName: cfg.businessName, accentColor: EMAIL_ACCENT_COLOR, linkUrl: url, itemNames });
+    try {
+      await sendMail(cfg, { to: email, subject: `You're subscribed to ${cfg.businessName} status alerts`, html });
+    } catch (err) {
+      console.error(`[subscribe] failed to send welcome email to ${email}:`, err);
+    }
+  } else if (phone) {
+    // Kept short (no item list) since GoTo Connect SMS is billed per segment - the
+    // welcome email above is where the full "here's what you're subscribed to" detail
+    // lives.
+    await sendGotoSms([phone], `${cfg.businessName}: You're now subscribed to status alerts.${url ? ` ${url}` : ""}`);
+  }
 }

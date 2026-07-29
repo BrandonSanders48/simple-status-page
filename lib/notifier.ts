@@ -29,7 +29,7 @@ import { checkDns } from "./checks/dns";
 import { parseIntegrationConfig } from "./integrationTargets";
 import { sendGotoConnectSms } from "./integrations/gotoConnect";
 
-const EMAIL_ACCENT_COLOR = "#06b6d4";
+export const EMAIL_ACCENT_COLOR = "#06b6d4";
 
 /**
  * Sends a plain-text SMS via every enabled GoTo Connect integration target that has
@@ -46,7 +46,7 @@ const EMAIL_ACCENT_COLOR = "#06b6d4";
  * - not deduplicated across targets, matching the equivalent multi-target behavior
  * for the fixed number alone before this).
  */
-async function sendGotoSms(subscriberPhones: string[], message: string): Promise<void> {
+export async function sendGotoSms(subscriberPhones: string[], message: string): Promise<void> {
   const gotoTargets = db
     .select()
     .from(integrationTargets)
